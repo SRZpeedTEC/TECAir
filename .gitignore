@@ -1,12 +1,98 @@
+# =========================
+# .NET / C#
+# =========================
 bin/
 obj/
 .vs/
-.vscode/
-
-node_modules/
-dist/
-.env
-
 *.user
 *.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]uild/
+[Ll]og/
+
+# NuGet
+*.nupkg
+packages/
+.nuget/
+project.lock.json
+project.assets.json
+
+# Rider / JetBrains
+.idea/
+
+# Visual Studio Code
+.vscode/
+
+# =========================
+# Node / React / Angular
+# =========================
+node_modules/
+dist/
+build/
+.next/
+.angular/
+.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# =========================
+# Database / local files
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+*.accdb
+*.bak
+*.dump
+*.sql.gz
+
+# Si quieren versionar scripts SQL, NO ignoren .sql
+# scripts/*.sql
+
+# =========================
+# Logs
+# =========================
 *.log
+logs/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Mobile / Android
+# =========================
+.gradle/
+local.properties
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# =========================
+# Generated reports / PDFs
+# =========================
+*.pdf
+*.xlsx
+*.docx
