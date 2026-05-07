@@ -25,6 +25,8 @@ SELECT 'app_user' AS table_name, COUNT(*) AS total_rows FROM app_user
 UNION ALL
 SELECT 'student', COUNT(*) FROM student
 UNION ALL
+SELECT 'passenger', COUNT(*) FROM passenger
+UNION ALL
 SELECT 'airport', COUNT(*) FROM airport
 UNION ALL
 SELECT 'plane', COUNT(*) FROM plane
@@ -35,7 +37,7 @@ SELECT 'flight', COUNT(*) FROM flight
 UNION ALL
 SELECT 'itinerary', COUNT(*) FROM itinerary
 UNION ALL
-SELECT 'itinerary_flight', COUNT(*) FROM itinerary_flight
+SELECT 'flight_in_itinerary', COUNT(*) FROM flight_in_itinerary
 UNION ALL
 SELECT 'promotion', COUNT(*) FROM promotion
 UNION ALL
@@ -52,7 +54,7 @@ ORDER BY table_name;
 -- Esta consulta muestra los aeropuertos disponibles para busqueda.
 
 SELECT
-    airport_id,
+    code,
     airport_name,
     city,
     country
@@ -94,9 +96,9 @@ SELECT
     f.plane_plate
 FROM flight f
 JOIN airport origin
-    ON origin.airport_id = f.airport_departs_from_id
+    ON origin.airport_name = f.airport_departs_from_id
 JOIN airport destination
-    ON destination.airport_id = f.airport_arrives_to_id
+    ON destination.airport_name = f.airport_arrives_to_id
 WHERE origin.city = 'San Jose'
   AND destination.city = 'Ciudad de Panama'
 ORDER BY f.departure_datetime;
@@ -111,7 +113,6 @@ SELECT
     i.itinerary_id,
     i.price,
     ifl.flight_order,
-    ifl.type,
     f.flight_id,
     origin.city AS departs_from,
     destination.city AS arrives_to,
@@ -119,14 +120,14 @@ SELECT
     f.arrival_datetime,
     f.state
 FROM itinerary i
-JOIN itinerary_flight ifl
+JOIN flight_in_itinerary ifl
     ON ifl.itinerary_id = i.itinerary_id
 JOIN flight f
     ON f.flight_id = ifl.flight_id
 JOIN airport origin
-    ON origin.airport_id = f.airport_departs_from_id
+    ON origin.airport_name = f.airport_departs_from_id
 JOIN airport destination
-    ON destination.airport_id = f.airport_arrives_to_id
+    ON destination.airport_name = f.airport_arrives_to_id
 ORDER BY i.itinerary_id, ifl.flight_order;
 
 -- ============================================================
@@ -141,7 +142,7 @@ SELECT
     p.discount_percent,
     i.itinerary_id,
     i.price AS original_price,
-    ROUND(i.price * (1 - (p.discount_percent / 100)), 2) AS promotional_price,
+    p.promo_price AS promotional_price,
     CASE
         WHEN CURRENT_DATE BETWEEN p.start_date AND p.end_date THEN 'ACTIVE'
         WHEN CURRENT_DATE < p.start_date THEN 'FUTURE'
@@ -160,15 +161,18 @@ ORDER BY p.start_date, p.promotion_code;
 SELECT
     r.reservation_id,
     r.state AS reservation_state,
-    r.number_of_people,
     r.payment_reference,
     u.email,
-    CONCAT(u.first_name, ' ', u.last_name) AS customer_name,
+    CONCAT(u.name, ' ', u.last_name) AS customer_name,
+    p.passport_id,
+    CONCAT(p.name, ' ', p.Lname) AS passenger_name,
     i.itinerary_id,
     i.price
 FROM reservation r
 JOIN app_user u
     ON u.email = r.user_email
+JOIN passenger p
+    ON p.passport_id = r.passenger_id
 JOIN itinerary i
     ON i.itinerary_id = r.itinerary_id
 ORDER BY r.reservation_id;
@@ -180,7 +184,8 @@ ORDER BY r.reservation_id;
 
 SELECT
     c.confirmation_number,
-    CONCAT(u.first_name, ' ', u.last_name) AS passenger_name,
+    p.passport_id,
+    CONCAT(p.name, ' ', p.Lname) AS passenger_name,
     f.flight_id,
     origin.city AS origin_city,
     destination.city AS destination_city,
@@ -191,16 +196,16 @@ SELECT
 FROM check_in c
 JOIN reservation r
     ON r.reservation_id = c.reservation_id
-JOIN app_user u
-    ON u.email = r.user_email
-JOIN itinerary_flight ifl
+JOIN passenger p
+    ON p.passport_id = r.passenger_id
+JOIN flight_in_itinerary ifl
     ON ifl.itinerary_flight_id = c.itinerary_flight_id
 JOIN flight f
     ON f.flight_id = ifl.flight_id
 JOIN airport origin
-    ON origin.airport_id = f.airport_departs_from_id
+    ON origin.airport_name = f.airport_departs_from_id
 JOIN airport destination
-    ON destination.airport_id = f.airport_arrives_to_id
+    ON destination.airport_name = f.airport_arrives_to_id
 ORDER BY c.confirmation_number;
 
 -- ============================================================
@@ -213,7 +218,8 @@ ORDER BY c.confirmation_number;
 
 SELECT
     c.confirmation_number,
-    CONCAT(u.first_name, ' ', u.last_name) AS passenger_name,
+    p.passport_id,
+    CONCAT(p.name, ' ', p.Lname) AS passenger_name,
     COUNT(b.bag_number) AS baggage_count,
     CASE
         WHEN COUNT(b.bag_number) <= 1 THEN 0
@@ -223,11 +229,11 @@ SELECT
 FROM check_in c
 JOIN reservation r
     ON r.reservation_id = c.reservation_id
-JOIN app_user u
-    ON u.email = r.user_email
+JOIN passenger p
+    ON p.passport_id = r.passenger_id
 LEFT JOIN baggage b
     ON b.confirmation_number = c.confirmation_number
-GROUP BY c.confirmation_number, u.first_name, u.last_name
+GROUP BY c.confirmation_number, p.passport_id, p.name, p.Lname
 ORDER BY c.confirmation_number;
 
 -- ============================================================
@@ -238,7 +244,8 @@ ORDER BY c.confirmation_number;
 SELECT
     b.bag_number,
     b.confirmation_number,
-    CONCAT(u.first_name, ' ', u.last_name) AS passenger_name,
+    p.passport_id,
+    CONCAT(p.name, ' ', p.Lname) AS passenger_name,
     b.weight,
     b.color
 FROM baggage b
@@ -246,8 +253,8 @@ JOIN check_in c
     ON c.confirmation_number = b.confirmation_number
 JOIN reservation r
     ON r.reservation_id = c.reservation_id
-JOIN app_user u
-    ON u.email = r.user_email
+JOIN passenger p
+    ON p.passport_id = r.passenger_id
 ORDER BY b.confirmation_number, b.bag_number;
 
 -- ============================================================
@@ -265,7 +272,7 @@ SELECT
 FROM flight f
 JOIN plane p
     ON p.plate = f.plane_plate
-LEFT JOIN itinerary_flight ifl
+LEFT JOIN flight_in_itinerary ifl
     ON ifl.flight_id = f.flight_id
 LEFT JOIN check_in c
     ON c.itinerary_flight_id = ifl.itinerary_flight_id
@@ -279,7 +286,7 @@ ORDER BY f.flight_id;
 
 SELECT
     u.email,
-    CONCAT(u.first_name, ' ', u.last_name) AS student_name,
+    CONCAT(u.name, ' ', u.last_name) AS student_name,
     s.user_carnet,
     s.college_name,
     s.miles

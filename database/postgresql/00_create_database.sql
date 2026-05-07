@@ -14,7 +14,7 @@
 -- CREATE DATABASE no debe ejecutarse dentro de una transaccion.
 -- Si la base ya existe, PostgreSQL mostrara un error y no la recreara.
 
-CREATE DATABASE tecair_test_db
+CREATE DATABASE tecair_db
     WITH
     OWNER = postgres
     ENCODING = 'UTF8'

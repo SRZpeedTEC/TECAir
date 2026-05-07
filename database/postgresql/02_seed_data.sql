@@ -18,12 +18,13 @@ TRUNCATE TABLE
     check_in,
     reservation,
     promotion,
-    itinerary_flight,
+    flight_in_itinerary,
     itinerary,
     flight,
     seat,
     plane,
     airport,
+    passenger,
     student,
     app_user
 RESTART IDENTITY CASCADE;
@@ -33,13 +34,13 @@ RESTART IDENTITY CASCADE;
 -- =========================
 
 -- Estos usuarios permiten probar clientes normales, estudiantes, funcionarios y administradores.
-INSERT INTO app_user (email, password_hash, first_name, middle_initial, last_name, phone_number, role)
+INSERT INTO app_user (email, password_hash, name,  last_name, phone_number, role)
 VALUES
-    ('ana.rojas@tecair.com', 'hash_demo_ana', 'Ana', 'M', 'Rojas', '8888-1001', 'CLIENT'),
-    ('carlos.mora@tecair.com', 'hash_demo_carlos', 'Carlos', 'J', 'Mora', '8888-1002', 'CLIENT'),
-    ('sofia.salas@tecair.com', 'hash_demo_sofia', 'Sofia', NULL, 'Salas', '8888-1003', 'CLIENT'),
-    ('marco.aeropuerto@tecair.com', 'hash_demo_marco', 'Marco', 'A', 'Vargas', '8888-2001', 'CLIENT'),
-    ('admin@tecair.com', 'hash_demo_admin', 'Laura', NULL, 'Admin', '8888-3001', 'ADMIN');
+    ('ana.rojas@tecair.com', 'hash_demo_ana', 'Ana', 'Rojas', '8888-1001', 'CLIENT'),
+    ('carlos.mora@tecair.com', 'hash_demo_carlos', 'Carlos', 'Mora', '8888-1002', 'CLIENT'),
+    ('sofia.salas@tecair.com', 'hash_demo_sofia', 'Sofia', 'Salas', '8888-1003', 'CLIENT'),
+    ('marco.aeropuerto@tecair.com', 'hash_demo_marco', 'Marco', 'Vargas', '8888-2001', 'CLIENT'),
+    ('admin@tecair.com', 'hash_demo_admin', 'Laura', 'Admin', '8888-3001', 'ADMIN');
 
 -- Estos registros identifican cuales usuarios son estudiantes y acumulan millas.
 INSERT INTO student (user_email, user_carnet, college_name, miles)
@@ -48,18 +49,32 @@ VALUES
     ('sofia.salas@tecair.com', '2026987654', 'Universidad de Costa Rica', 1200);
 
 -- =========================
+-- Pasajeros
+-- =========================
+
+-- Estos pasajeros permiten separar quien compra de quien viaja.
+-- En algunos casos el pasajero es el mismo usuario; en otros, el usuario reserva para otra persona.
+INSERT INTO passenger (passport_id, birthday, gender, name, Lname)
+VALUES
+    ('CR-A1234567', '2001-04-18', 'FEMALE', 'Ana', 'Rojas'),
+    ('CR-C7654321', '1998-09-27', 'MALE', 'Carlos', 'Mora'),
+    ('CR-S1122334', '2003-01-12', 'FEMALE', 'Sofia', 'Salas'),
+    ('CR-M4455667', '1995-07-03', 'MALE', 'Marco', 'Vargas'),
+    ('PA-L9988776', '1988-11-22', 'OTHER', 'Lucia', 'Pereira');
+
+-- =========================
 -- Aeropuertos
 -- =========================
 
 -- Estos aeropuertos permiten probar busquedas por origen y destino.
-INSERT INTO airport (airport_id, airport_name, city, country) OVERRIDING SYSTEM VALUE
+INSERT INTO airport (airport_name, city, country, code)
 VALUES
-    (1, 'Aeropuerto Internacional Juan Santamaria', 'San Jose', 'Costa Rica'),
-    (2, 'Aeropuerto Internacional Daniel Oduber', 'Liberia', 'Costa Rica'),
-    (3, 'Aeropuerto Internacional Tocumen', 'Ciudad de Panama', 'Panama'),
-    (4, 'Aeropuerto Internacional El Dorado', 'Bogota', 'Colombia'),
-    (5, 'Aeropuerto Internacional Benito Juarez', 'Ciudad de Mexico', 'Mexico'),
-    (6, 'Aeropuerto Internacional de Miami', 'Miami', 'Estados Unidos');
+    ('Aeropuerto Internacional Juan Santamaria', 'San Jose', 'Costa Rica', 'SJO'),
+    ('Aeropuerto Internacional Daniel Oduber', 'Liberia', 'Costa Rica', 'LIR'),
+    ('Aeropuerto Internacional Tocumen', 'Ciudad de Panama', 'Panama', 'PTY'),
+    ('Aeropuerto Internacional El Dorado', 'Bogota', 'Colombia', 'BOG'),
+    ('Aeropuerto Internacional Benito Juarez', 'Ciudad de Mexico', 'Mexico', 'MEX'),
+    ('Aeropuerto Internacional de Miami', 'Miami', 'Estados Unidos', 'MIA');
 
 -- =========================
 -- Aviones y asientos
@@ -109,12 +124,12 @@ INSERT INTO flight (
 )
 OVERRIDING SYSTEM VALUE
 VALUES
-    (1, 'TI-TEC01', 1, 3, 'SCHEDULED', 'A1', '2026-06-10 08:00:00', '2026-06-10 09:20:00'),
-    (2, 'TI-TEC02', 3, 4, 'SCHEDULED', 'B4', '2026-06-10 11:00:00', '2026-06-10 12:40:00'),
-    (3, 'TI-TEC03', 1, 2, 'OPEN',      'A3', '2026-06-11 07:30:00', '2026-06-11 08:15:00'),
-    (4, 'TI-TEC01', 1, 6, 'SCHEDULED', 'A5', '2026-06-12 10:00:00', '2026-06-12 14:00:00'),
-    (5, 'TI-TEC02', 6, 5, 'SCHEDULED', 'C2', '2026-06-13 09:00:00', '2026-06-13 12:30:00'),
-    (6, 'TI-TEC03', 2, 1, 'CLOSED',    'L1', '2026-06-09 18:00:00', '2026-06-09 18:45:00');
+    (1, 'TI-TEC01', 'Aeropuerto Internacional Juan Santamaria', 'Aeropuerto Internacional Tocumen', 'OPEN',   'A1', '2026-06-10 08:00:00', '2026-06-10 09:20:00'),
+    (2, 'TI-TEC02', 'Aeropuerto Internacional Tocumen', 'Aeropuerto Internacional El Dorado', 'OPEN',         'B4', '2026-06-10 11:00:00', '2026-06-10 12:40:00'),
+    (3, 'TI-TEC03', 'Aeropuerto Internacional Juan Santamaria', 'Aeropuerto Internacional Daniel Oduber', 'OPEN', 'A3', '2026-06-11 07:30:00', '2026-06-11 08:15:00'),
+    (4, 'TI-TEC01', 'Aeropuerto Internacional Juan Santamaria', 'Aeropuerto Internacional de Miami', 'OPEN',   'A5', '2026-06-12 10:00:00', '2026-06-12 14:00:00'),
+    (5, 'TI-TEC02', 'Aeropuerto Internacional de Miami', 'Aeropuerto Internacional Benito Juarez', 'OPEN',     'C2', '2026-06-13 09:00:00', '2026-06-13 12:30:00'),
+    (6, 'TI-TEC03', 'Aeropuerto Internacional Daniel Oduber', 'Aeropuerto Internacional Juan Santamaria', 'CLOSED', 'L1', '2026-06-09 18:00:00', '2026-06-09 18:45:00');
 
 -- =========================
 -- Itinerarios o rutas vendibles
@@ -132,22 +147,21 @@ VALUES
 
 -- Esto relaciona cada itinerario con sus vuelos.
 -- flight_order indica el orden de los vuelos dentro de la ruta.
-INSERT INTO itinerary_flight (
+INSERT INTO flight_in_itinerary (
     itinerary_flight_id,
     itinerary_id,
     flight_id,
-    type,
     flight_order
 )
 OVERRIDING SYSTEM VALUE
 VALUES
-    (1, 1, 1, 'DIRECT', 1),
-    (2, 2, 1, 'CONNECTION', 1),
-    (3, 2, 2, 'CONNECTION', 2),
-    (4, 3, 3, 'DIRECT', 1),
-    (5, 4, 4, 'DIRECT', 1),
-    (6, 5, 4, 'CONNECTION', 1),
-    (7, 5, 5, 'CONNECTION', 2);
+    (1, 1, 1, 'DIRECT'),
+    (2, 2, 1, 'CONNECTION'),
+    (3, 2, 2, 'CONNECTION'),
+    (4, 3, 3, 'DIRECT'),
+    (5, 4, 4, 'DIRECT'),
+    (6, 5, 4, 'CONNECTION'),
+    (7, 5, 5, 'CONNECTION');
 
 -- =========================
 -- Promociones
@@ -160,34 +174,35 @@ INSERT INTO promotion (
     image_url,
     start_date,
     end_date,
-    discount_percent
+    discount_percent,
+    promo_price
 )
 VALUES
-    ('PROMO-PANAMA-15', 1, 'https://example.com/promos/panama.jpg', '2026-05-01', '2026-06-30', 15.00),
-    ('PROMO-LIBERIA-20', 3, 'https://example.com/promos/liberia.jpg', '2026-05-01', '2026-05-31', 20.00),
-    ('PROMO-MIAMI-10', 4, 'https://example.com/promos/miami.jpg', '2026-06-01', '2026-07-31', 10.00),
-    ('PROMO-BOGOTA-EXP', 2, NULL, '2026-03-01', '2026-04-30', 25.00);
+    ('PROMO-PANAMA-15', 1, 'https://example.com/promos/panama.jpg', '2026-05-01', '2026-06-30', 15.00, 153),
+    ('PROMO-LIBERIA-20', 3, 'https://example.com/promos/liberia.jpg', '2026-05-01', '2026-05-31', 20.00, 76),
+    ('PROMO-MIAMI-10', 4, 'https://example.com/promos/miami.jpg', '2026-06-01', '2026-07-31', 10.00, 315),
+    ('PROMO-BOGOTA-EXP', 2, NULL, '2026-03-01', '2026-04-30', 25.00, 315);
 
 -- =========================
 -- Reservaciones
 -- =========================
 
--- Estas reservaciones permiten probar pagos pendientes, pagos realizados y check-in.
+-- Estas reservaciones permiten probar pagos realizados y check-in.
 INSERT INTO reservation (
     reservation_id,
     itinerary_id,
     user_email,
     state,
-    number_of_people,
-    payment_reference
+    payment_reference,
+    passenger_id
 )
 OVERRIDING SYSTEM VALUE
 VALUES
-    (1, 1, 'ana.rojas@tecair.com', 'PAID', 1, 'PAY-TECAIR-0001'),
-    (2, 3, 'carlos.mora@tecair.com', 'CHECKED_IN', 1, 'PAY-TECAIR-0002'),
-    (3, 4, 'sofia.salas@tecair.com', 'CHECKED_IN', 1, 'PAY-TECAIR-0003'),
-    (4, 2, 'ana.rojas@tecair.com', 'PENDING_PAYMENT', 2, NULL),
-    (5, 5, 'carlos.mora@tecair.com', 'CHECKED_IN', 1, 'PAY-TECAIR-0005');
+    (1, 1, 'ana.rojas@tecair.com', 'PAID', 'PAY-TECAIR-0001', 'CR-A1234567'),
+    (2, 3, 'carlos.mora@tecair.com', 'CHECKED', 'PAY-TECAIR-0002', 'CR-C7654321'),
+    (3, 4, 'sofia.salas@tecair.com', 'CHECKED', 'PAY-TECAIR-0003', 'CR-S1122334'),
+    (4, 2, 'ana.rojas@tecair.com', 'PAID','PAY-TECAIR-0004', 'PA-L9988776'),
+    (5, 5, 'carlos.mora@tecair.com', 'CHECKED', 'PAY-TECAIR-0005', 'CR-M4455667');
 
 -- =========================
 -- Check-in
@@ -233,10 +248,9 @@ VALUES
 
 -- Esto ajusta las secuencias internas despues de insertar IDs fijos.
 -- Evita conflictos si luego se insertan nuevos registros sin especificar ID.
-SELECT setval(pg_get_serial_sequence('airport', 'airport_id'), COALESCE(MAX(airport_id), 1)) FROM airport;
 SELECT setval(pg_get_serial_sequence('flight', 'flight_id'), COALESCE(MAX(flight_id), 1)) FROM flight;
 SELECT setval(pg_get_serial_sequence('itinerary', 'itinerary_id'), COALESCE(MAX(itinerary_id), 1)) FROM itinerary;
-SELECT setval(pg_get_serial_sequence('itinerary_flight', 'itinerary_flight_id'), COALESCE(MAX(itinerary_flight_id), 1)) FROM itinerary_flight;
+SELECT setval(pg_get_serial_sequence('flight_in_itinerary', 'itinerary_flight_id'), COALESCE(MAX(itinerary_flight_id), 1)) FROM flight_in_itinerary;
 SELECT setval(pg_get_serial_sequence('reservation', 'reservation_id'), COALESCE(MAX(reservation_id), 1)) FROM reservation;
 
 COMMIT;
