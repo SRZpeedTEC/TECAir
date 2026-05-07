@@ -211,17 +211,16 @@ VALUES
 -- Estos check-ins asignan asientos a pasajeros ya reservados.
 -- Sirven para probar pase de abordar, asiento, vuelo y puerta.
 INSERT INTO check_in (
-    confirmation_number,
     reservation_id,
     itinerary_flight_id,
     plane_plate,
     seat_number
 )
 VALUES
-    ('CHK-0001', 2, 4, 'TI-TEC03', '1A'),
-    ('CHK-0002', 3, 5, 'TI-TEC01', '1A'),
-    ('CHK-0003', 5, 6, 'TI-TEC01', '1B'),
-    ('CHK-0004', 5, 7, 'TI-TEC02', '2A');
+    (2, 4, 'TI-TEC03', '1A'),
+    (3, 5, 'TI-TEC01', '1A'),
+    (5, 6, 'TI-TEC01', '1B'),
+    (5, 7, 'TI-TEC02', '2A');
 
 -- =========================
 -- Maletas
@@ -232,19 +231,26 @@ VALUES
 -- CHK-0002 tiene 2 maletas: adicional esperado 50.
 -- CHK-0003 tiene 3 maletas: adicional esperado 125.
 -- CHK-0004 tiene 5 maletas: adicional esperado 275.
-INSERT INTO baggage (bag_number, confirmation_number, weight, color)
+INSERT INTO baggage (
+    confirmation_number,
+    weight,
+    color
+)
 VALUES
-    ('BAG-0001', 'CHK-0001', 18.50, 'Negro'),
-    ('BAG-0002', 'CHK-0002', 20.00, 'Azul'),
-    ('BAG-0003', 'CHK-0002', 17.25, 'Rojo'),
-    ('BAG-0004', 'CHK-0003', 19.10, 'Gris'),
-    ('BAG-0005', 'CHK-0003', 21.00, 'Negro'),
-    ('BAG-0006', 'CHK-0003', 16.75, 'Verde'),
-    ('BAG-0007', 'CHK-0004', 18.20, 'Negro'),
-    ('BAG-0008', 'CHK-0004', 22.00, 'Azul'),
-    ('BAG-0009', 'CHK-0004', 15.40, 'Rojo'),
-    ('BAG-0010', 'CHK-0004', 19.90, 'Morado'),
-    ('BAG-0011', 'CHK-0004', 14.80, 'Gris');
+    (1, 18.50, 'Negro'),
+
+    (2, 20.00, 'Azul'),
+    (2, 17.25, 'Rojo'),
+
+    (3, 19.10, 'Gris'),
+    (3, 21.00, 'Negro'),
+    (3, 16.75, 'Verde'),
+
+    (4, 18.20, 'Negro'),
+    (4, 22.00, 'Azul'),
+    (4, 15.40, 'Rojo'),
+    (4, 19.90, 'Morado'),
+    (4, 14.80, 'Gris');
 
 -- Esto ajusta las secuencias internas despues de insertar IDs fijos.
 -- Evita conflictos si luego se insertan nuevos registros sin especificar ID.

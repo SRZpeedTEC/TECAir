@@ -342,7 +342,7 @@ CREATE TABLE reservation (
 -- Esta tabla guarda el check-in de un pasajero para un vuelo dentro de una reservacion.
 -- Aqui tambien se asigna el asiento que apareceria en el pase de abordar.
 CREATE TABLE check_in (
-    confirmation_number VARCHAR(40) PRIMARY KEY,
+    confirmation_number INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     reservation_id INTEGER NOT NULL,
     itinerary_flight_id INTEGER NOT NULL,
     plane_plate VARCHAR(20) NOT NULL,
@@ -376,17 +376,15 @@ CREATE TABLE check_in (
 
     -- Esto evita tener más de un itinerary_flight asociado a una reservación.
     CONSTRAINT uq_check_in_reservation_flight
-        UNIQUE (reservation_id, itinerary_flight_id),
+        UNIQUE (reservation_id, itinerary_flight_id)
 
-    CONSTRAINT ck_check_in_confirmation_not_blank
-        CHECK (TRIM(confirmation_number) <> '')
 );
 
 -- Esta tabla guarda las maletas asociadas a un pasajero que ya hizo check-in.
 -- NOTA: NUMERIC(6, 2) indica que puede tener 6 digitos en unidades y 2 decimales ej: 1234,12 
 CREATE TABLE baggage (
-    bag_number VARCHAR(40) PRIMARY KEY,
-    confirmation_number VARCHAR(40) NOT NULL,
+    bag_number INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    confirmation_number INTEGER NOT NULL,
     weight NUMERIC(6, 2) NOT NULL,
     color VARCHAR(40) NOT NULL,
 
@@ -400,10 +398,8 @@ CREATE TABLE baggage (
 
     -- Esto evita registrar maletas con peso cero o negativo.
     CONSTRAINT ck_baggage_weight
-        CHECK (weight > 0 AND weight <= 32),
+        CHECK (weight > 0 AND weight <= 32)
 
-    CONSTRAINT ck_baggage_text_not_blank
-        CHECK (TRIM(bag_number) <> '' AND TRIM(color) <> '')
 );
 
 COMMIT;
