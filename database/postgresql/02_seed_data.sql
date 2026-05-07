@@ -155,13 +155,13 @@ INSERT INTO flight_in_itinerary (
 )
 OVERRIDING SYSTEM VALUE
 VALUES
-    (1, 1, 1, 'DIRECT'),
-    (2, 2, 1, 'CONNECTION'),
-    (3, 2, 2, 'CONNECTION'),
-    (4, 3, 3, 'DIRECT'),
-    (5, 4, 4, 'DIRECT'),
-    (6, 5, 4, 'CONNECTION'),
-    (7, 5, 5, 'CONNECTION');
+    (1, 1, 1, 1),
+    (2, 2, 1, 1),
+    (3, 2, 2, 2),
+    (4, 3, 3, 1),
+    (5, 4, 4, 1),
+    (6, 5, 4, 1),
+    (7, 5, 5, 2);
 
 -- =========================
 -- Promociones

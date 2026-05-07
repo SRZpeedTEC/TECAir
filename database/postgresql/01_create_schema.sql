@@ -234,7 +234,7 @@ CREATE TABLE flight_in_itinerary (
     itinerary_flight_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     itinerary_id INTEGER NOT NULL,
     flight_id INTEGER NOT NULL,
-    flight_order VARCHAR(20) NOT NULL,
+    flight_order INTEGER NOT NULL,
 
     -- Esto relaciona itinerary_flight con itinerary: indica a que itinerario pertenece el vuelo.
     -- Si se borra un itinerario, se borran sus relaciones con vuelos.
@@ -253,11 +253,8 @@ CREATE TABLE flight_in_itinerary (
 
     -- Esto evita repetir el mismo vuelo dentro del mismo itinerario.
     CONSTRAINT uq_itinerary_flight
-        UNIQUE (itinerary_id, flight_id),
+        UNIQUE (itinerary_id, flight_id)
 
-    -- Esto clasifica si el vuelo es parte de una ruta directa o una conexion.
-    CONSTRAINT ck_itinerary_flight_type
-        CHECK (flight_order IN ('DIRECT', 'CONNECTION'))
 );
 
 -- =========================
