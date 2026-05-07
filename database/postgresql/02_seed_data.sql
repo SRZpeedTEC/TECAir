@@ -67,14 +67,14 @@ VALUES
 -- =========================
 
 -- Estos aeropuertos permiten probar busquedas por origen y destino.
-INSERT INTO airport (airport_name, city, country, code)
+INSERT INTO airport (code, airport_name, city, country)
 VALUES
-    ('Aeropuerto Internacional Juan Santamaria', 'San Jose', 'Costa Rica', 'SJO'),
-    ('Aeropuerto Internacional Daniel Oduber', 'Liberia', 'Costa Rica', 'LIR'),
-    ('Aeropuerto Internacional Tocumen', 'Ciudad de Panama', 'Panama', 'PTY'),
-    ('Aeropuerto Internacional El Dorado', 'Bogota', 'Colombia', 'BOG'),
-    ('Aeropuerto Internacional Benito Juarez', 'Ciudad de Mexico', 'Mexico', 'MEX'),
-    ('Aeropuerto Internacional de Miami', 'Miami', 'Estados Unidos', 'MIA');
+    ('SJO', 'Aeropuerto Internacional Juan Santamaria', 'San Jose', 'Costa Rica'),
+    ('LIR', 'Aeropuerto Internacional Daniel Oduber', 'Liberia', 'Costa Rica'),
+    ('PTY', 'Aeropuerto Internacional Tocumen', 'Ciudad de Panama', 'Panama'),
+    ('BOG', 'Aeropuerto Internacional El Dorado', 'Bogota', 'Colombia'),
+    ('MEX', 'Aeropuerto Internacional Benito Juarez', 'Ciudad de Mexico', 'Mexico'),
+    ('MIA', 'Aeropuerto Internacional de Miami', 'Miami', 'Estados Unidos');
 
 -- =========================
 -- Aviones y asientos
@@ -124,13 +124,23 @@ INSERT INTO flight (
 )
 OVERRIDING SYSTEM VALUE
 VALUES
-    (1, 'TI-TEC01', 'Aeropuerto Internacional Juan Santamaria', 'Aeropuerto Internacional Tocumen', 'OPEN',   'A1', '2026-06-10 08:00:00', '2026-06-10 09:20:00'),
-    (2, 'TI-TEC02', 'Aeropuerto Internacional Tocumen', 'Aeropuerto Internacional El Dorado', 'OPEN',         'B4', '2026-06-10 11:00:00', '2026-06-10 12:40:00'),
-    (3, 'TI-TEC03', 'Aeropuerto Internacional Juan Santamaria', 'Aeropuerto Internacional Daniel Oduber', 'OPEN', 'A3', '2026-06-11 07:30:00', '2026-06-11 08:15:00'),
-    (4, 'TI-TEC01', 'Aeropuerto Internacional Juan Santamaria', 'Aeropuerto Internacional de Miami', 'OPEN',   'A5', '2026-06-12 10:00:00', '2026-06-12 14:00:00'),
-    (5, 'TI-TEC02', 'Aeropuerto Internacional de Miami', 'Aeropuerto Internacional Benito Juarez', 'OPEN',     'C2', '2026-06-13 09:00:00', '2026-06-13 12:30:00'),
-    (6, 'TI-TEC03', 'Aeropuerto Internacional Daniel Oduber', 'Aeropuerto Internacional Juan Santamaria', 'CLOSED', 'L1', '2026-06-09 18:00:00', '2026-06-09 18:45:00');
+    (1, 'TI-TEC01', 'SJO', 'PTY', 'OPEN',   'A1',
+     '2026-06-10 08:00:00', '2026-06-10 09:20:00'),
 
+    (2, 'TI-TEC02', 'PTY', 'BOG', 'OPEN',   'B4',
+     '2026-06-10 11:00:00', '2026-06-10 12:40:00'),
+
+    (3, 'TI-TEC03', 'SJO', 'LIR', 'OPEN',   'A3',
+     '2026-06-11 07:30:00', '2026-06-11 08:15:00'),
+
+    (4, 'TI-TEC01', 'SJO', 'MIA', 'OPEN',   'A5',
+     '2026-06-12 10:00:00', '2026-06-12 14:00:00'),
+
+    (5, 'TI-TEC02', 'MIA', 'MEX', 'OPEN',   'C2',
+     '2026-06-13 09:00:00', '2026-06-13 12:30:00'),
+
+    (6, 'TI-TEC03', 'LIR', 'SJO', 'CLOSED', 'L1',
+     '2026-06-09 18:00:00', '2026-06-09 18:45:00');
 -- =========================
 -- Itinerarios o rutas vendibles
 -- =========================

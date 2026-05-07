@@ -101,18 +101,14 @@ CREATE TABLE student (
 
 -- Esta tabla guarda los aeropuertos disponibles para rutas y vuelos.
 CREATE TABLE airport (
-    airport_name VARCHAR(120) PRIMARY KEY,
+    code VARCHAR(20) PRIMARY KEY,
+    airport_name VARCHAR(120) NOT NULL,
     city VARCHAR(80) NOT NULL,
     country VARCHAR(80) NOT NULL,
-    code VARCHAR(20) NOT NULL,
 
     -- Esto evita registrar dos veces el mismo aeropuerto en la misma ciudad y pais.
     CONSTRAINT uq_airport_location
         UNIQUE (airport_name, city, country),
-
-    -- Esto que el codigo de airport se repita
-    CONSTRAINT uq_airport_code
-        UNIQUE (code),
 
     -- Esto evita que el formato ingresado no sea el esperado de 3 letras mayúsculas
     CONSTRAINT ck_airport_code_format
@@ -171,8 +167,8 @@ CREATE TABLE seat (
 CREATE TABLE flight (
     flight_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     plane_plate VARCHAR(20) NOT NULL,
-    airport_departs_from_id VARCHAR(120) NOT NULL,
-    airport_arrives_to_id VARCHAR(120) NOT NULL,
+    airport_departs_from_id VARCHAR(20) NOT NULL,
+    airport_arrives_to_id VARCHAR(20) NOT NULL,
     state VARCHAR(20) NOT NULL DEFAULT 'OPEN',
     gate VARCHAR(10),
     departure_datetime TIMESTAMP NOT NULL,
@@ -189,14 +185,14 @@ CREATE TABLE flight (
     -- Esto relaciona flight con airport: indica el aeropuerto desde donde sale el vuelo.
     CONSTRAINT fk_flight_departure_airport
         FOREIGN KEY (airport_departs_from_id)
-        REFERENCES airport (airport_name)
+        REFERENCES airport (code)
         ON UPDATE CASCADE
         ON DELETE RESTRICT,
 
     -- Esto relaciona flight con airport: indica el aeropuerto al que llega el vuelo.
     CONSTRAINT fk_flight_arrival_airport
         FOREIGN KEY (airport_arrives_to_id)
-        REFERENCES airport (airport_name)
+        REFERENCES airport (code)
         ON UPDATE CASCADE
         ON DELETE RESTRICT,
 

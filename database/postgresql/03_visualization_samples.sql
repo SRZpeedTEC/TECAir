@@ -96,9 +96,9 @@ SELECT
     f.plane_plate
 FROM flight f
 JOIN airport origin
-    ON origin.airport_name = f.airport_departs_from_id
+    ON origin.code = f.airport_departs_from_id
 JOIN airport destination
-    ON destination.airport_name = f.airport_arrives_to_id
+    ON destination.code = f.airport_arrives_to_id
 WHERE origin.city = 'San Jose'
   AND destination.city = 'Ciudad de Panama'
 ORDER BY f.departure_datetime;
@@ -125,9 +125,9 @@ JOIN flight_in_itinerary ifl
 JOIN flight f
     ON f.flight_id = ifl.flight_id
 JOIN airport origin
-    ON origin.airport_name = f.airport_departs_from_id
+    ON origin.code = f.airport_departs_from_id
 JOIN airport destination
-    ON destination.airport_name = f.airport_arrives_to_id
+    ON destination.code = f.airport_arrives_to_id
 ORDER BY i.itinerary_id, ifl.flight_order;
 
 -- ============================================================
@@ -203,9 +203,9 @@ JOIN flight_in_itinerary ifl
 JOIN flight f
     ON f.flight_id = ifl.flight_id
 JOIN airport origin
-    ON origin.airport_name = f.airport_departs_from_id
+    ON origin.code = f.airport_departs_from_id
 JOIN airport destination
-    ON destination.airport_name = f.airport_arrives_to_id
+    ON destination.code = f.airport_arrives_to_id
 ORDER BY c.confirmation_number;
 
 -- ============================================================
