@@ -1,0 +1,138 @@
+@baseUrl = http://localhost:5000
+
+### 1. Health check de la API
+# Esperado: 200 OK
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Obtener usuario existente por email
+# Este usuario viene en database/postgresql/02_seed_data.sql.
+# Esperado: 200 OK con datos de usuario y estudiante.
+GET {{baseUrl}}/users/ana.rojas@tecair.com
+Accept: application/json
+
+
+### 3. Obtener usuario existente que no es estudiante
+# Esperado: 200 OK con isStudent = false.
+GET {{baseUrl}}/users/carlos.mora@tecair.com
+Accept: application/json
+
+
+### 4. Obtener usuario que no existe
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/users/no.existe@tecair.com
+Accept: application/json
+
+
+### 5. Crear usuario cliente normal
+# Esperado la primera vez: 201 Created.
+# Si se ejecuta de nuevo con el mismo email: 409 Conflict.
+POST {{baseUrl}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "prueba.cliente@tecair.com",
+  "password": "hash_demo_prueba_cliente",
+  "name": "Prueba",
+  "lname": "Cliente",
+  "phoneNum": "8888-9001",
+  "role": "CLIENT",
+  "isStudent": false,
+  "userCarnet": null,
+  "collegeName": null
+}
+
+
+### 6. Verificar usuario cliente creado
+# Esperado: 200 OK despues de ejecutar la prueba anterior.
+GET {{baseUrl}}/users/prueba.cliente@tecair.com
+Accept: application/json
+
+
+### 7. Crear usuario estudiante
+# Esperado la primera vez: 201 Created.
+# Inserta en app_user y tambien en student usando una transaccion.
+POST {{baseUrl}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "prueba.estudiante@tecair.com",
+  "password": "hash_demo_prueba_estudiante",
+  "name": "Prueba",
+  "lname": "Estudiante",
+  "phoneNum": "8888-9002",
+  "role": "CLIENT",
+  "isStudent": true,
+  "userCarnet": "2026999999",
+  "collegeName": "Instituto Tecnologico de Costa Rica"
+}
+
+
+### 8. Verificar usuario estudiante creado
+# Esperado: 200 OK con isStudent = true, carnet, universidad y miles = 0.
+GET {{baseUrl}}/users/prueba.estudiante@tecair.com
+Accept: application/json
+
+
+### 9. Intentar crear usuario con email repetido
+# ana.rojas@tecair.com ya existe en los datos semilla.
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "ana.rojas@tecair.com",
+  "password": "hash_demo_repetido",
+  "name": "Ana",
+  "lname": "Rojas",
+  "phoneNum": "8888-1001",
+  "role": "CLIENT",
+  "isStudent": false,
+  "userCarnet": null,
+  "collegeName": null
+}
+
+
+### 10. Intentar crear estudiante sin carnet ni universidad
+# El servicio valida estos campos antes de llamar a la base de datos.
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "estudiante.invalido@tecair.com",
+  "password": "hash_demo_invalido",
+  "name": "Estudiante",
+  "lname": "Invalido",
+  "phoneNum": "8888-9003",
+  "role": "CLIENT",
+  "isStudent": true,
+  "userCarnet": null,
+  "collegeName": null
+}
+
+
+### 11. Intentar crear usuario con rol invalido
+# El servicio solo permite CLIENT o ADMIN.
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "rol.invalido@tecair.com",
+  "password": "hash_demo_rol_invalido",
+  "name": "Rol",
+  "lname": "Invalido",
+  "phoneNum": "8888-9004",
+  "role": "EMPLOYEE",
+  "isStudent": false,
+  "userCarnet": null,
+  "collegeName": null
+}
+
