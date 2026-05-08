@@ -12,6 +12,10 @@ var connectionString = builder.Configuration.GetConnectionString("TECAirDatabase
     ?? throw new InvalidOperationException("Connection string 'TECAirDatabase' was not found.");
 
 builder.Services.AddSingleton(_ => new NpgsqlDataSourceBuilder(connectionString).Build());
+builder.Services.AddScoped<IAirportRepository, PostgresAirportRepository>();
+builder.Services.AddScoped<IAirportService, AirportService>();
+builder.Services.AddScoped<IItineraryRepository, PostgresItineraryRepository>();
+builder.Services.AddScoped<IItineraryService, ItineraryService>();
 builder.Services.AddScoped<IUserRepository, PostgresUserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 

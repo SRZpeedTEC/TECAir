@@ -1,0 +1,158 @@
+using Npgsql;
+using TECAir.Application.DTOs.Itineraries;
+using TECAir.Application.Interfaces;
+
+namespace TECAir.Infrastructure.Repositories;
+
+public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : IItineraryRepository
+{
+    public async Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
+        string originCode,
+        string destinationCode,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            WITH itinerary_bounds AS (
+                SELECT
+                    fii.itinerary_id,
+                    MIN(fii.flight_order) AS first_flight_order,
+                    MAX(fii.flight_order) AS last_flight_order,
+                    COUNT(*) AS total_flights
+                FROM tecair.flight_in_itinerary fii
+                GROUP BY fii.itinerary_id
+            )
+            SELECT
+                i.itinerary_id,
+                i.price,
+                departure_airport.code AS origin_code,
+                arrival_airport.code AS destination_code,
+                bounds.total_flights,
+                first_flight.departure_datetime,
+                last_flight.arrival_datetime
+            FROM tecair.itinerary i
+            INNER JOIN itinerary_bounds bounds
+                ON bounds.itinerary_id = i.itinerary_id
+            INNER JOIN tecair.flight_in_itinerary first_link
+                ON first_link.itinerary_id = i.itinerary_id
+               AND first_link.flight_order = bounds.first_flight_order
+            INNER JOIN tecair.flight first_flight
+                ON first_flight.flight_id = first_link.flight_id
+            INNER JOIN tecair.airport departure_airport
+                ON departure_airport.code = first_flight.airport_departs_from_id
+            INNER JOIN tecair.flight_in_itinerary last_link
+                ON last_link.itinerary_id = i.itinerary_id
+               AND last_link.flight_order = bounds.last_flight_order
+            INNER JOIN tecair.flight last_flight
+                ON last_flight.flight_id = last_link.flight_id
+            INNER JOIN tecair.airport arrival_airport
+                ON arrival_airport.code = last_flight.airport_arrives_to_id
+            WHERE
+                departure_airport.code = @origin_code
+                AND arrival_airport.code = @destination_code
+            ORDER BY first_flight.departure_datetime, i.itinerary_id;
+            """;
+
+        var itineraries = new List<ItinerarySearchResponse>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("origin_code", originCode);
+        command.Parameters.AddWithValue("destination_code", destinationCode);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            itineraries.Add(new ItinerarySearchResponse
+            {
+                ItineraryId = reader.GetInt32(0),
+                Price = reader.GetDecimal(1),
+                OriginCode = reader.GetString(2),
+                DestinationCode = reader.GetString(3),
+                TotalFlights = reader.GetInt64(4) is var totalFlights ? checked((int)totalFlights) : 0,
+                DepartureDatetime = reader.GetDateTime(5),
+                ArrivalDatetime = reader.GetDateTime(6)
+            });
+        }
+
+        return itineraries;
+    }
+
+    public async Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+
+        const string itinerarySql = """
+            SELECT
+                itinerary_id,
+                price
+            FROM tecair.itinerary
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using var itineraryCommand = new NpgsqlCommand(itinerarySql, connection);
+        itineraryCommand.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        await using var itineraryReader = await itineraryCommand.ExecuteReaderAsync(cancellationToken);
+        if (!await itineraryReader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        var itinerary = new ItineraryDetailsResponse
+        {
+            ItineraryId = itineraryReader.GetInt32(0),
+            Price = itineraryReader.GetDecimal(1)
+        };
+
+        await itineraryReader.CloseAsync();
+
+        const string flightsSql = """
+            SELECT
+                fii.flight_order,
+                f.flight_id,
+                departure_airport.airport_name,
+                departure_airport.code,
+                departure_airport.city,
+                arrival_airport.airport_name,
+                arrival_airport.code,
+                arrival_airport.city,
+                f.departure_datetime,
+                f.arrival_datetime,
+                f.gate,
+                f.state
+            FROM tecair.flight_in_itinerary fii
+            INNER JOIN tecair.flight f
+                ON f.flight_id = fii.flight_id
+            INNER JOIN tecair.airport departure_airport
+                ON departure_airport.code = f.airport_departs_from_id
+            INNER JOIN tecair.airport arrival_airport
+                ON arrival_airport.code = f.airport_arrives_to_id
+            WHERE fii.itinerary_id = @itinerary_id
+            ORDER BY fii.flight_order;
+            """;
+
+        await using var flightsCommand = new NpgsqlCommand(flightsSql, connection);
+        flightsCommand.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        await using var flightsReader = await flightsCommand.ExecuteReaderAsync(cancellationToken);
+        while (await flightsReader.ReadAsync(cancellationToken))
+        {
+            itinerary.Flights.Add(new ItineraryFlightResponse
+            {
+                FlightOrder = flightsReader.GetInt32(0),
+                FlightId = flightsReader.GetInt32(1),
+                DepartureAirportName = flightsReader.GetString(2),
+                DepartureCode = flightsReader.GetString(3),
+                DepartureCity = flightsReader.GetString(4),
+                ArrivalAirportName = flightsReader.GetString(5),
+                ArrivalCode = flightsReader.GetString(6),
+                ArrivalCity = flightsReader.GetString(7),
+                DepartureDatetime = flightsReader.GetDateTime(8),
+                ArrivalDatetime = flightsReader.GetDateTime(9),
+                Gate = flightsReader.IsDBNull(10) ? null : flightsReader.GetString(10),
+                State = flightsReader.GetString(11)
+            });
+        }
+
+        return itinerary;
+    }
+}

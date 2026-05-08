@@ -1,0 +1,22 @@
+@baseUrl = http://localhost:5000
+
+### Health
+GET {{baseUrl}}/health
+
+### Airport search - SJO
+GET {{baseUrl}}/api/airports/search?term=sjo
+
+### Airport search - SAN
+GET {{baseUrl}}/api/airports/search?term=san
+
+### Itinerary search - SJO to IAH
+GET {{baseUrl}}/api/itineraries/search?originCode=SJO&destinationCode=BOG
+
+### Itinerary search - SJO to DFW
+GET {{baseUrl}}/api/itineraries/search?originCode=SJO&destinationCode=DFW
+
+### Itinerary details - existing
+GET {{baseUrl}}/api/itineraries/2
+
+### Itinerary details - missing
+GET {{baseUrl}}/api/itineraries/9999
