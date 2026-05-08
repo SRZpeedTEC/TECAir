@@ -46,4 +46,28 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
 
         return Ok(itinerary);
     }
+
+    [HttpPost]
+    public async Task<ActionResult<CreateItineraryResponse>> Create(
+        CreateItineraryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await itineraryService.CreateAsync(request, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.IsNotFound)
+            {
+                return NotFound(new { message = result.ErrorMessage });
+            }
+
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Created($"/api/itineraries/{result.Itinerary!.ItineraryId}", result.Itinerary);
+    }
 }

@@ -1,0 +1,126 @@
+@baseUrl = http://localhost:5000
+
+### 1. Health check
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Crear vuelo directo valido
+# Esperado: 201 Created.
+# Requiere que existan el avion TI-TEC01 y los aeropuertos SJO y MIA.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "OPEN",
+  "gate": "A9",
+  "departureDatetime": "2026-07-01T08:00:00",
+  "arrivalDatetime": "2026-07-01T12:30:00"
+}
+
+
+### 3. Consultar vuelos OPEN por aeropuerto de salida
+# Esperado: 200 OK con vuelos OPEN saliendo de SJO, ordenados por salida.
+GET {{baseUrl}}/api/flights/open?departureCode=SJO
+Accept: application/json
+
+
+### 4. Consultar vuelos OPEN con codigo en minuscula
+# Esperado: 200 OK; la busqueda es case-insensitive.
+GET {{baseUrl}}/api/flights/open?departureCode=sjo
+Accept: application/json
+
+
+### 5. Consultar vuelos OPEN sin departureCode
+# Esperado: 400 Bad Request.
+GET {{baseUrl}}/api/flights/open
+Accept: application/json
+
+
+### 6. Crear vuelo sin avion
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "OPEN",
+  "gate": "A1",
+  "departureDatetime": "2026-07-02T08:00:00",
+  "arrivalDatetime": "2026-07-02T12:30:00"
+}
+
+
+### 7. Crear vuelo con avion inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "NO-EXISTE",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "OPEN",
+  "gate": "A1",
+  "departureDatetime": "2026-07-02T08:00:00",
+  "arrivalDatetime": "2026-07-02T12:30:00"
+}
+
+
+### 8. Crear vuelo con aeropuerto de llegada inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "XXX",
+  "state": "OPEN",
+  "gate": "A1",
+  "departureDatetime": "2026-07-02T08:00:00",
+  "arrivalDatetime": "2026-07-02T12:30:00"
+}
+
+
+### 9. Crear vuelo con aeropuertos iguales
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "SJO",
+  "state": "OPEN",
+  "gate": "A1",
+  "departureDatetime": "2026-07-02T08:00:00",
+  "arrivalDatetime": "2026-07-02T12:30:00"
+}
+
+
+### 10. Crear vuelo con llegada antes de salida
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "OPEN",
+  "gate": "A1",
+  "departureDatetime": "2026-07-02T12:30:00",
+  "arrivalDatetime": "2026-07-02T08:00:00"
+}

@@ -155,4 +155,112 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
 
         return itinerary;
     }
+
+    public async Task<IReadOnlyList<ItineraryFlightValidationData>> GetFlightsForCreateAsync(
+        IReadOnlyCollection<int> flightIds,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                flight_id,
+                airport_departs_from_id,
+                airport_arrives_to_id,
+                state,
+                departure_datetime,
+                arrival_datetime
+            FROM tecair.flight
+            WHERE flight_id = ANY(@flight_ids);
+            """;
+
+        var flights = new List<ItineraryFlightValidationData>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_ids", flightIds.ToArray());
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            flights.Add(new ItineraryFlightValidationData
+            {
+                FlightId = reader.GetInt32(0),
+                DepartureAirportCode = reader.GetString(1),
+                ArrivalAirportCode = reader.GetString(2),
+                State = reader.GetString(3),
+                DepartureDatetime = reader.GetDateTime(4),
+                ArrivalDatetime = reader.GetDateTime(5)
+            });
+        }
+
+        return flights;
+    }
+
+    public async Task<CreateItineraryResponse> CreateAsync(
+        CreateItineraryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        const string insertItinerarySql = """
+            INSERT INTO tecair.itinerary (price)
+            VALUES (@price)
+            RETURNING itinerary_id, price;
+            """;
+
+        CreateItineraryResponse itinerary;
+        await using (var command = new NpgsqlCommand(insertItinerarySql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("price", request.Price);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("Failed to create the itinerary.");
+            }
+
+            itinerary = new CreateItineraryResponse
+            {
+                ItineraryId = reader.GetInt32(0),
+                Price = reader.GetDecimal(1)
+            };
+        }
+
+        const string insertFlightSql = """
+            INSERT INTO tecair.flight_in_itinerary (
+                itinerary_id,
+                flight_id,
+                flight_order
+            )
+            VALUES (
+                @itinerary_id,
+                @flight_id,
+                @flight_order
+            )
+            RETURNING itinerary_flight_id, flight_id, flight_order;
+            """;
+
+        foreach (var flight in request.Flights)
+        {
+            await using var command = new NpgsqlCommand(insertFlightSql, connection, transaction);
+            command.Parameters.AddWithValue("itinerary_id", itinerary.ItineraryId);
+            command.Parameters.AddWithValue("flight_id", flight.FlightId);
+            command.Parameters.AddWithValue("flight_order", flight.FlightOrder);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("Failed to add a flight to the itinerary.");
+            }
+
+            itinerary.Flights.Add(new CreatedItineraryFlightResponse
+            {
+                ItineraryFlightId = reader.GetInt32(0),
+                FlightId = reader.GetInt32(1),
+                FlightOrder = reader.GetInt32(2)
+            });
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return itinerary;
+    }
 }

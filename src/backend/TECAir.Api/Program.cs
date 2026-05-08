@@ -14,6 +14,8 @@ var connectionString = builder.Configuration.GetConnectionString("TECAirDatabase
 builder.Services.AddSingleton(_ => new NpgsqlDataSourceBuilder(connectionString).Build());
 builder.Services.AddScoped<IAirportRepository, PostgresAirportRepository>();
 builder.Services.AddScoped<IAirportService, AirportService>();
+builder.Services.AddScoped<IFlightRepository, PostgresFlightRepository>();
+builder.Services.AddScoped<IFlightService, FlightService>();
 builder.Services.AddScoped<IItineraryRepository, PostgresItineraryRepository>();
 builder.Services.AddScoped<IItineraryService, ItineraryService>();
 builder.Services.AddScoped<IUserRepository, PostgresUserRepository>();

@@ -10,4 +10,8 @@ public interface IItineraryService
         CancellationToken cancellationToken = default);
 
     Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default);
+
+    Task<CreateItineraryServiceResult> CreateAsync(
+        CreateItineraryRequest request,
+        CancellationToken cancellationToken = default);
 }
