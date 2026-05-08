@@ -4,8 +4,11 @@ using TECAir.Application.Interfaces;
 
 namespace TECAir.Infrastructure.Repositories;
 
+// Repositorio encargado de consultar y crear itinerarios en PostgreSQL.
+// Centraliza los SELECT complejos y las transacciones usadas por itinerarios.
 public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : IItineraryRepository
 {
+    // Busca itinerarios por origen y destino usando el primer y ultimo vuelo de cada ruta.
     public async Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
         string originCode,
         string destinationCode,
@@ -76,6 +79,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         return itineraries;
     }
 
+    // Obtiene primero el encabezado del itinerario y luego sus vuelos ordenados.
     public async Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -103,6 +107,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             Price = itineraryReader.GetDecimal(1)
         };
 
+        // Cerramos el reader antes de ejecutar otra consulta sobre la misma conexion.
         await itineraryReader.CloseAsync();
 
         const string flightsSql = """
@@ -156,6 +161,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         return itinerary;
     }
 
+    // Trae datos minimos de vuelos para validar una solicitud de creacion.
     public async Task<IReadOnlyList<ItineraryFlightValidationData>> GetFlightsForCreateAsync(
         IReadOnlyCollection<int> flightIds,
         CancellationToken cancellationToken = default)
@@ -194,6 +200,8 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         return flights;
     }
 
+    // Crea el itinerario y sus vuelos en una transaccion.
+    // Si falla cualquier INSERT, no se guarda una ruta incompleta.
     public async Task<CreateItineraryResponse> CreateAsync(
         CreateItineraryRequest request,
         CancellationToken cancellationToken = default)
@@ -225,6 +233,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             };
         }
 
+        // Cada vuelo se inserta en la tabla puente con el orden solicitado.
         const string insertFlightSql = """
             INSERT INTO tecair.flight_in_itinerary (
                 itinerary_id,
@@ -260,6 +269,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             });
         }
 
+        // Commit confirma tanto el encabezado como todos los vuelos asociados.
         await transaction.CommitAsync(cancellationToken);
         return itinerary;
     }

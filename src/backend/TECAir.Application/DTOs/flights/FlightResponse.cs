@@ -1,5 +1,7 @@
 namespace TECAir.Application.DTOs.Flights;
 
+// DTO de salida para devolver un vuelo creado o consultado con los campos
+// principales que vienen de la tabla flight.
 public class FlightResponse
 {
     public int FlightId { get; set; }

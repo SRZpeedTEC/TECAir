@@ -2,15 +2,19 @@ using TECAir.Application.DTOs.Itineraries;
 
 namespace TECAir.Application.Interfaces;
 
+// Contrato de casos de uso de itinerarios que consumen los controllers.
 public interface IItineraryService
 {
+    // Busca rutas disponibles entre dos codigos de aeropuerto.
     Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
         string originCode,
         string destinationCode,
         CancellationToken cancellationToken = default);
 
+    // Devuelve el detalle de un itinerario o null si no existe.
     Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default);
 
+    // Crea un itinerario despues de validar la secuencia de vuelos.
     Task<CreateItineraryServiceResult> CreateAsync(
         CreateItineraryRequest request,
         CancellationToken cancellationToken = default);

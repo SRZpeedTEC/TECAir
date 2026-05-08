@@ -3,8 +3,11 @@ using TECAir.Application.Interfaces;
 
 namespace TECAir.Application.Services;
 
+// Servicio de aplicacion para itinerarios.
+// Valida reglas de negocio como duplicados, orden de vuelos y conexiones validas.
 public class ItineraryService(IItineraryRepository itineraryRepository) : IItineraryService
 {
+    // Busca itinerarios normalizando los codigos IATA antes de consultar la base.
     public Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
         string originCode,
         string destinationCode,
@@ -16,11 +19,14 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             cancellationToken);
     }
 
+    // Consulta el detalle de un itinerario por id.
     public Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default)
     {
         return itineraryRepository.GetByIdAsync(itineraryId, cancellationToken);
     }
 
+    // Caso de uso "crear itinerario".
+    // Valida el request, lee datos de vuelos existentes y solo crea si la secuencia es valida.
     public async Task<CreateItineraryServiceResult> CreateAsync(
         CreateItineraryRequest request,
         CancellationToken cancellationToken = default)
@@ -83,6 +89,7 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         return CreateItineraryServiceResult.Success(itinerary);
     }
 
+    // Validaciones que dependen solo del JSON recibido.
     private static string? ValidateCreateItineraryRequest(CreateItineraryRequest request)
     {
         if (request.Price < 0)
@@ -113,6 +120,7 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         return null;
     }
 
+    // Evita que el mismo vuelo o el mismo orden aparezcan mas de una vez.
     private static string? ValidateDuplicates(CreateItineraryRequest request)
     {
         if (request.Flights.GroupBy(flight => flight.FlightId).Any(group => group.Count() > 1))
@@ -128,6 +136,7 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         return null;
     }
 
+    // Valida que todos los vuelos esten abiertos y formen una ruta conectada.
     private static string? ValidateFlightSequence(IReadOnlyList<ItineraryFlightValidationData> orderedFlights)
     {
         foreach (var flight in orderedFlights)

@@ -1,5 +1,7 @@
 namespace TECAir.Application.DTOs.Itineraries;
 
+// DTO de salida para un vuelo dentro del detalle de itinerario.
+// Trae nombres, codigos y ciudades para evitar consultas extra en el cliente.
 public class ItineraryFlightResponse
 {
     public int FlightOrder { get; set; }

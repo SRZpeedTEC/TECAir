@@ -1,5 +1,7 @@
 namespace TECAir.Application.DTOs.Flights;
 
+// Respuesta usada para mostrar vuelos OPEN con datos del aeropuerto de salida
+// y llegada, evitando que el controller arme informacion a mano.
 public class OpenFlightResponse
 {
     public int FlightId { get; set; }

@@ -4,8 +4,11 @@ using TECAir.Application.Interfaces;
 
 namespace TECAir.Infrastructure.Repositories;
 
+// Repositorio encargado de consultar aeropuertos en PostgreSQL con Npgsql.
+// Usa busqueda parcial para que el cliente pueda autocompletar por varios campos.
 public sealed class PostgresAirportRepository(NpgsqlDataSource dataSource) : IAirportRepository
 {
+    // Busca por nombre, ciudad, pais o codigo de aeropuerto.
     public async Task<IReadOnlyList<AirportSearchResponse>> SearchAsync(
         string term,
         CancellationToken cancellationToken = default)
@@ -29,6 +32,7 @@ public sealed class PostgresAirportRepository(NpgsqlDataSource dataSource) : IAi
         var airports = new List<AirportSearchResponse>();
 
         await using var command = dataSource.CreateCommand(sql);
+        // El patron con % permite coincidencias parciales usando ILIKE.
         command.Parameters.AddWithValue("pattern", $"%{term}%");
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);

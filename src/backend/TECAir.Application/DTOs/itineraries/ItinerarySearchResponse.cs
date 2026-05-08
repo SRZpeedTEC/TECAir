@@ -1,5 +1,7 @@
 namespace TECAir.Application.DTOs.Itineraries;
 
+// DTO de salida para resultados resumidos de busqueda de itinerarios.
+// Muestra origen, destino, cantidad de vuelos y horario total de la ruta.
 public class ItinerarySearchResponse
 {
     public int ItineraryId { get; set; }

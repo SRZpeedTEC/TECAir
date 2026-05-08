@@ -3,8 +3,13 @@ using TECAir.Application.Interfaces;
 
 namespace TECAir.Application.Services;
 
+// El servicio concentra las reglas del caso de uso de vuelos.
+// No conoce HTTP ni SQL: valida la solicitud y pide al repositorio los datos
+// necesarios para tomar decisiones de negocio.
 public class FlightService(IFlightRepository flightRepository) : IFlightService
 {
+    // Crea un vuelo validando primero datos propios del request, referencias
+    // existentes y conflictos de agenda de avion o puerta.
     public async Task<CreateFlightServiceResult> CreateAsync(
         CreateFlightRequest request,
         CancellationToken cancellationToken = default)
@@ -34,6 +39,28 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
                 $"Arrival airport '{normalizedRequest.AirportArrivesToId}' was not found.");
         }
 
+        if (await flightRepository.PlaneHasOverlappingFlightAsync(
+            normalizedRequest.PlanePlate,
+            normalizedRequest.DepartureDatetime,
+            normalizedRequest.ArrivalDatetime,
+            cancellationToken))
+        {
+            return CreateFlightServiceResult.Conflict(
+                "The selected plane is already assigned to another flight during that time range.");
+        }
+
+        // Si no se asigno puerta, no hay recurso fisico que reservar en el aeropuerto.
+        if (!string.IsNullOrWhiteSpace(normalizedRequest.Gate) &&
+            await flightRepository.GateHasDepartureConflictAsync(
+                normalizedRequest.AirportDepartsFromId,
+                normalizedRequest.Gate,
+                normalizedRequest.DepartureDatetime,
+                cancellationToken))
+        {
+            return CreateFlightServiceResult.Conflict(
+                "The selected gate is already assigned to another flight at the same departure time.");
+        }
+
         var flight = await flightRepository.CreateAsync(normalizedRequest, cancellationToken);
         return CreateFlightServiceResult.Success(flight);
     }
@@ -42,11 +69,13 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
         string departureCode,
         CancellationToken cancellationToken = default)
     {
+        // El codigo se normaliza para comparar de forma consistente con la base.
         return flightRepository.GetOpenByDepartureAirportAsync(
             departureCode.Trim().ToUpperInvariant(),
             cancellationToken);
     }
 
+    // Reglas que se pueden validar solo con el contenido del request.
     private static string? ValidateCreateFlightRequest(CreateFlightRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.PlanePlate))
@@ -105,6 +134,7 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
         return null;
     }
 
+    // Normaliza valores de entrada para que las comparaciones y el guardado sean consistentes.
     private static CreateFlightRequest NormalizeCreateFlightRequest(CreateFlightRequest request)
     {
         return new CreateFlightRequest

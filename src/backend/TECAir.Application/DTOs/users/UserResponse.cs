@@ -1,5 +1,7 @@
 namespace TECAir.Application.DTOs.Users;
 
+// DTO de salida para devolver datos de usuario a la API.
+// Incluye informacion de estudiante cuando existe la fila relacionada.
 public class UserResponse
 {
     public string Email { get; set; } = string.Empty;

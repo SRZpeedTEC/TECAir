@@ -4,10 +4,14 @@ using TECAir.Application.Interfaces;
 
 namespace TECAir.Api.Controllers;
 
+// Controller encargado de exponer los casos de uso de itinerarios por HTTP.
+// Mantiene fuera la logica de negocio y traduce resultados del servicio a codigos HTTP.
 [ApiController]
 [Route("api/itineraries")]
 public class ItinerariesController(IItineraryService itineraryService) : ControllerBase
 {
+    // GET /api/itineraries/search?originCode=...&destinationCode=...
+    // Busca itinerarios cuyo primer vuelo salga del origen y cuyo ultimo vuelo llegue al destino.
     [HttpGet("search")]
     public async Task<ActionResult<IReadOnlyList<ItinerarySearchResponse>>> Search(
         [FromQuery] string? originCode,
@@ -28,6 +32,8 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
         return Ok(itineraries);
     }
 
+    // GET /api/itineraries/{id}
+    // Devuelve el detalle de un itinerario junto con sus vuelos ordenados.
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ItineraryDetailsResponse>> GetById(
         int id,
@@ -47,6 +53,8 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
         return Ok(itinerary);
     }
 
+    // POST /api/itineraries
+    // Crea un itinerario con una lista ordenada de vuelos existentes.
     [HttpPost]
     public async Task<ActionResult<CreateItineraryResponse>> Create(
         CreateItineraryRequest request,

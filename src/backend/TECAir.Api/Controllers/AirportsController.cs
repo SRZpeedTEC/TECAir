@@ -4,10 +4,14 @@ using TECAir.Application.Interfaces;
 
 namespace TECAir.Api.Controllers;
 
+// Controller encargado de endpoints HTTP relacionados con aeropuertos.
+// Valida parametros basicos de la request y delega la busqueda al servicio.
 [ApiController]
 [Route("api/airports")]
 public class AirportsController(IAirportService airportService) : ControllerBase
 {
+    // GET /api/airports/search?term=...
+    // Busca aeropuertos por nombre, ciudad, pais o codigo.
     [HttpGet("search")]
     public async Task<ActionResult<IReadOnlyList<AirportSearchResponse>>> Search(
         [FromQuery] string? term,

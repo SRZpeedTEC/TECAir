@@ -4,8 +4,11 @@ using TECAir.Application.Interfaces;
 
 namespace TECAir.Infrastructure.Repositories;
 
+// Repositorio encargado de consultar y modificar vuelos en PostgreSQL con Npgsql.
+// Mantiene el SQL fuera de controllers y servicios, usando siempre parametros.
 public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFlightRepository
 {
+    // Verifica que el aeropuerto exista antes de crear vuelos que lo referencien.
     public async Task<bool> AirportExistsAsync(string airportCode, CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -23,6 +26,7 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return result is true;
     }
 
+    // Verifica que el avion exista para evitar insertar vuelos con una placa invalida.
     public async Task<bool> PlaneExistsAsync(string planePlate, CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -40,6 +44,64 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return result is true;
     }
 
+    // Detecta traslapes de tiempo para un mismo avion.
+    // La condicion compara rangos: un vuelo existente inicia antes de que termine
+    // el nuevo y termina despues de que el nuevo ya inicio.
+    public async Task<bool> PlaneHasOverlappingFlightAsync(
+        string planePlate,
+        DateTime departureDatetime,
+        DateTime arrivalDatetime,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.flight
+                WHERE
+                    plane_plate = @plane_plate
+                    AND departure_datetime < @arrival_datetime
+                    AND arrival_datetime > @departure_datetime
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("plane_plate", planePlate);
+        command.Parameters.AddWithValue("departure_datetime", departureDatetime);
+        command.Parameters.AddWithValue("arrival_datetime", arrivalDatetime);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Detecta si una puerta ya esta reservada para el mismo aeropuerto y hora de salida.
+    // LOWER permite comparar la puerta sin depender de mayusculas o minusculas.
+    public async Task<bool> GateHasDepartureConflictAsync(
+        string airportDepartsFromId,
+        string gate,
+        DateTime departureDatetime,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.flight
+                WHERE
+                    airport_departs_from_id = @airport_departs_from_id
+                    AND LOWER(gate) = LOWER(@gate)
+                    AND departure_datetime = @departure_datetime
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("airport_departs_from_id", airportDepartsFromId);
+        command.Parameters.AddWithValue("gate", gate);
+        command.Parameters.AddWithValue("departure_datetime", departureDatetime);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Inserta el vuelo y devuelve la fila creada con el formato que usa la API.
     public async Task<FlightResponse> CreateAsync(
         CreateFlightRequest request,
         CancellationToken cancellationToken = default)
@@ -92,6 +154,7 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return MapFlightResponse(reader);
     }
 
+    // Lista vuelos OPEN de un aeropuerto de salida para que puedan usarse en itinerarios.
     public async Task<IReadOnlyList<OpenFlightResponse>> GetOpenByDepartureAirportAsync(
         string departureCode,
         CancellationToken cancellationToken = default)
@@ -149,6 +212,7 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return flights;
     }
 
+    // Convierte la fila devuelta por PostgreSQL al DTO de respuesta de vuelos.
     private static FlightResponse MapFlightResponse(NpgsqlDataReader reader)
     {
         return new FlightResponse

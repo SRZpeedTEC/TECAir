@@ -1,5 +1,7 @@
 namespace TECAir.Application.DTOs.Flights;
 
+// DTO que representa el JSON recibido para crear un vuelo desde la API.
+// Solo transporta datos; las reglas de validacion se aplican en FlightService.
 public class CreateFlightRequest
 {
     public string PlanePlate { get; set; } = string.Empty;

@@ -124,3 +124,90 @@ Accept: application/json
   "departureDatetime": "2026-07-02T12:30:00",
   "arrivalDatetime": "2026-07-02T08:00:00"
 }
+
+
+### 11. Crear vuelo valido para pruebas de conflicto
+# Esperado: 201 Created.
+# Este vuelo reserva el avion TI-TEC01 y la puerta Z1 en SJO a las 08:00.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "OPEN",
+  "gate": "Z1",
+  "departureDatetime": "2026-07-10T08:00:00",
+  "arrivalDatetime": "2026-07-10T12:00:00"
+}
+
+
+### 12. Crear vuelo con el mismo avion y horario traslapado
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "OPEN",
+  "gate": "Z2",
+  "departureDatetime": "2026-07-10T10:00:00",
+  "arrivalDatetime": "2026-07-10T13:00:00"
+}
+
+
+### 13. Crear vuelo con misma puerta y misma hora de salida
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC02",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "OPEN",
+  "gate": "z1",
+  "departureDatetime": "2026-07-10T08:00:00",
+  "arrivalDatetime": "2026-07-10T11:00:00"
+}
+
+
+### 14. Crear vuelo con el mismo avion pero sin traslape
+# Esperado: 201 Created.
+# La salida coincide con la llegada del vuelo 11, por lo que los rangos no se traslapan.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "OPEN",
+  "gate": "Z2",
+  "departureDatetime": "2026-07-10T12:00:00",
+  "arrivalDatetime": "2026-07-10T15:00:00"
+}
+
+
+### 15. Crear vuelo con misma puerta pero diferente hora de salida
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC02",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "OPEN",
+  "gate": "Z1",
+  "departureDatetime": "2026-07-10T10:00:00",
+  "arrivalDatetime": "2026-07-10T11:30:00"
+}
