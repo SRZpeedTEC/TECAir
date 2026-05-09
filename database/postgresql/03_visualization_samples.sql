@@ -167,7 +167,9 @@ SELECT
     p.passport_id,
     CONCAT(p.name, ' ', p.Lname) AS passenger_name,
     i.itinerary_id,
-    i.price
+    i.price,
+    r.plane_plate,
+    r.seat_number
 FROM reservation r
 JOIN app_user u
     ON u.email = r.user_email
