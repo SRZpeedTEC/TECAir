@@ -23,4 +23,19 @@ public interface IItineraryRepository
     Task<CreateItineraryResponse> CreateAsync(
         CreateItineraryRequest request,
         CancellationToken cancellationToken = default);
+
+    // Verifica existencia del itinerario antes de modificarlo.
+    Task<bool> ItineraryExistsAsync(int itineraryId, CancellationToken cancellationToken = default);
+
+    // Reemplaza precio y vuelos asociados dentro de una transaccion.
+    Task<CreateItineraryResponse> UpdateWithFlightsAsync(
+        int itineraryId,
+        UpdateItineraryRequest request,
+        CancellationToken cancellationToken = default);
+
+    // Revisa si el itinerario ya fue vendido en alguna reservacion.
+    Task<bool> ItineraryHasReservationsAsync(int itineraryId, CancellationToken cancellationToken = default);
+
+    // Borra relaciones de vuelos y luego el itinerario dentro de una transaccion.
+    Task DeleteAsync(int itineraryId, CancellationToken cancellationToken = default);
 }

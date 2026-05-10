@@ -14,4 +14,13 @@ public interface IFlightService
     Task<IReadOnlyList<OpenFlightResponse>> GetOpenByDepartureAirportAsync(
         string departureCode,
         CancellationToken cancellationToken = default);
+
+    // Actualiza los campos editables de un vuelo existente.
+    Task<UpdateFlightServiceResult> UpdateAsync(
+        int flightId,
+        UpdateFlightRequest request,
+        CancellationToken cancellationToken = default);
+
+    // Elimina un vuelo si no forma parte de itinerarios.
+    Task<DeleteFlightServiceResult> DeleteAsync(int flightId, CancellationToken cancellationToken = default);
 }

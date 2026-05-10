@@ -18,4 +18,15 @@ public interface IItineraryService
     Task<CreateItineraryServiceResult> CreateAsync(
         CreateItineraryRequest request,
         CancellationToken cancellationToken = default);
+
+    // Actualiza precio y reemplaza la lista ordenada de vuelos del itinerario.
+    Task<UpdateItineraryServiceResult> UpdateAsync(
+        int itineraryId,
+        UpdateItineraryRequest request,
+        CancellationToken cancellationToken = default);
+
+    // Elimina un itinerario cuando no tiene reservaciones asociadas.
+    Task<DeleteItineraryServiceResult> DeleteAsync(
+        int itineraryId,
+        CancellationToken cancellationToken = default);
 }

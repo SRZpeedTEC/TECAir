@@ -273,4 +273,158 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         await transaction.CommitAsync(cancellationToken);
         return itinerary;
     }
+
+    public async Task<bool> ItineraryExistsAsync(int itineraryId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.itinerary
+                WHERE itinerary_id = @itinerary_id
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Actualiza el precio y reemplaza todos los vuelos asociados en una transaccion.
+    // Asi no queda un itinerario parcialmente actualizado si falla algun INSERT.
+    public async Task<CreateItineraryResponse> UpdateWithFlightsAsync(
+        int itineraryId,
+        UpdateItineraryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        const string updateItinerarySql = """
+            UPDATE tecair.itinerary
+            SET price = @price
+            WHERE itinerary_id = @itinerary_id
+            RETURNING itinerary_id, price;
+            """;
+
+        CreateItineraryResponse itinerary;
+        await using (var command = new NpgsqlCommand(updateItinerarySql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            command.Parameters.AddWithValue("price", request.Price);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("Failed to update the itinerary.");
+            }
+
+            itinerary = new CreateItineraryResponse
+            {
+                ItineraryId = reader.GetInt32(0),
+                Price = reader.GetDecimal(1)
+            };
+        }
+
+        const string deleteFlightsSql = """
+            DELETE FROM tecair.flight_in_itinerary
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using (var command = new NpgsqlCommand(deleteFlightsSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        const string insertFlightSql = """
+            INSERT INTO tecair.flight_in_itinerary (
+                itinerary_id,
+                flight_id,
+                flight_order
+            )
+            VALUES (
+                @itinerary_id,
+                @flight_id,
+                @flight_order
+            )
+            RETURNING itinerary_flight_id, flight_id, flight_order;
+            """;
+
+        foreach (var flight in request.Flights)
+        {
+            await using var command = new NpgsqlCommand(insertFlightSql, connection, transaction);
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            command.Parameters.AddWithValue("flight_id", flight.FlightId);
+            command.Parameters.AddWithValue("flight_order", flight.FlightOrder);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("Failed to add a flight to the itinerary.");
+            }
+
+            itinerary.Flights.Add(new CreatedItineraryFlightResponse
+            {
+                ItineraryFlightId = reader.GetInt32(0),
+                FlightId = reader.GetInt32(1),
+                FlightOrder = reader.GetInt32(2)
+            });
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return itinerary;
+    }
+
+    // Las reservaciones bloquean el borrado porque representan ventas ya realizadas.
+    public async Task<bool> ItineraryHasReservationsAsync(
+        int itineraryId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.reservation
+                WHERE itinerary_id = @itinerary_id
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Borra primero la tabla puente y luego el encabezado, todo en una transaccion.
+    public async Task DeleteAsync(int itineraryId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+
+        const string deleteFlightsSql = """
+            DELETE FROM tecair.flight_in_itinerary
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using (var command = new NpgsqlCommand(deleteFlightsSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        const string deleteItinerarySql = """
+            DELETE FROM tecair.itinerary
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using (var command = new NpgsqlCommand(deleteItinerarySql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+    }
 }
