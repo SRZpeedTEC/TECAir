@@ -27,6 +27,12 @@ builder.Services.AddScoped<IFlightRepository, PostgresFlightRepository>();
 builder.Services.AddScoped<IFlightService, FlightService>();
 builder.Services.AddScoped<IItineraryRepository, PostgresItineraryRepository>();
 builder.Services.AddScoped<IItineraryService, ItineraryService>();
+builder.Services.AddScoped<IPassengerRepository, PostgresPassengerRepository>();
+builder.Services.AddScoped<IPassengerService, PassengerService>();
+builder.Services.AddScoped<IPlaneRepository, PostgresPlaneRepository>();
+builder.Services.AddScoped<IPlaneService, PlaneService>();
+builder.Services.AddScoped<IReservationRepository, PostgresReservationRepository>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IUserRepository, PostgresUserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 

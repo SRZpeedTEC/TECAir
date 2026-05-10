@@ -37,7 +37,7 @@ public class FlightsController(IFlightService flightService) : ControllerBase
         return Created($"/api/flights/{result.Flight!.FlightId}", result.Flight);
     }
 
-    // GET /api/flights/open
+    // GET /api/flights/open/?departureCode=XXX
     // Consulta vuelos disponibles por aeropuerto de salida usando query string.
     [HttpGet("open")]
     public async Task<ActionResult<IReadOnlyList<OpenFlightResponse>>> GetOpenByDepartureAirport(
