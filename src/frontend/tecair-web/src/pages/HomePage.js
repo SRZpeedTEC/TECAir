@@ -7,7 +7,7 @@ import PROMOS       from '../data/promos.js';
 import { fmtCRC }   from '../utils/format.js';
 
 // Pantalla de inicio: hero, buscador de vuelos flotante, tarjetas de ofertas y características
-export default function HomePage({ state, setState, goToResults, goToMisViajes }) {
+export default function HomePage({ state, setState, goToResults, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const [tab, setTab] = useState('rt'); // rt = ida y vuelta | ow = solo ida | mc = multi-ciudad
 
   // Intercambia origen y destino
@@ -20,8 +20,11 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes }
     <>
       <Nav
         onLogoClick={() => {}}
-        onLogin={() => alert('Login (próximamente)')}
+        onOpenAuth={onOpenAuth}
+        onLogout={onLogout}
+        onStudentProgram={onStudentProgram}
         onMisViajes={goToMisViajes}
+        currentUser={currentUser}
       />
 
       {/* ─── Hero ─── */}

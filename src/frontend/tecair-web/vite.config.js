@@ -19,7 +19,8 @@ export default defineConfig({
   server: {
     // Redirige /api/* al backend local para evitar problemas de CORS en desarrollo
     proxy: {
-      '/api': 'http://localhost:5000',
+      '/api':   'http://localhost:5000',
+      '/users': 'http://localhost:5000',
     },
   },
 });

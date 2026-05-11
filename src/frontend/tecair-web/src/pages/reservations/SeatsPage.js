@@ -8,7 +8,7 @@ const ROWS    = 30;
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 // Pantalla de selección de asientos con visualización del fuselaje del avión
-export default function SeatsPage({ state, setState, goBack, goToConfirm, goToMisViajes }) {
+export default function SeatsPage({ state, setState, goBack, goToConfirm, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const total = state.pax.adults;
 
   // Genera el conjunto de asientos ocupados de forma determinista según el vuelo
@@ -47,7 +47,7 @@ export default function SeatsPage({ state, setState, goBack, goToConfirm, goToMi
 
   return (
     <>
-      <Nav onLogoClick={goBack} onLogin={() => {}} onMisViajes={goToMisViajes} />
+      <Nav onLogoClick={goBack} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} currentUser={currentUser} />
 
       {/* Barra de progreso */}
       <div style={{ background: '#fff', borderBottom: '1px solid var(--line)' }}>
