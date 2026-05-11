@@ -2,7 +2,7 @@ import Nav       from '../../components/Nav.js';
 import { fmtCRC } from '../../utils/format.js';
 
 // Pantalla de confirmación final de la reserva
-export default function ConfirmPage({ state, goHome, goToMisViajes }) {
+export default function ConfirmPage({ state, goHome, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const f        = state.selectedFlight;
   const total    = state.pax.adults;
   const subtotal = f ? f.price * total : 0;
@@ -13,7 +13,7 @@ export default function ConfirmPage({ state, goHome, goToMisViajes }) {
 
   return (
     <>
-      <Nav onLogoClick={goHome} onLogin={() => {}} onMisViajes={goToMisViajes} />
+      <Nav onLogoClick={goHome} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} currentUser={currentUser} />
 
       <div className="container py-5 text-center" style={{ maxWidth: 680 }}>
         {/* Ícono de éxito */}
