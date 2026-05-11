@@ -9,7 +9,6 @@ const NAV_ITEMS = [
   { key: 'itinerarios',     label: 'Gestión de Itinerarios',   icon: 'bi-map'            },
   { key: 'apertura',        label: 'Apertura de Vuelos',       icon: 'bi-unlock'         },
   { key: 'cierre',          label: 'Cierre de Vuelos',         icon: 'bi-lock'           },
-  { key: 'equipajes',       label: 'Control de Equipajes',     icon: 'bi-luggage'        },
 ];
 
 export default function AdminSidebar({ activePage, onNavigate }) {
