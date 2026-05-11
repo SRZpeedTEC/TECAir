@@ -3,7 +3,7 @@ import TicketCard from '../../components/TicketCard.js';
 import { MOCK_TRIPS } from '../../data/trips.js';
 
 // Pantalla de historial de viajes: reservas próximas y vuelos anteriores
-export default function MisViajesPage({ state, goHome, goToMisViajes }) {
+export default function MisViajesPage({ state, goHome, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const f = state.selectedFlight;
 
   // Construye el viaje recién reservado desde el estado global (si existe)
@@ -31,7 +31,7 @@ export default function MisViajesPage({ state, goHome, goToMisViajes }) {
 
   return (
     <>
-      <Nav onLogoClick={goHome} onLogin={() => {}} onMisViajes={goToMisViajes} />
+      <Nav onLogoClick={goHome} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} currentUser={currentUser} />
 
       <div className="container py-5" style={{ maxWidth: 860 }}>
         {/* Encabezado de sección */}

@@ -4,7 +4,7 @@ import Stepper    from '../../components/Stepper.js';
 import SummarySide from '../../components/SummarySide.js';
 
 // Pantalla de datos de pasajeros: formulario con validación para cada viajero
-export default function PaxPage({ state, setState, goBack, goToSeats, goToMisViajes }) {
+export default function PaxPage({ state, setState, goBack, goToSeats, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const total = state.pax.adults;
 
   // Inicializa la lista con los datos ya ingresados o con campos vacíos
@@ -41,7 +41,7 @@ export default function PaxPage({ state, setState, goBack, goToSeats, goToMisVia
 
   return (
     <>
-      <Nav onLogoClick={goBack} onLogin={() => {}} onMisViajes={goToMisViajes} />
+      <Nav onLogoClick={goBack} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} currentUser={currentUser} />
 
       {/* Barra de progreso de la reserva */}
       <div style={{ background: '#fff', borderBottom: '1px solid var(--line)' }}>

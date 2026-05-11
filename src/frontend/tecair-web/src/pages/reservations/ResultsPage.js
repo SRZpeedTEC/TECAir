@@ -4,7 +4,7 @@ import { searchItineraries } from '../../services/itineraryService.js';
 import { fmtCRC, fmtDateShort } from '../../utils/format.js';
 
 // Pantalla de resultados: consulta la API y muestra los itinerarios disponibles
-export default function ResultsPage({ state, setState, goBack, goToPax, goToMisViajes }) {
+export default function ResultsPage({ state, setState, goBack, goToPax, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const [itineraries, setItineraries] = useState([]);
   const [isLoading,   setIsLoading]   = useState(false);
   const [error,       setError]       = useState(null);
@@ -49,7 +49,7 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
 
   return (
     <>
-      <Nav onLogoClick={goBack} onLogin={() => {}} onMisViajes={goToMisViajes} />
+      <Nav onLogoClick={goBack} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} currentUser={currentUser} />
 
       {/* Barra de resumen de búsqueda */}
       <div style={{ background: '#fff', borderBottom: '1px solid var(--line)' }}>
