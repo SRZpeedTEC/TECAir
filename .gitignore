@@ -96,3 +96,8 @@ captures/
 *.pdf
 *.xlsx
 *.docx
+
+# =========================
+# Notas de desarrollo locales
+# =========================
+commit_changes.md
