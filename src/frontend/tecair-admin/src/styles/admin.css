@@ -183,6 +183,44 @@ body {
   padding: 32px 28px;
 }
 
+/* ─── Sub-navegación de pestañas (dentro de una página) ─── */
+.admin-sub-nav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+
+.admin-sub-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--muted);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.admin-sub-nav-btn:hover {
+  color: var(--ink);
+}
+
+.admin-sub-nav-btn.active {
+  color: var(--burgundy);
+  border-bottom-color: var(--burgundy);
+}
+
+.admin-sub-nav-btn i {
+  font-size: 14px;
+}
+
 /* ─── Placeholder "En Desarrollo" ─── */
 .under-development {
   display: flex;
