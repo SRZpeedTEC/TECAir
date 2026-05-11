@@ -10,7 +10,6 @@ import GestionVuelosPage      from './pages/GestionVuelosPage.js';
 import GestionItinerariosPage from './pages/GestionItinerariosPage.js';
 import AperturaVuelosPage     from './pages/AperturaVuelosPage.js';
 import CierreVuelosPage       from './pages/CierreVuelosPage.js';
-import ControlEquipajesPage   from './pages/ControlEquipajesPage.js';
 
 // Mapa de configuración de cada sección: título, ícono y componente de página.
 // Agregar aquí una nueva entrada es suficiente para extender la navegación.
@@ -23,7 +22,6 @@ const SECTIONS = {
   'itinerarios':    { title: 'Gestión de Itinerarios', icon: 'bi-map',            Page: GestionItinerariosPage },
   'apertura':       { title: 'Apertura de Vuelos',     icon: 'bi-unlock',         Page: AperturaVuelosPage     },
   'cierre':         { title: 'Cierre de Vuelos',       icon: 'bi-lock',           Page: CierreVuelosPage       },
-  'equipajes':      { title: 'Control de Equipajes',   icon: 'bi-luggage',        Page: ControlEquipajesPage   },
 };
 
 export default function AdminApp() {
