@@ -1,0 +1,125 @@
+@baseUrl = http://localhost:5000
+
+### 1. Health check de la API
+# Esperado: 200 OK
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Obtener maleta existente por bagNumber
+# bagNumber = 1 viene en database/postgresql/02_seed_data.sql.
+# Esperado: 200 OK.
+GET {{baseUrl}}/baggages/1
+Accept: application/json
+
+
+### 3. Obtener maleta inexistente
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/api/baggages/9999
+Accept: application/json
+
+
+### 4. Obtener maletas de un check-in existente
+# confirmationNumber = 2 tiene dos maletas en los datos semilla.
+# Esperado: 200 OK con lista de dos elementos.
+GET {{baseUrl}}/check-ins/2/baggages
+Accept: application/json
+
+
+### 5. Obtener maletas de un check-in inexistente
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/api/check-ins/9999/baggages
+Accept: application/json
+
+
+### 6. Crear maleta valida
+# @name crearMaletaValida
+# confirmationNumber = 1 existe en los datos semilla.
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/baggages
+Content-Type: application/json
+Accept: application/json
+
+{
+  "confirmationNumber": 1,
+  "weight": 12.75,
+  "color": "Celeste"
+}
+
+
+### 7. Intentar crear maleta para check-in inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/baggages
+Content-Type: application/json
+Accept: application/json
+
+{
+  "confirmationNumber": 9999,
+  "weight": 12.75,
+  "color": "Celeste"
+}
+
+
+### 8. Intentar crear maleta con datos invalidos
+# weight supera el maximo permitido de 32.
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/baggages
+Content-Type: application/json
+Accept: application/json
+
+{
+  "confirmationNumber": 1,
+  "weight": 40.00,
+  "color": "Negro"
+}
+
+
+### 9. Actualizar maleta existente
+# Usa el bagNumber generado en la prueba 6.
+# Esperado: 200 OK.
+PUT {{baseUrl}}/api/baggages/{{crearMaletaValida.response.body.$.bagNumber}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "weight": 13.25,
+  "color": "Azul"
+}
+
+
+### 10. Actualizar maleta inexistente
+# Esperado: 404 Not Found.
+PUT {{baseUrl}}/baggages/9999
+Content-Type: application/json
+Accept: application/json
+
+{
+  "weight": 13.25,
+  "color": "Azul"
+}
+
+
+### 11. Actualizar maleta con datos invalidos
+# color no puede estar vacio.
+# Esperado: 400 Bad Request.
+PUT {{baseUrl}}/api/baggages/{{crearMaletaValida.response.body.$.bagNumber}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "weight": 13.25,
+  "color": ""
+}
+
+
+### 12. Eliminar maleta existente
+# Esperado: 204 No Content.
+DELETE {{baseUrl}}/api/baggages/{{crearMaletaValida.response.body.$.bagNumber}}
+Accept: application/json
+
+
+### 13. Eliminar maleta inexistente
+# Esperado: 404 Not Found.
+DELETE {{baseUrl}}/baggages/9999
+Accept: application/json
+
