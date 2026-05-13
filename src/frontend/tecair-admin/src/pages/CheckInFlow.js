@@ -1,20 +1,37 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 
 import SeatIcon                from '../components/SeatIcon.js';
 import { searchReservations } from '../services/reservationService.js';
 import { getItineraryById }   from '../services/itineraryService.js';
+import { getAvailableSeats }  from '../services/seatService.js';
+import { createCheckIn }      from '../services/checkInService.js';
 
 // Flujo de check-in con cuatro pasos:
 //   1. search    → buscar reservacion por pasaporte o nombre
 //   2. flight    → elegir vuelo OPEN del itinerario asociado
-//   3. seat      → elegir asiento en el mapa del avion (mock por ahora)
-//   4. confirm   → resumen final del check-in registrado
-//
-// El componente mantiene todo el estado en memoria y no persiste todavia el
-// check-in en backend (los asientos ocupados son datos mock).
+//   3. seat      → elegir asiento (disponibilidad real de GET /api/seats/available/{flightId})
+//   4. confirm   → resumen final del check-in registrado en backend
 
-const ROWS    = 30;
-const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+// Layout posible: hasta 6 columnas (A-F). El render real se ajusta segun los
+// asientos que el backend reporta como existentes para el avion del vuelo.
+const ALL_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+// A partir de la lista de seat_number ('1A', '2C', ...) deriva el layout real
+// del avion: cantidad de filas y letras presentes. Si el conjunto esta vacio
+// devuelve un layout vacio para evitar pintar una grilla fantasma.
+function deriveLayout(seatNumbers) {
+  let maxRow = 0;
+  const letters = new Set();
+  for (const s of seatNumbers) {
+    const m = /^(\d+)([A-Z])$/.exec(s);
+    if (!m) continue;
+    const row = Number(m[1]);
+    if (row > maxRow) maxRow = row;
+    letters.add(m[2]);
+  }
+  const orderedLetters = ALL_LETTERS.filter((l) => letters.has(l));
+  return { maxRow, letters: orderedLetters };
+}
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const fmtDateTime = (value) => {
@@ -32,8 +49,10 @@ export default function CheckInFlow() {
   const [flight,      setFlight]      = useState(null);
   const [seat,        setSeat]        = useState(null);
 
-  // Numero de confirmacion mock que se muestra al finalizar
-  const [confirmationNumber, setConfirmationNumber] = useState(null);
+  // Resultado real del POST /api/check-ins
+  const [checkIn,        setCheckIn]        = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmError,   setConfirmError]   = useState(null);
 
   const goToFlight = async (res) => {
     setReservation(res);
@@ -51,13 +70,28 @@ export default function CheckInFlow() {
   const goToSeat = (f) => {
     setFlight(f);
     setSeat(null);
+    setConfirmError(null);
     setStep('seat');
   };
 
-  const finishCheckIn = () => {
-    // Mock del numero de confirmacion mientras backend no acepta la creacion completa.
-    setConfirmationNumber(Math.floor(Math.random() * 900000 + 100000));
-    setStep('confirm');
+  const finishCheckIn = async () => {
+    if (!seat || !flight || !reservation) return;
+    setConfirmLoading(true);
+    setConfirmError(null);
+    try {
+      const result = await createCheckIn({
+        reservationId:     reservation.reservationId,
+        itineraryFlightId: flight.itineraryFlightId,
+        planePlate:        flight.planePlate,
+        seatNumber:        seat,
+      });
+      setCheckIn(result);
+      setStep('confirm');
+    } catch (err) {
+      setConfirmError(err.message || 'No se pudo registrar el check-in.');
+    } finally {
+      setConfirmLoading(false);
+    }
   };
 
   const reset = () => {
@@ -65,7 +99,8 @@ export default function CheckInFlow() {
     setItinerary(null);
     setFlight(null);
     setSeat(null);
-    setConfirmationNumber(null);
+    setCheckIn(null);
+    setConfirmError(null);
     setStep('search');
   };
 
@@ -90,14 +125,15 @@ export default function CheckInFlow() {
           onSeat={setSeat}
           onBack={() => setStep('flight')}
           onConfirm={finishCheckIn}
+          confirmLoading={confirmLoading}
+          confirmError={confirmError}
         />
       )}
       {step === 'confirm' && (
         <ConfirmStep
           reservation={reservation}
           flight={flight}
-          seat={seat}
-          confirmationNumber={confirmationNumber}
+          checkIn={checkIn}
           onNew={reset}
         />
       )}
@@ -375,26 +411,43 @@ function FlightStep({ reservation, itinerary, onBack, onSelect }) {
 }
 
 // ──────────────────────────────────────────────────────────
-// Paso 3: mapa de asientos del avion. Mock occupancy.
+// Paso 3: mapa de asientos del avion con disponibilidad real.
+// GET /api/seats/available/{flightId} devuelve solo asientos libres;
+// los que no aparecen en la respuesta se pintan como "ocupado".
 // ──────────────────────────────────────────────────────────
-function SeatStep({ reservation, flight, seat, onSeat, onBack, onConfirm }) {
-  // Set de asientos "ocupados" generado de forma deterministica por flightId,
-  // de modo que el mismo vuelo siempre muestre la misma disposicion.
-  const occupiedSet = useMemo(() => {
-    const s    = new Set();
-    const seed = Number(flight.flightId) || 0;
-    for (let r = 1; r <= ROWS; r++) {
-      for (let c = 0; c < 6; c++) {
-        if ((r * 7 + c * 3 + seed) % 11 < 3) s.add(`${r}${LETTERS[c]}`);
-      }
-    }
-    return s;
+function SeatStep({ reservation, flight, seat, onSeat, onBack, onConfirm, confirmLoading, confirmError }) {
+  const [availableSet, setAvailableSet] = useState(null);
+  const [layout,       setLayout]       = useState({ maxRow: 0, letters: [] });
+  const [loadError,    setLoadError]    = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAvailableSet(null);
+    setLayout({ maxRow: 0, letters: [] });
+    setLoadError(null);
+    getAvailableSeats(flight.flightId)
+      .then((seats) => {
+        if (cancelled) return;
+        const seatNumbers = seats.map((s) => s.seatNumber);
+        setAvailableSet(new Set(seatNumbers));
+        setLayout(deriveLayout(seatNumbers));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err.message || 'No se pudieron cargar los asientos disponibles.');
+      });
+    return () => { cancelled = true; };
   }, [flight.flightId]);
 
   const pickSeat = (id) => {
-    if (occupiedSet.has(id)) return;
+    if (!availableSet || !availableSet.has(id)) return;
     onSeat(seat === id ? null : id);
   };
+
+  // Mitad izquierda / derecha del avion (pasillo central).
+  const halfIndex   = Math.ceil(layout.letters.length / 2);
+  const leftLetters  = layout.letters.slice(0, halfIndex);
+  const rightLetters = layout.letters.slice(halfIndex);
 
   return (
     <div className="admin-card">
@@ -406,31 +459,47 @@ function SeatStep({ reservation, flight, seat, onSeat, onBack, onConfirm }) {
             Vuelo <span className="mono">#{flight.flightId}</span> ·{' '}
             <span className="mono">{flight.departureCode}</span> →{' '}
             <span className="mono">{flight.arrivalCode}</span> ·{' '}
-            <span className="mono">{fmtDateTime(flight.departureDatetime)}</span>
+            <span className="mono">{fmtDateTime(flight.departureDatetime)}</span>{' '}
+            · Avión <span className="mono">{flight.planePlate}</span>
           </div>
         </div>
         <div className="d-flex gap-2">
-          <button type="button" className="btn-burgundy-outline" onClick={onBack}>
+          <button type="button" className="btn-burgundy-outline" onClick={onBack} disabled={confirmLoading}>
             <i className="bi bi-arrow-left me-2"></i>Cambiar vuelo
           </button>
           <button
             type="button"
             className="btn-burgundy"
-            disabled={!seat}
+            disabled={!seat || confirmLoading || !availableSet}
             onClick={onConfirm}
           >
-            Confirmar asiento{seat ? ` ${seat}` : ''} <i className="bi bi-check2 ms-1"></i>
+            {confirmLoading
+              ? <><span className="spinner-border spinner-border-sm me-2"></span>Registrando…</>
+              : <>Confirmar asiento{seat ? ` ${seat}` : ''} <i className="bi bi-check2 ms-1"></i></>}
           </button>
         </div>
       </div>
 
-      <div className="admin-alert admin-alert-info mb-3" role="status">
-        <i className="bi bi-info-circle-fill"></i>
-        <span>
-          Selecciona un asiento disponible. Los datos de ocupación son simulados mientras
-          se conecta el endpoint de disponibilidad real.
-        </span>
-      </div>
+      {loadError && (
+        <div className="admin-alert admin-alert-error mb-3" role="alert">
+          <i className="bi bi-exclamation-circle-fill"></i>
+          <span>{loadError}</span>
+        </div>
+      )}
+
+      {confirmError && (
+        <div className="admin-alert admin-alert-error mb-3" role="alert">
+          <i className="bi bi-exclamation-circle-fill"></i>
+          <span>{confirmError}</span>
+        </div>
+      )}
+
+      {!availableSet && !loadError && (
+        <div className="ib-picker-msg mb-3">
+          <span className="spinner-border spinner-border-sm me-2"></span>
+          Consultando asientos disponibles…
+        </div>
+      )}
 
       {/* Leyenda */}
       <div className="d-flex gap-3 small mb-3 align-items-center flex-wrap">
@@ -439,62 +508,65 @@ function SeatStep({ reservation, flight, seat, onSeat, onBack, onConfirm }) {
         <span className="d-flex align-items-center gap-1"><SeatIcon variant="occupied"  size={22} /> Ocupado</span>
       </div>
 
-      <div className="fuselage-wrap">
-        <div className="fuselage">
-          <div className="text-center small text-muted mb-3" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            Frente del avión
-          </div>
+      {availableSet && layout.maxRow > 0 && (
+        <div className="fuselage-wrap">
+          <div className="fuselage">
+            <div className="text-center small text-muted mb-3" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Frente del avión
+            </div>
 
-          <div className="d-flex justify-content-center align-items-center gap-1 mb-2">
-            <div className="row-label"></div>
-            {LETTERS.slice(0, 3).map((l) => <div key={l} className="seat-label">{l}</div>)}
-            <div className="row-label"></div>
-            {LETTERS.slice(3).map((l) => <div key={l} className="seat-label">{l}</div>)}
-          </div>
+            <div className="d-flex justify-content-center align-items-center gap-1 mb-2">
+              <div className="row-label"></div>
+              {leftLetters.map((l) => <div key={l} className="seat-label">{l}</div>)}
+              {rightLetters.length > 0 && <div className="row-label"></div>}
+              {rightLetters.map((l) => <div key={l} className="seat-label">{l}</div>)}
+            </div>
 
-          {Array.from({ length: ROWS }, (_, r) => {
-            const row = r + 1;
-            return (
-              <div key={row}>
-                {row === 12 && (
-                  <div className="d-flex align-items-center my-2" style={{ justifyContent: 'space-between' }}>
-                    <span style={{ flex: 1, borderTop: '1px dashed var(--burgundy-line)' }}></span>
-                    <span className="px-2" style={{ color: 'var(--burgundy)', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.68rem', fontWeight: 600 }}>
-                      <i className="bi bi-door-open me-1"></i>Salida emergencia
-                    </span>
-                    <span style={{ flex: 1, borderTop: '1px dashed var(--burgundy-line)' }}></span>
+            {Array.from({ length: layout.maxRow }, (_, r) => {
+              const row = r + 1;
+              return (
+                <div key={row}>
+                  <div className="d-flex justify-content-center align-items-center gap-1 mb-1">
+                    <div className="row-label">{row}</div>
+                    {leftLetters.map((l) => renderSeatBtn(row, l, availableSet, seat, pickSeat))}
+                    {rightLetters.length > 0 && <div className="row-label">{row}</div>}
+                    {rightLetters.map((l) => renderSeatBtn(row, l, availableSet, seat, pickSeat))}
                   </div>
-                )}
-                <div className="d-flex justify-content-center align-items-center gap-1 mb-1">
-                  <div className="row-label">{row}</div>
-                  {LETTERS.slice(0, 3).map((l) => renderSeatBtn(row, l, occupiedSet, seat, pickSeat))}
-                  <div className="row-label">{row}</div>
-                  {LETTERS.slice(3).map((l) => renderSeatBtn(row, l, occupiedSet, seat, pickSeat))}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
 
-          <div className="text-center small text-muted mt-3" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            Cola del avión
+            <div className="text-center small text-muted mt-3" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Cola del avión
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {availableSet && layout.maxRow === 0 && (
+        <div className="admin-alert admin-alert-info" role="status">
+          <i className="bi bi-info-circle-fill"></i>
+          <span>Este avión no tiene asientos libres en este vuelo.</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function renderSeatBtn(row, letter, occupiedSet, seat, pickSeat) {
-  const id      = `${row}${letter}`;
-  const isOcc   = occupiedSet.has(id);
-  const variant = isOcc ? 'occupied' : seat === id ? 'selected' : 'available';
+// availableSet === null mientras se carga la respuesta de la API:
+// en ese caso todos los asientos se muestran como "ocupado" (placeholder visual).
+function renderSeatBtn(row, letter, availableSet, seat, pickSeat) {
+  const id          = `${row}${letter}`;
+  const isAvailable = availableSet?.has(id) ?? false;
+  const variant     = !isAvailable ? 'occupied' : seat === id ? 'selected' : 'available';
   return (
     <button
       key={id}
       type="button"
-      className={'seat-btn' + (isOcc ? ' occupied' : '')}
+      className={'seat-btn' + (!isAvailable ? ' occupied' : '')}
       onClick={() => pickSeat(id)}
       title={id}
+      disabled={!isAvailable}
     >
       <SeatIcon variant={variant} />
     </button>
@@ -506,7 +578,9 @@ function renderSeatBtn(row, letter, occupiedSet, seat, pickSeat) {
 // El pase de abordar (impresion/correo/movil) se implementara en la
 // siguiente iteracion.
 // ──────────────────────────────────────────────────────────
-function ConfirmStep({ reservation, flight, seat, confirmationNumber, onNew }) {
+function ConfirmStep({ reservation, flight, checkIn, onNew }) {
+  const confirmationNumber = checkIn?.confirmationNumber;
+  const seat               = checkIn?.seatNumber;
   return (
     <div className="admin-card text-center" style={{ maxWidth: 640, margin: '0 auto' }}>
       <div
