@@ -40,6 +40,8 @@ builder.Services.AddScoped<IPromotionRepository, PostgresPromotionRepository>();
 builder.Services.AddScoped<IPromotionService, PromotionService>();
 builder.Services.AddScoped<IReservationRepository, PostgresReservationRepository>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<ISeatRepository, PostgresSeatRepository>();
+builder.Services.AddScoped<ISeatService, SeatService>();
 builder.Services.AddScoped<IUserRepository, PostgresUserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 
