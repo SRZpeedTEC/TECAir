@@ -6,7 +6,7 @@ namespace TECAir.Application.Services;
 // El servicio contiene reglas de aplicacion.
 // Aqui se validan los datos antes de llamar al repositorio, para que el controller
 // no tenga logica de negocio y el repositorio solo se encargue de SQL.
-public class UserService(IUserRepository userRepository) : IUserService
+public class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher) : IUserService
 {
     // En este caso no hay reglas extra para consultar; simplemente se delega
     // al repositorio que sabe como leer desde PostgreSQL.
@@ -27,7 +27,13 @@ public class UserService(IUserRepository userRepository) : IUserService
             return CreateUserServiceResult.ValidationError(validationError);
         }
 
-        var user = await userRepository.CreateAsync(request, cancellationToken);
+        var normalizedRequest = NormalizeCreateUserRequest(request);
+
+        // La transformacion de password plano a hash ocurre en aplicacion,
+        // antes de persistir, para que el repositorio solo guarde el valor recibido.
+        normalizedRequest.Password = passwordHasher.Hash(request.Password);
+
+        var user = await userRepository.CreateAsync(normalizedRequest, cancellationToken);
         return CreateUserServiceResult.Success(user);
     }
 
@@ -65,6 +71,13 @@ public class UserService(IUserRepository userRepository) : IUserService
         {
             return UpdateUserServiceResult.Conflict(
                 $"Student carnet '{normalizedRequest.UserCarnet}' already belongs to another student.");
+        }
+
+        // Si el cliente envia una nueva contrasena, se guarda solamente el hash.
+        // Cuando viene vacia, el repositorio conserva el hash existente.
+        if (!string.IsNullOrWhiteSpace(normalizedRequest.Password))
+        {
+            normalizedRequest.Password = passwordHasher.Hash(normalizedRequest.Password);
         }
 
         var user = await userRepository.UpdateAsync(normalizedEmail, normalizedRequest, cancellationToken);
@@ -145,6 +158,24 @@ public class UserService(IUserRepository userRepository) : IUserService
         }
 
         return null;
+    }
+
+    // Normaliza el body de creacion antes de persistir. Password se mantiene
+    // separado porque luego se reemplaza por su hash.
+    private static CreateUserRequest NormalizeCreateUserRequest(CreateUserRequest request)
+    {
+        return new CreateUserRequest
+        {
+            Email = request.Email.Trim().ToLowerInvariant(),
+            Password = request.Password,
+            Name = request.Name.Trim(),
+            Lname = request.Lname.Trim(),
+            PhoneNum = request.PhoneNum.Trim(),
+            Role = request.Role.Trim().ToUpperInvariant(),
+            IsStudent = request.IsStudent,
+            UserCarnet = string.IsNullOrWhiteSpace(request.UserCarnet) ? null : request.UserCarnet.Trim(),
+            CollegeName = string.IsNullOrWhiteSpace(request.CollegeName) ? null : request.CollegeName.Trim()
+        };
     }
 
     // Valida los campos editables. La llave primaria se omite a proposito del DTO.

@@ -2,6 +2,7 @@ using Npgsql;
 using TECAir.Application.Interfaces;
 using TECAir.Application.Services;
 using TECAir.Infrastructure.Repositories;
+using TECAir.Infrastructure.Security;
 // Publsh command on TECAir.Api: dotnet publish -c Release -o ./publish
 
 // Program.cs configura la aplicacion web.
@@ -44,6 +45,11 @@ builder.Services.AddScoped<ISeatRepository, PostgresSeatRepository>();
 builder.Services.AddScoped<ISeatService, SeatService>();
 builder.Services.AddScoped<IUserRepository, PostgresUserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
+
+// Seguridad: este componente centraliza el hash de contrasenas para que
+// ningun flujo guarde passwords en texto plano en app_user.password_hash.
+builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
 

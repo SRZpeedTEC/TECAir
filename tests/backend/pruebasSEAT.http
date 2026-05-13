@@ -8,7 +8,7 @@ Accept: application/json
 ### 2. Consultar asientos disponibles de un vuelo existente
 # Esperado: 200 OK con asientos del avion del vuelo.
 # Vuelo 1 usa TI-TEC01 en los datos semilla.
-GET {{baseUrl}}/api/seats/available/1
+GET {{baseUrl}}/api/seats/available/3
 Accept: application/json
 
 

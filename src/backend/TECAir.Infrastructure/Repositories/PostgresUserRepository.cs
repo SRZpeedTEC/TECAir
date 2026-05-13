@@ -1,4 +1,5 @@
 using Npgsql;
+using TECAir.Application.DTOs.Auth;
 using TECAir.Application.DTOs.Users;
 using TECAir.Application.Interfaces;
 
@@ -43,6 +44,40 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
         }
 
         return MapUserResponse(reader);
+    }
+
+    // Consulta datos privados para login. El password_hash se lee solo para que
+    // AuthService pueda verificar la contrasena y nunca se expone como respuesta HTTP.
+    public async Task<AuthenticatedUserData?> GetForLoginAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                u.email,
+                u.password_hash,
+                CONCAT_WS(' ', u.name, u.last_name) AS full_name,
+                u.role,
+                s.user_email IS NOT NULL AS is_student,
+                s.college_name,
+                s.user_carnet,
+                s.miles
+            FROM tecair.app_user u
+            LEFT JOIN tecair.student s
+                ON s.user_email = u.email
+            WHERE LOWER(u.email) = LOWER(@email);
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("email", email);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return MapAuthenticatedUserData(reader);
     }
 
     // Crea un usuario nuevo.
@@ -283,6 +318,23 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
             Email = reader.GetString(0),
             FullName = reader.GetString(1),
             PhoneNum = reader.GetString(2),
+            Role = reader.GetString(3),
+            IsStudent = reader.GetBoolean(4),
+            CollegeName = reader.IsDBNull(5) ? null : reader.GetString(5),
+            UserCarnet = reader.IsDBNull(6) ? null : reader.GetString(6),
+            Miles = reader.IsDBNull(7) ? null : reader.GetInt32(7)
+        };
+    }
+
+    // Mapea la fila usada internamente por autenticacion. Se mantiene separada
+    // del DTO publico para evitar filtrar el password_hash por accidente.
+    private static AuthenticatedUserData MapAuthenticatedUserData(NpgsqlDataReader reader)
+    {
+        return new AuthenticatedUserData
+        {
+            Email = reader.GetString(0),
+            PasswordHash = reader.GetString(1),
+            FullName = reader.GetString(2),
             Role = reader.GetString(3),
             IsStudent = reader.GetBoolean(4),
             CollegeName = reader.IsDBNull(5) ? null : reader.GetString(5),
