@@ -651,6 +651,501 @@ body {
   cursor: not-allowed;
 }
 
+/* ─── Badge auxiliar para itinerarios ─── */
+.it-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--burgundy-soft);
+  color: var(--burgundy-deep);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ItineraryBuilder — constructor visual de itinerarios
+   ═══════════════════════════════════════════════════════ */
+
+.itinerary-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ─── Sección numerada ─── */
+/* No usamos `overflow: hidden` porque recorta el dropdown del typeahead.
+   Los esquinas redondeadas se manejan por separado en head/body. */
+.ib-section {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  position: relative;
+}
+
+.ib-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--burgundy-soft);
+  border-bottom: 1px solid var(--burgundy-line);
+  border-radius: 10px 10px 0 0;
+}
+
+.ib-section-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--burgundy);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.ib-section-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.ib-section-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.ib-section-body {
+  padding: 20px;
+}
+
+/* ─── Timeline de vuelos ─── */
+.ib-timeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.ib-leg-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.ib-connector {
+  width: 2px;
+  height: 24px;
+  background: var(--burgundy-line);
+}
+
+/* Nodo (aeropuerto) en el timeline */
+.ib-node-airport {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 16px;
+  background: #fff;
+  border: 1.5px solid var(--burgundy-line);
+  border-radius: 10px;
+  min-width: 120px;
+  text-align: center;
+}
+
+.ib-node-airport.ib-node-current {
+  border-color: var(--burgundy);
+  background: var(--burgundy-soft);
+}
+
+.ib-node-code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--burgundy-deep);
+  letter-spacing: 0.02em;
+}
+
+.ib-node-city {
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.ib-node-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.ib-node-tag-current {
+  color: var(--burgundy);
+}
+
+.ib-node-tag-stop {
+  color: var(--amber);
+}
+
+/* Chip de vuelo */
+.ib-leg-chip {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 320px;
+  max-width: 460px;
+  box-shadow: 0 1px 2px rgba(40, 10, 25, 0.04);
+}
+
+.ib-leg-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ib-leg-id {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--burgundy);
+  background: var(--burgundy-soft);
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ib-leg-plate {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ib-leg-remove {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ib-leg-remove:hover {
+  background: #fde8ee;
+  color: #8b1a2e;
+}
+
+.ib-leg-route {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.ib-leg-airport {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ib-leg-code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ib-leg-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ib-leg-arrow {
+  flex: 1;
+  text-align: center;
+  color: var(--burgundy);
+  font-size: 14px;
+}
+
+.ib-leg-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ─── CTA después de la cadena ─── */
+.ib-cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px dashed var(--burgundy-line);
+  border-radius: 10px;
+  background: #fbf6f8;
+}
+
+.ib-cta-or {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ib-cta-hint {
+  font-size: 12px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ─── Picker de vuelos disponibles ─── */
+.ib-picker {
+  margin-top: 16px;
+  border: 1px solid var(--burgundy-line);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.ib-picker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--burgundy-soft);
+  border-bottom: 1px solid var(--burgundy-line);
+}
+
+.ib-picker-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--burgundy-deep);
+  margin: 0;
+}
+
+.ib-picker-sub {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ib-picker-close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ib-picker-close:hover {
+  background: #fff;
+  color: var(--burgundy);
+}
+
+.ib-picker-msg {
+  padding: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ib-picker-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ib-picker-empty i {
+  font-size: 22px;
+  color: var(--burgundy);
+  opacity: 0.6;
+}
+
+.ib-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.ib-picker-list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.ib-picker-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ib-picker-item:hover {
+  background: var(--burgundy-soft);
+}
+
+.ib-picker-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ib-picker-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.ib-picker-flight-id {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--burgundy);
+  background: var(--burgundy-soft);
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ib-picker-plate {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ib-picker-route {
+  font-size: 13px;
+  color: var(--ink);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.ib-picker-cities {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.ib-picker-gate {
+  color: var(--muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.ib-picker-add {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--burgundy);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.ib-picker-item:hover .ib-picker-add {
+  background: var(--burgundy-deep);
+  transform: scale(1.05);
+}
+
+/* ─── Precio + resumen ─── */
+.ib-price-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.ib-price-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.ib-price-prefix {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: var(--muted);
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.ib-price-input {
+  padding-left: 32px;
+  font-size: 18px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  height: 52px;
+}
+
+.ib-summary {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.ib-summary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ib-summary-row strong {
+  font-size: 18px;
+  color: var(--ink);
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: -0.01em;
+}
+
 /* ─── Typeahead de aeropuerto ─── */
 .ap-typeahead {
   position: relative;
