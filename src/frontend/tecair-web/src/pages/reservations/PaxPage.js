@@ -4,7 +4,7 @@ import Stepper    from '../../components/Stepper.js';
 import SummarySide from '../../components/SummarySide.js';
 
 // Pantalla de datos de pasajeros: formulario con validación para cada viajero
-export default function PaxPage({ state, setState, goBack, goToSeats, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
+export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const total = state.pax.adults;
 
   // Inicializa la lista con los datos ya ingresados o con campos vacíos
@@ -35,7 +35,7 @@ export default function PaxPage({ state, setState, goBack, goToSeats, goToMisVia
     setErrs(e);
     if (Object.keys(e).length === 0) {
       setState((s) => ({ ...s, passengers: paxList }));
-      goToSeats();
+      goToConfirm();
     }
   };
 
@@ -133,7 +133,7 @@ export default function PaxPage({ state, setState, goBack, goToSeats, goToMisVia
                 <i className="bi bi-arrow-left me-2"></i>Volver a vuelos
               </button>
               <button className="btn btn-burgundy" onClick={submit}>
-                Continuar a asientos <i className="bi bi-arrow-right ms-2"></i>
+                Confirmar reservación <i className="bi bi-arrow-right ms-2"></i>
               </button>
             </div>
           </div>
