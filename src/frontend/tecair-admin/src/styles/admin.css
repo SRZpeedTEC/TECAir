@@ -368,6 +368,289 @@ body {
   border: 1px solid #c8e3d3;
 }
 
+.admin-alert-info {
+  background: #f3eef5;
+  color: #4a2952;
+  border: 1px solid #e3d6e8;
+}
+
+.admin-alert-info code {
+  background: rgba(0, 0, 0, 0.04);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* ─── Tabla de vuelos ─── */
+.flight-list-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.flight-list-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.flight-list-table thead th {
+  background: var(--burgundy-soft);
+  color: var(--burgundy-deep);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--burgundy-line);
+  white-space: nowrap;
+}
+
+.flight-list-table tbody td {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+  background: #fff;
+}
+
+.flight-list-table tbody tr:hover td {
+  background: #fbf6f8;
+}
+
+.flight-list-table .mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.flight-list-table .text-end {
+  text-align: right;
+}
+
+.flight-cell-city {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.flight-cell-code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ─── Empty state ─── */
+.flight-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 36px 20px;
+  margin-top: 16px;
+  border: 1px dashed var(--burgundy-line);
+  border-radius: 10px;
+  background: var(--burgundy-soft);
+  color: var(--muted);
+  text-align: center;
+}
+
+.flight-list-empty i {
+  font-size: 24px;
+  color: var(--burgundy);
+  opacity: 0.7;
+}
+
+/* ─── Badges de estado de vuelo ─── */
+.flight-state-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.flight-state-open {
+  background: #e0f1e7;
+  color: #1f5e3a;
+}
+
+.flight-state-closed {
+  background: #f1e4e9;
+  color: #8b1a2e;
+}
+
+/* ─── Acciones de fila (editar / eliminar) ─── */
+.flight-action-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+}
+
+.flight-action-btn:hover {
+  background: var(--burgundy-soft);
+  color: var(--burgundy);
+  border-color: var(--burgundy-line);
+}
+
+.flight-action-btn.flight-action-danger:hover {
+  background: #fde8ee;
+  color: #8b1a2e;
+  border-color: #f5c2cc;
+}
+
+/* ─── Estado read-only en el form de edición ─── */
+.flight-state-readonly {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--burgundy-soft);
+  border: 1px solid var(--burgundy-line);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.flight-state-readonly-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.flight-state-readonly-hint {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* ─── Modal genérico ─── */
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 10, 25, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+  animation: admin-modal-fade 0.15s ease-out;
+}
+
+@keyframes admin-modal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.admin-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 60px rgba(40, 10, 25, 0.35);
+  animation: admin-modal-pop 0.18s ease-out;
+}
+
+@keyframes admin-modal-pop {
+  from { transform: translateY(8px) scale(0.98); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+.admin-modal-sm  { max-width: 440px; }
+.admin-modal-md  { max-width: 620px; }
+.admin-modal-lg  { max-width: 860px; }
+
+.admin-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-modal-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 18px;
+  margin: 0;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.admin-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-modal-close:hover {
+  background: var(--burgundy-soft);
+  color: var(--burgundy);
+}
+
+.admin-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* ─── ConfirmDialog ─── */
+.confirm-dialog-body {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.text-muted-small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Botón destructivo (acción peligrosa) — mantiene la paleta burgundy con tono rojo */
+.btn-danger-burgundy {
+  background: #8b1a2e;
+  color: #fff;
+  border: 1px solid #8b1a2e;
+  border-radius: 6px;
+  padding: 0.5rem 1.2rem;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-danger-burgundy:hover,
+.btn-danger-burgundy:focus {
+  background: #6e1424;
+  border-color: #6e1424;
+  outline: none;
+}
+
+.btn-danger-burgundy:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* ─── Typeahead de aeropuerto ─── */
 .ap-typeahead {
   position: relative;
