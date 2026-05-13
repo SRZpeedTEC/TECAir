@@ -1,6 +1,6 @@
-// Indicador de progreso de la reserva: Vuelos → Pasajeros → Asientos → Pago
+// Indicador de progreso de la reserva: Vuelos → Pasajeros → Pago
 export default function Stepper({ active }) {
-  const steps = ['Vuelos', 'Pasajeros', 'Asientos', 'Pago'];
+  const steps = ['Vuelos', 'Pasajeros', 'Pago'];
 
   return (
     <div className="stepper">
