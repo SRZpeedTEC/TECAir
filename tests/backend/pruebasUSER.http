@@ -28,16 +28,17 @@ Accept: application/json
 ### 5. Crear usuario cliente normal
 # Esperado la primera vez: 201 Created.
 # Si se ejecuta de nuevo con el mismo email: 409 Conflict.
+
 POST {{baseUrl}}/users
 Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "prueba.cliente@tecair.com",
-  "password": "123456",
-  "name": "Prueba",
-  "lname": "Cliente",
-  "phoneNum": "8888-9001",
+  "email": "santiboza3008@gmail.com",
+  "password": "HolaMundo1",
+  "name": "Santiago",
+  "lname": "Boza Quiros",
+  "phoneNum": "7124-2520",
   "role": "CLIENT",
   "isStudent": false,
   "userCarnet": null,
@@ -45,10 +46,27 @@ Accept: application/json
 }
 
 
+POST {{baseUrl}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "santirob123@gmail.com",
+  "password": "AmoPython123",
+  "name": "Santiago",
+  "lname": "Robles Obando",
+  "phoneNum": "1234-5678",
+  "role": "CLIENT",
+  "isStudent": True,
+  "userCarnet": 2022207100,
+  "collegeName": "Instituto Tecnologico de Costa Rica"
+}
+
+
 ### 6. Verificar usuario cliente creado
 # Esperado: 200 OK despues de ejecutar la prueba anterior.
 # La respuesta no debe incluir password ni password_hash.
-GET {{baseUrl}}/users/prueba.cliente@tecair.com
+GET {{baseUrl}}/users/santiboza3008@gmail.com
 Accept: application/json
 
 
@@ -59,8 +77,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "prueba.cliente@tecair.com",
-  "password": "123456"
+  "email": "santiboza3008@gmail.com",
+  "password": "HolaMundo1"
 }
 
 

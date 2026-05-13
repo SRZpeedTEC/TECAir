@@ -5,8 +5,6 @@ using TECAir.Application.Interfaces;
 
 namespace TECAir.Infrastructure.Repositories;
 
-// Este repositorio es la capa que habla con PostgreSQL usando Npgsql.
-// No usa Entity Framework: aqui escribimos SQL manual, parametros y transacciones.
 public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserRepository
 {
     // Consulta un usuario por email.
@@ -80,13 +78,9 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
         return MapAuthenticatedUserData(reader);
     }
 
-    // Crea un usuario nuevo.
-    // Como puede insertar en app_user y tambien en student, usamos una transaccion
-    // para que ambas operaciones se guarden juntas o ninguna se guarde.
     public async Task<UserResponse> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         const string insertUserSql = """
             INSERT INTO app_user (
@@ -108,7 +102,7 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
             """;
 
         // Primer INSERT: datos comunes de cualquier usuario.
-        await using (var command = new NpgsqlCommand(insertUserSql, connection, transaction))
+        await using (var command = new NpgsqlCommand(insertUserSql, connection))
         {
             command.Parameters.AddWithValue("email", request.Email.Trim());
             command.Parameters.AddWithValue("password_hash", request.Password);
@@ -136,16 +130,13 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
                 );
                 """;
 
-            await using var command = new NpgsqlCommand(insertStudentSql, connection, transaction);
+            await using var command = new NpgsqlCommand(insertStudentSql, connection);
             command.Parameters.AddWithValue("user_email", request.Email.Trim());
             command.Parameters.AddWithValue("user_carnet", request.UserCarnet!.Trim());
             command.Parameters.AddWithValue("college_name", request.CollegeName!.Trim());
 
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
-
-        // Commit confirma la transaccion. Si algo falla antes, no se confirma nada.
-        await transaction.CommitAsync(cancellationToken);
 
         // Despues de insertar, se reutiliza el GET para devolver la respuesta completa
         // con el mismo formato que consume la API.
@@ -214,7 +205,7 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
         return result is true;
     }
 
-    // Actualiza datos del usuario y sincroniza la tabla student en una transaccion.
+    // Actualiza datos del usuario y sincroniza la tabla student con comandos separados.
     // El email no se actualiza porque es la llave primaria y viene de la ruta.
     public async Task<UserResponse> UpdateAsync(
         string email,
@@ -222,7 +213,6 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
         CancellationToken cancellationToken = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         const string updateUserSql = """
             UPDATE tecair.app_user
@@ -238,7 +228,7 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
             WHERE LOWER(email) = LOWER(@email);
             """;
 
-        await using (var command = new NpgsqlCommand(updateUserSql, connection, transaction))
+        await using (var command = new NpgsqlCommand(updateUserSql, connection))
         {
             command.Parameters.AddWithValue("email", email);
             command.Parameters.AddWithValue("password_hash", request.Password);
@@ -269,7 +259,7 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
                     college_name = EXCLUDED.college_name;
                 """;
 
-            await using var command = new NpgsqlCommand(upsertStudentSql, connection, transaction);
+            await using var command = new NpgsqlCommand(upsertStudentSql, connection);
             command.Parameters.AddWithValue("user_email", email);
             command.Parameters.AddWithValue("user_carnet", request.UserCarnet!);
             command.Parameters.AddWithValue("college_name", request.CollegeName!);
@@ -278,20 +268,19 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
         }
         else
         {
+            // DELETE separado: el request ya indica que el usuario no debe conservar datos de estudiante.
             const string deleteStudentSql = """
                 DELETE FROM tecair.student
                 WHERE LOWER(user_email) = LOWER(@user_email);
                 """;
 
-            await using var command = new NpgsqlCommand(deleteStudentSql, connection, transaction);
+            await using var command = new NpgsqlCommand(deleteStudentSql, connection);
             command.Parameters.AddWithValue("user_email", email);
 
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
         // El request conserva Minit por contrato, pero el esquema actual de app_user no tiene esa columna.
-        await transaction.CommitAsync(cancellationToken);
-
         var updatedUser = await GetByEmailAsync(email, cancellationToken);
         return updatedUser ?? throw new InvalidOperationException("Failed to retrieve the updated user.");
     }

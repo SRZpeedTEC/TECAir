@@ -292,6 +292,11 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             {
                 return $"Flight '{flight.FlightId}' must have state OPEN.";
             }
+
+            if (flight.ArrivalDatetime <= flight.DepartureDatetime)
+            {
+                return $"Flight '{flight.FlightId}' arrival datetime must be after departure datetime.";
+            }
         }
 
         for (var index = 1; index < orderedFlights.Count; index++)

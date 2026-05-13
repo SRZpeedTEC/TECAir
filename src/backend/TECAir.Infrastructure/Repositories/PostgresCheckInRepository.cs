@@ -70,7 +70,6 @@ public sealed class PostgresCheckInRepository(NpgsqlDataSource dataSource) : ICh
         CancellationToken cancellationToken = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         const string insertSql = """
             INSERT INTO tecair.check_in (
@@ -94,7 +93,7 @@ public sealed class PostgresCheckInRepository(NpgsqlDataSource dataSource) : ICh
             """;
 
         CheckInResponse checkIn;
-        await using (var command = new NpgsqlCommand(insertSql, connection, transaction))
+        await using (var command = new NpgsqlCommand(insertSql, connection))
         {
             command.Parameters.AddWithValue("reservation_id", request.ReservationId);
             command.Parameters.AddWithValue("itinerary_flight_id", request.ItineraryFlightId);
@@ -117,13 +116,12 @@ public sealed class PostgresCheckInRepository(NpgsqlDataSource dataSource) : ICh
                 AND state <> 'CHECKED';
             """;
 
-        await using (var command = new NpgsqlCommand(updateReservationSql, connection, transaction))
+        await using (var command = new NpgsqlCommand(updateReservationSql, connection))
         {
             command.Parameters.AddWithValue("reservation_id", request.ReservationId);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        await transaction.CommitAsync(cancellationToken);
         return checkIn;
     }
 

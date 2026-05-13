@@ -29,6 +29,22 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
 
         var normalizedRequest = NormalizeCreateUserRequest(request);
 
+        if (await userRepository.UserExistsAsync(normalizedRequest.Email, cancellationToken))
+        {
+            return CreateUserServiceResult.Conflict(
+                $"User '{normalizedRequest.Email}' already exists.");
+        }
+
+        if (normalizedRequest.IsStudent &&
+            await userRepository.UserCarnetBelongsToAnotherStudentAsync(
+                normalizedRequest.Email,
+                normalizedRequest.UserCarnet!,
+                cancellationToken))
+        {
+            return CreateUserServiceResult.Conflict(
+                $"Student carnet '{normalizedRequest.UserCarnet}' already belongs to another student.");
+        }
+
         // La transformacion de password plano a hash ocurre en aplicacion,
         // antes de persistir, para que el repositorio solo guarde el valor recibido.
         normalizedRequest.Password = passwordHasher.Hash(request.Password);
