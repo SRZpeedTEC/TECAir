@@ -32,8 +32,10 @@ export async function getItineraryById(id) {
     itineraryId: data.itineraryId ?? data.ItineraryId,
     price:       Number(data.price ?? data.Price),
     flights: (data.flights ?? data.Flights ?? []).map((f) => ({
+      itineraryFlightId:    f.itineraryFlightId    ?? f.ItineraryFlightId,
       flightOrder:          f.flightOrder          ?? f.FlightOrder,
       flightId:             f.flightId             ?? f.FlightId,
+      planePlate:           f.planePlate           ?? f.PlanePlate,
       departureAirportName: f.departureAirportName ?? f.DepartureAirportName,
       departureCode:        f.departureCode        ?? f.DepartureCode,
       departureCity:        f.departureCity        ?? f.DepartureCity,
