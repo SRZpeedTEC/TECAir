@@ -4,7 +4,7 @@ import SeatIcon                from '../components/SeatIcon.js';
 import { searchReservations } from '../services/reservationService.js';
 import { getItineraryById }   from '../services/itineraryService.js';
 import { getAvailableSeats }  from '../services/seatService.js';
-import { createCheckIn }      from '../services/checkInService.js';
+import { createCheckIn, getCheckInsByReservation } from '../services/checkInService.js';
 
 // Flujo de check-in con cuatro pasos:
 //   1. search    → buscar reservacion por pasaporte o nombre
@@ -49,25 +49,38 @@ export default function CheckInFlow() {
   const [flight,      setFlight]      = useState(null);
   const [seat,        setSeat]        = useState(null);
 
+  // Map<itineraryFlightId, CheckInResponse> con los check-ins ya hechos para
+  // esta reservacion. Permite marcar como "ya chequeado" cada vuelo del itinerario.
+  const [existingCheckIns, setExistingCheckIns] = useState(new Map());
+
   // Resultado real del POST /api/check-ins
   const [checkIn,        setCheckIn]        = useState(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmError,   setConfirmError]   = useState(null);
 
+  // Carga itinerario y check-ins existentes en paralelo despues de elegir reserva.
   const goToFlight = async (res) => {
     setReservation(res);
     setItinerary(null);
+    setExistingCheckIns(new Map());
     setStep('flight');
     try {
-      const detail = await getItineraryById(res.itineraryId);
+      const [detail, checkIns] = await Promise.all([
+        getItineraryById(res.itineraryId),
+        getCheckInsByReservation(res.reservationId),
+      ]);
       detail.flights.sort((a, b) => a.flightOrder - b.flightOrder);
       setItinerary(detail);
+      setExistingCheckIns(new Map(checkIns.map((c) => [c.itineraryFlightId, c])));
     } catch (err) {
       setItinerary({ error: err.message });
     }
   };
 
   const goToSeat = (f) => {
+    // Defensa adicional: aunque el boton este deshabilitado, no permitimos
+    // entrar al paso de asiento si el vuelo ya tiene check-in.
+    if (existingCheckIns.has(f.itineraryFlightId)) return;
     setFlight(f);
     setSeat(null);
     setConfirmError(null);
@@ -86,6 +99,13 @@ export default function CheckInFlow() {
         seatNumber:        seat,
       });
       setCheckIn(result);
+      // Refresca el mapa para que, si el funcionario vuelve al paso de vuelos
+      // (otro tramo del mismo itinerario), este aparezca como "ya chequeado".
+      setExistingCheckIns((prev) => {
+        const next = new Map(prev);
+        next.set(result.itineraryFlightId, result);
+        return next;
+      });
       setStep('confirm');
     } catch (err) {
       setConfirmError(err.message || 'No se pudo registrar el check-in.');
@@ -99,6 +119,7 @@ export default function CheckInFlow() {
     setItinerary(null);
     setFlight(null);
     setSeat(null);
+    setExistingCheckIns(new Map());
     setCheckIn(null);
     setConfirmError(null);
     setStep('search');
@@ -113,8 +134,14 @@ export default function CheckInFlow() {
         <FlightStep
           reservation={reservation}
           itinerary={itinerary}
+          existingCheckIns={existingCheckIns}
           onBack={() => setStep('search')}
           onSelect={goToSeat}
+          onViewExisting={(f, c) => {
+            setFlight(f);
+            setCheckIn(c);
+            setStep('confirm');
+          }}
         />
       )}
       {step === 'seat'    && (
@@ -312,7 +339,7 @@ function SearchStep({ onSelect }) {
 // ──────────────────────────────────────────────────────────
 // Paso 2: elegir un vuelo OPEN del itinerario asociado.
 // ──────────────────────────────────────────────────────────
-function FlightStep({ reservation, itinerary, onBack, onSelect }) {
+function FlightStep({ reservation, itinerary, existingCheckIns, onBack, onSelect, onViewExisting }) {
   if (!itinerary) {
     return (
       <div className="admin-card">
@@ -356,7 +383,8 @@ function FlightStep({ reservation, itinerary, onBack, onSelect }) {
 
       <h6 className="serif mb-2">Vuelos del itinerario</h6>
       <p className="text-muted-small mb-3">
-        Solo los vuelos en estado <strong>OPEN</strong> permiten check-in.
+        Solo los vuelos en estado <strong>OPEN</strong> permiten check-in. Si el pasajero
+        ya fue chequeado en un tramo, se muestra el asiento asignado.
       </p>
 
       <div className="flight-list-table-wrap">
@@ -370,12 +398,15 @@ function FlightStep({ reservation, itinerary, onBack, onSelect }) {
               <th>Llegada</th>
               <th>Puerta</th>
               <th>Estado</th>
+              <th>Check-in</th>
               <th className="text-end">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {itinerary.flights.map((f) => {
-              const isOpen = (f.state || '').toUpperCase() === 'OPEN';
+              const isOpen        = (f.state || '').toUpperCase() === 'OPEN';
+              const existing      = existingCheckIns?.get(f.itineraryFlightId);
+              const alreadyChecked = !!existing;
               return (
                 <tr key={f.flightOrder}>
                   <td className="mono">{f.flightOrder}</td>
@@ -389,16 +420,32 @@ function FlightStep({ reservation, itinerary, onBack, onSelect }) {
                       {f.state}
                     </span>
                   </td>
+                  <td>
+                    {alreadyChecked
+                      ? <span className="text-burgundy fw-semibold">Asiento {existing.seatNumber}</span>
+                      : <span className="text-muted-small">—</span>}
+                  </td>
                   <td className="text-end">
-                    <button
-                      type="button"
-                      className="btn-burgundy"
-                      disabled={!isOpen}
-                      onClick={() => onSelect(f)}
-                      title={isOpen ? 'Hacer check-in en este vuelo' : 'Vuelo cerrado'}
-                    >
-                      Check-in <i className="bi bi-arrow-right ms-1"></i>
-                    </button>
+                    {alreadyChecked ? (
+                      <button
+                        type="button"
+                        className="btn-burgundy-outline"
+                        onClick={() => onViewExisting(f, existing)}
+                        title={`Confirmación #${existing.confirmationNumber}`}
+                      >
+                        Ver pase <i className="bi bi-eye ms-1"></i>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-burgundy"
+                        disabled={!isOpen}
+                        onClick={() => onSelect(f)}
+                        title={isOpen ? 'Hacer check-in en este vuelo' : 'Vuelo cerrado'}
+                      >
+                        Check-in <i className="bi bi-arrow-right ms-1"></i>
+                      </button>
+                    )}
                   </td>
                 </tr>
               );

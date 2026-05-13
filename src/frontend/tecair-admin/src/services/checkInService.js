@@ -1,5 +1,22 @@
 import { apiFetch } from './api.js';
 
+// Lista los check-ins ya realizados para una reservacion.
+// Corresponde a: GET /api/reservations/{reservationId}/check-ins
+//
+// Respuesta normalizada a camelCase:
+//   [{ confirmationNumber, reservationId, itineraryFlightId, planePlate, seatNumber }]
+export async function getCheckInsByReservation(reservationId) {
+  const data = await apiFetch(`/reservations/${reservationId}/check-ins`);
+
+  return data.map((c) => ({
+    confirmationNumber: c.confirmationNumber ?? c.ConfirmationNumber,
+    reservationId:      c.reservationId      ?? c.ReservationId,
+    itineraryFlightId:  c.itineraryFlightId  ?? c.ItineraryFlightId,
+    planePlate:         c.planePlate         ?? c.PlanePlate,
+    seatNumber:         c.seatNumber         ?? c.SeatNumber,
+  }));
+}
+
 // Registra un check-in asignando un asiento a una reservacion en un vuelo.
 // Corresponde a: POST /api/check-ins
 //
