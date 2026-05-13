@@ -136,3 +136,138 @@ Accept: application/json
   "collegeName": null
 }
 
+
+### 12. Actualizar usuario con datos validos
+# Esperado: 200 OK.
+# El email se toma de la ruta; si el body trajera email, la API no lo usa como llave editable.
+PUT {{baseUrl}}/api/users/carlos.mora@tecair.com
+Content-Type: application/json
+Accept: application/json
+
+{
+  "password": "hash_demo_carlos_actualizado",
+  "name": "Carlos",
+  "minit": null,
+  "lname": "Mora",
+  "phoneNum": "8888-5002",
+  "role": "CLIENT",
+  "isStudent": false,
+  "userCarnet": null,
+  "collegeName": null
+}
+
+
+### 13. Actualizar usuario inexistente
+# Esperado: 404 Not Found.
+PUT {{baseUrl}}/api/users/no.existe@tecair.com
+Content-Type: application/json
+Accept: application/json
+
+{
+  "password": "hash_demo_no_existe",
+  "name": "No",
+  "minit": null,
+  "lname": "Existe",
+  "phoneNum": "8888-5999",
+  "role": "CLIENT",
+  "isStudent": false,
+  "userCarnet": null,
+  "collegeName": null
+}
+
+
+### 14. Actualizar usuario con rol invalido
+# Esperado: 400 Bad Request.
+PUT {{baseUrl}}/api/users/carlos.mora@tecair.com
+Content-Type: application/json
+Accept: application/json
+
+{
+  "password": "hash_demo_carlos_actualizado",
+  "name": "Carlos",
+  "minit": null,
+  "lname": "Mora",
+  "phoneNum": "8888-5003",
+  "role": "EMPLOYEE",
+  "isStudent": false,
+  "userCarnet": null,
+  "collegeName": null
+}
+
+
+### 15. Cambiar usuario no estudiante a estudiante
+# Esperado: 200 OK con isStudent = true.
+PUT {{baseUrl}}/api/users/marco.aeropuerto@tecair.com
+Content-Type: application/json
+Accept: application/json
+
+{
+  "password": "hash_demo_marco",
+  "name": "Marco",
+  "minit": null,
+  "lname": "Vargas",
+  "phoneNum": "8888-5004",
+  "role": "CLIENT",
+  "isStudent": true,
+  "userCarnet": "20260001",
+  "collegeName": "Instituto Tecnologico de Costa Rica"
+}
+
+
+### 16. Cambiar usuario estudiante a no estudiante
+# Esperado: 200 OK con isStudent = false y sin datos de student.
+PUT {{baseUrl}}/api/users/sofia.salas@tecair.com
+Content-Type: application/json
+Accept: application/json
+
+{
+  "password": "hash_demo_sofia",
+  "name": "Sofia",
+  "minit": null,
+  "lname": "Salas",
+  "phoneNum": "8888-5005",
+  "role": "CLIENT",
+  "isStudent": false,
+  "userCarnet": null,
+  "collegeName": null
+}
+
+
+### 17. Preparar usuario para prueba de borrado
+# @name crearUsuarioParaBorrar
+# Esperado: 201 Created la primera vez.
+POST {{baseUrl}}/api/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "usuario.borrar@tecair.com",
+  "password": "hash_demo_borrar",
+  "name": "Usuario",
+  "lname": "Borrar",
+  "phoneNum": "8888-5010",
+  "role": "CLIENT",
+  "isStudent": false,
+  "userCarnet": null,
+  "collegeName": null
+}
+
+
+### 18. Eliminar usuario existente
+# Esperado: 204 No Content.
+DELETE {{baseUrl}}/api/users/usuario.borrar@tecair.com
+Accept: application/json
+
+
+### 19. Eliminar usuario inexistente
+# Esperado: 404 Not Found.
+DELETE {{baseUrl}}/api/users/no.existe@tecair.com
+Accept: application/json
+
+
+### 20. Eliminar usuario con reservaciones
+# ana.rojas@tecair.com tiene reservaciones en los datos semilla.
+# Esperado: 409 Conflict.
+DELETE {{baseUrl}}/api/users/ana.rojas@tecair.com
+Accept: application/json
+

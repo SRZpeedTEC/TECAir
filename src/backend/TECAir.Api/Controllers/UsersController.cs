@@ -10,6 +10,7 @@ namespace TECAir.Api.Controllers;
 // a respuestas HTTP como 200 OK, 201 Created, 400 Bad Request o 404 Not Found.
 [ApiController]
 [Route("users")]
+[Route("api/users")]
 public class UsersController(IUserService userService) : ControllerBase
 {
     // GET /users/{email}
@@ -62,6 +63,75 @@ public class UsersController(IUserService userService) : ControllerBase
             // PostgreSQL envia CheckViolation cuando se rompe una restriccion CHECK,
             // por ejemplo un rol que no sea CLIENT o ADMIN.
             return BadRequest(new { message = "The user data violates a database constraint." });
+        }
+    }
+
+    // PUT /api/users/{email}
+    // Actualiza datos editables. El email viene de la ruta para no modificar la llave primaria.
+    [HttpPut("{email}")]
+    public async Task<ActionResult<UserResponse>> Update(
+        string email,
+        UpdateUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await userService.UpdateAsync(email, request, cancellationToken);
+            if (!result.IsSuccess)
+            {
+                if (result.IsNotFound)
+                {
+                    return NotFound(new { message = result.ErrorMessage });
+                }
+
+                if (result.IsConflict)
+                {
+                    return Conflict(new { message = result.ErrorMessage });
+                }
+
+                return BadRequest(new { message = result.ErrorMessage });
+            }
+
+            return Ok(result.User);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return Conflict(new { message = "A user with that phone number or student carnet already exists." });
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
+        {
+            return BadRequest(new { message = "The user data violates a database constraint." });
+        }
+    }
+
+    // DELETE /api/users/{email}
+    // Elimina la cuenta si no existen reservaciones que deban conservar historial.
+    [HttpDelete("{email}")]
+    public async Task<IActionResult> Delete(
+        string email,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await userService.DeleteAsync(email, cancellationToken);
+            if (!result.IsSuccess)
+            {
+                if (result.IsNotFound)
+                {
+                    return NotFound(new { message = result.ErrorMessage });
+                }
+
+                if (result.IsConflict)
+                {
+                    return Conflict(new { message = result.ErrorMessage });
+                }
+            }
+
+            return NoContent();
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+        {
+            return Conflict(new { message = "The user cannot be deleted because related records still exist." });
         }
     }
 }
