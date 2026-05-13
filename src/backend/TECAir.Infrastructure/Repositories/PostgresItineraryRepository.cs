@@ -112,8 +112,10 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
 
         const string flightsSql = """
             SELECT
+                fii.itinerary_flight_id,
                 fii.flight_order,
                 f.flight_id,
+                f.plane_plate,
                 departure_airport.airport_name,
                 departure_airport.code,
                 departure_airport.city,
@@ -143,18 +145,20 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         {
             itinerary.Flights.Add(new ItineraryFlightResponse
             {
-                FlightOrder = flightsReader.GetInt32(0),
-                FlightId = flightsReader.GetInt32(1),
-                DepartureAirportName = flightsReader.GetString(2),
-                DepartureCode = flightsReader.GetString(3),
-                DepartureCity = flightsReader.GetString(4),
-                ArrivalAirportName = flightsReader.GetString(5),
-                ArrivalCode = flightsReader.GetString(6),
-                ArrivalCity = flightsReader.GetString(7),
-                DepartureDatetime = flightsReader.GetDateTime(8),
-                ArrivalDatetime = flightsReader.GetDateTime(9),
-                Gate = flightsReader.IsDBNull(10) ? null : flightsReader.GetString(10),
-                State = flightsReader.GetString(11)
+                ItineraryFlightId = flightsReader.GetInt32(0),
+                FlightOrder = flightsReader.GetInt32(1),
+                FlightId = flightsReader.GetInt32(2),
+                PlanePlate = flightsReader.GetString(3),
+                DepartureAirportName = flightsReader.GetString(4),
+                DepartureCode = flightsReader.GetString(5),
+                DepartureCity = flightsReader.GetString(6),
+                ArrivalAirportName = flightsReader.GetString(7),
+                ArrivalCode = flightsReader.GetString(8),
+                ArrivalCity = flightsReader.GetString(9),
+                DepartureDatetime = flightsReader.GetDateTime(10),
+                ArrivalDatetime = flightsReader.GetDateTime(11),
+                Gate = flightsReader.IsDBNull(12) ? null : flightsReader.GetString(12),
+                State = flightsReader.GetString(13)
             });
         }
 
