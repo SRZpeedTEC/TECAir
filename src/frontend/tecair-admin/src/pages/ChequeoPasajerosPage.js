@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import UnderDevelopment from '../components/UnderDevelopment.js';
+import CheckInFlow      from './CheckInFlow.js';
 
 // Sub-secciones del proceso de check-in.
 // Control de Equipajes vive aquí porque solo aplica durante el check-in.
@@ -13,6 +14,14 @@ export default function ChequeoPasajerosPage() {
 
   return (
     <div>
+      <header className="admin-page-header">
+        <h2 className="serif admin-page-title">Chequeo de Pasajeros</h2>
+        <p className="admin-page-subtitle">
+          Busca la reservación del pasajero, elige el vuelo OPEN del itinerario y asigna un
+          asiento para registrar el check-in.
+        </p>
+      </header>
+
       <div className="admin-sub-nav" role="tablist" aria-label="Sub-secciones de check-in">
         {TABS.map((tab) => (
           <button
@@ -29,7 +38,8 @@ export default function ChequeoPasajerosPage() {
       </div>
 
       <div role="tabpanel">
-        <UnderDevelopment />
+        {activeTab === 'checkin'   && <CheckInFlow />}
+        {activeTab === 'equipajes' && <UnderDevelopment />}
       </div>
     </div>
   );

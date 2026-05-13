@@ -8,8 +8,10 @@ export default function ConfirmPage({ state, goHome, goToMisViajes, currentUser,
   const subtotal = f ? f.price * total : 0;
   const tax      = Math.round(subtotal * 0.13); // IVA 13%
 
-  // Número de confirmación único generado al renderizar (solo demo local)
-  const confirmId = 'AT-' + Math.floor(Math.random() * 900000 + 100000);
+  // Lista de reservaciones reales creadas en backend (una por pasajero).
+  const reservations = state.reservations || [];
+  const primaryId    = reservations[0]?.reservationId;
+  const confirmId    = primaryId ? `AT-${String(primaryId).padStart(6, '0')}` : '—';
 
   return (
     <>
@@ -50,14 +52,21 @@ export default function ConfirmPage({ state, goHome, goToMisViajes, currentUser,
               <div className="fw-semibold">{state.from?.code} → {state.to?.code}</div>
               <div className="small">{f?.depart} — {f?.arrive} · {f?.duration}</div>
             </div>
-            {/* Pasajeros (asiento se asigna en check-in) */}
+            {/* Pasajeros con su numero de reservacion real (asiento se asigna en check-in) */}
             <div className="col-md-6">
               <div className="small text-muted">Pasajeros</div>
-              {(state.passengers || []).map((p, i) => (
-                <div key={i} className="small">
-                  {p.firstName} {p.lastName} — <span className="text-muted">asiento por asignar</span>
-                </div>
-              ))}
+              {(state.passengers || []).map((p, i) => {
+                const resId = reservations[i]?.reservationId;
+                return (
+                  <div key={i} className="small">
+                    {p.firstName} {p.lastName}
+                    {resId
+                      ? <> — <span className="text-burgundy">reserva #{resId}</span></>
+                      : <> — <span className="text-muted">asiento por asignar</span></>
+                    }
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
