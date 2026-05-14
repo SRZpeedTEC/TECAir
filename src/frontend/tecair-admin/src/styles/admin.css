@@ -1717,3 +1717,159 @@ body {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+/* ─── Grid de itinerarios para aplicar promoción ─── */
+.promo-itinerary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.promo-itinerary-card {
+  background: #fff;
+  border: 1px solid var(--burgundy-line);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.promo-itinerary-card:hover {
+  box-shadow: 0 4px 12px rgba(91, 25, 54, 0.10);
+  transform: translateY(-1px);
+}
+
+.promo-itinerary-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--burgundy-line);
+}
+
+.promo-itinerary-card-route {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--burgundy);
+  display: flex;
+  align-items: center;
+}
+
+.promo-itinerary-card-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--burgundy);
+  background: var(--burgundy-soft);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.promo-itinerary-card-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.promo-itinerary-card-meta > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.promo-itinerary-card-meta dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #777;
+  font-weight: 600;
+  margin: 0;
+}
+
+.promo-itinerary-card-meta dd {
+  margin: 2px 0 0 0;
+  font-size: 0.9rem;
+}
+
+.promo-itinerary-card-footer {
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+/* Estado: itinerario que ya tiene una promoción activa.
+   Se atenúa la tarjeta y el botón "Aplicar promoción" queda inhabilitado. */
+.promo-itinerary-card-busy {
+  background: #fafafa;
+  border-style: dashed;
+  opacity: 0.92;
+}
+
+.promo-itinerary-card-busy:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.promo-itinerary-card-warning {
+  background: var(--burgundy-soft);
+  color: var(--burgundy-deep);
+  border-left: 3px solid var(--burgundy);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+/* ─── Formulario de promoción ─── */
+.promo-form-itinerary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: var(--burgundy-soft);
+  border: 1px solid var(--burgundy-line);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.promo-form-itinerary-route {
+  font-weight: 600;
+  color: var(--burgundy);
+  display: flex;
+  align-items: center;
+}
+
+.promo-form-itinerary-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--burgundy-deep);
+}
+
+.promo-form-itinerary-price {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.promo-form-img-preview {
+  border: 1px dashed var(--burgundy-line);
+  border-radius: 8px;
+  padding: 8px;
+  max-width: 260px;
+}
+
+.promo-form-img-preview img {
+  max-width: 100%;
+  max-height: 160px;
+  display: block;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.promo-img-link {
+  color: var(--burgundy);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.promo-img-link:hover {
+  text-decoration: underline;
+}

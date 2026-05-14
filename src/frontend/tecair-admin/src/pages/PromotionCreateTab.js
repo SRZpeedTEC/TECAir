@@ -4,7 +4,7 @@ import AirportTypeahead   from '../components/AirportTypeahead.js';
 import Modal              from '../components/Modal.js';
 import PromotionForm      from '../components/PromotionForm.js';
 import { searchItineraries } from '../services/itineraryService.js';
-import { createPromotion }   from '../services/promotionService.js';
+import { createPromotion, getAllPromotions } from '../services/promotionService.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -25,6 +25,10 @@ export default function PromotionCreateTab() {
   const [origin,      setOrigin]      = useState(null);
   const [destination, setDestination] = useState(null);
   const [results,     setResults]     = useState([]);
+  // Set con los itineraryId que ya tienen una promoción registrada.
+  // Se usa para deshabilitar el botón "Aplicar promoción" en su tarjeta
+  // y respetar la regla de negocio: un itinerario, una sola promoción.
+  const [busyItineraryIds, setBusyItineraryIds] = useState(new Set());
   const [loading,     setLoading]     = useState(false);
   const [loadError,   setLoadError]   = useState(null);
   const [touched,     setTouched]     = useState(false);
@@ -44,8 +48,15 @@ export default function PromotionCreateTab() {
     setTouched(true);
     setToast(null);
     try {
-      const data = await searchItineraries(origin.code, destination.code);
+      // Pedimos itinerarios y promociones existentes en paralelo. Si /promotions
+      // falla, asumimos que ningún itinerario está ocupado y dejamos que el
+      // backend valide en el POST.
+      const [data, allPromos] = await Promise.all([
+        searchItineraries(origin.code, destination.code),
+        getAllPromotions().catch(() => []),
+      ]);
       setResults(data);
+      setBusyItineraryIds(new Set(allPromos.map((p) => p.itineraryId)));
     } catch (err) {
       setLoadError(err.message);
       setResults([]);
@@ -61,6 +72,13 @@ export default function PromotionCreateTab() {
       const created = await createPromotion(payload);
       setToast(`Promoción "${created.promotionCode}" creada correctamente para el itinerario #${created.itineraryId}.`);
       setSelected(null);
+      // Marcamos el itinerario como ocupado para impedir crear otra promo
+      // sobre él sin volver a buscar.
+      setBusyItineraryIds((prev) => {
+        const next = new Set(prev);
+        next.add(created.itineraryId);
+        return next;
+      });
     } catch (err) {
       setSubmitError(err.message);
     } finally {
@@ -137,52 +155,68 @@ export default function PromotionCreateTab() {
 
         {results.length > 0 && (
           <div className="promo-itinerary-grid mt-3">
-            {results.map((it) => (
-              <article key={it.itineraryId} className="promo-itinerary-card">
-                <header className="promo-itinerary-card-head">
-                  <div className="promo-itinerary-card-route">
-                    <span className="mono">{it.originCode}</span>
-                    <i className="bi bi-arrow-right mx-2" aria-hidden="true"></i>
-                    <span className="mono">{it.destinationCode}</span>
-                  </div>
-                  <span className="promo-itinerary-card-id">#{it.itineraryId}</span>
-                </header>
+            {results.map((it) => {
+              const hasPromo = busyItineraryIds.has(it.itineraryId);
+              return (
+                <article
+                  key={it.itineraryId}
+                  className={'promo-itinerary-card' + (hasPromo ? ' promo-itinerary-card-busy' : '')}
+                >
+                  <header className="promo-itinerary-card-head">
+                    <div className="promo-itinerary-card-route">
+                      <span className="mono">{it.originCode}</span>
+                      <i className="bi bi-arrow-right mx-2" aria-hidden="true"></i>
+                      <span className="mono">{it.destinationCode}</span>
+                    </div>
+                    <span className="promo-itinerary-card-id">#{it.itineraryId}</span>
+                  </header>
 
-                <dl className="promo-itinerary-card-meta">
-                  <div>
-                    <dt>Salida</dt>
-                    <dd className="mono">{fmtDateTime(it.departureDatetime)}</dd>
-                  </div>
-                  <div>
-                    <dt>Llegada</dt>
-                    <dd className="mono">{fmtDateTime(it.arrivalDatetime)}</dd>
-                  </div>
-                  <div>
-                    <dt>Tramos</dt>
-                    <dd>
-                      <span className="it-badge">
-                        {it.totalFlights} {it.totalFlights === 1 ? 'directo' : 'vuelos'}
-                      </span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Precio base</dt>
-                    <dd className="mono">{fmtPriceCRC(it.price)}</dd>
-                  </div>
-                </dl>
+                  <dl className="promo-itinerary-card-meta">
+                    <div>
+                      <dt>Salida</dt>
+                      <dd className="mono">{fmtDateTime(it.departureDatetime)}</dd>
+                    </div>
+                    <div>
+                      <dt>Llegada</dt>
+                      <dd className="mono">{fmtDateTime(it.arrivalDatetime)}</dd>
+                    </div>
+                    <div>
+                      <dt>Tramos</dt>
+                      <dd>
+                        <span className="it-badge">
+                          {it.totalFlights} {it.totalFlights === 1 ? 'directo' : 'vuelos'}
+                        </span>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Precio base</dt>
+                      <dd className="mono">{fmtPriceCRC(it.price)}</dd>
+                    </div>
+                  </dl>
 
-                <footer className="promo-itinerary-card-footer">
-                  <button
-                    type="button"
-                    className="btn-burgundy w-100"
-                    onClick={() => { setSubmitError(null); setSelected(it); }}
-                  >
-                    <i className="bi bi-tag me-2"></i>
-                    Aplicar promoción
-                  </button>
-                </footer>
-              </article>
-            ))}
+                  {hasPromo && (
+                    <div className="promo-itinerary-card-warning">
+                      <i className="bi bi-tag-fill me-2"></i>
+                      Este itinerario ya tiene una promoción activa. Elimínala desde la
+                      pestaña <strong>Consultar</strong> antes de crear una nueva.
+                    </div>
+                  )}
+
+                  <footer className="promo-itinerary-card-footer">
+                    <button
+                      type="button"
+                      className="btn-burgundy w-100"
+                      onClick={() => { setSubmitError(null); setSelected(it); }}
+                      disabled={hasPromo}
+                      title={hasPromo ? 'Ya tiene una promoción' : undefined}
+                    >
+                      <i className="bi bi-tag me-2"></i>
+                      {hasPromo ? 'Ya tiene promoción' : 'Aplicar promoción'}
+                    </button>
+                  </footer>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>

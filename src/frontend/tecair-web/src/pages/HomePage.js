@@ -1,11 +1,23 @@
 import { useState, useEffect } from 'react';
-import Nav          from '../components/Nav.js';
-import AirportField from '../components/AirportField.js';
-import DateField    from '../components/DateField.js';
-import PaxField     from '../components/PaxField.js';
-import PROMOS       from '../data/promos.js';
-import { fmtCRC }   from '../utils/format.js';
+import Nav             from '../components/Nav.js';
+import AirportField    from '../components/AirportField.js';
+import DateField       from '../components/DateField.js';
+import PaxField        from '../components/PaxField.js';
+import PromotionModal  from '../components/PromotionModal.js';
+import PROMOS          from '../data/promos.js';
+import AIRPORTS        from '../data/airports.js';
+import { fmtCRC }      from '../utils/format.js';
 import { getPromotionsWithItinerary } from '../services/promotionService.js';
+
+// Resuelve un código IATA a un objeto airport completo. Si el código no está
+// en la lista local de aeropuertos, devuelve un objeto mínimo con los datos
+// que sí tenemos de la promoción.
+function resolveAirport(code, fallbackCity) {
+  if (!code) return null;
+  return AIRPORTS.find((a) => a.code === code)
+      ?? { code, city: fallbackCity ?? code, country: '', region: '' };
+}
+
 
 // Paleta de gradientes usada como placeholder cuando la promo del backend no
 // tiene imageUrl. Se rota por índice para que cada tarjeta tenga color distinto.
@@ -39,6 +51,22 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
   const [promotions,    setPromotions]    = useState(null);
   const [promosLoading, setPromosLoading] = useState(true);
   const [promosError,   setPromosError]   = useState(null);
+
+  // Promo seleccionada para abrir el modal con detalles + "Reservar ahora".
+  const [selectedPromo, setSelectedPromo] = useState(null);
+
+  // Click en "Reservar ahora": prellena origen y destino, conserva las fechas
+  // y pasajeros que el cliente ya tenía. La promoción aplica a la fecha de
+  // compra (hoy), no a la del vuelo, así que no hace falta ajustar fechas.
+  const handleReservePromo = (p) => {
+    const origin = resolveAirport(p.originCode, p.originCity);
+    const dest   = resolveAirport(p.destinationCode, p.destinationCity);
+    if (!origin || !dest) return;
+
+    setState((s) => ({ ...s, from: origin, to: dest }));
+    setSelectedPromo(null);
+    goToResults();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -211,7 +239,12 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
                   : { '--c1': grad.c1, '--c2': grad.c2 };
                 return (
                   <div className="col-12 col-sm-6 col-lg-4" key={p.promotionCode}>
-                    <div className="promo-card">
+                    <button
+                      type="button"
+                      className="promo-card promo-card-button"
+                      onClick={() => setSelectedPromo(p)}
+                      aria-label={`Ver detalle de la promoción ${p.promotionCode} para ${city}`}
+                    >
                       <div
                         className={'ph ' + (p.imageUrl ? 'ph-photo' : 'ph-img')}
                         style={bgStyle}
@@ -228,7 +261,7 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
                           )}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   </div>
                 );
               })}
@@ -298,6 +331,12 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
           </div>
         </div>
       </footer>
+
+      <PromotionModal
+        promo={selectedPromo}
+        onClose={() => setSelectedPromo(null)}
+        onReserve={handleReservePromo}
+      />
     </>
   );
 }
