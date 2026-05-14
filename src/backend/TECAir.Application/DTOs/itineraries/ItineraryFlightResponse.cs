@@ -4,8 +4,10 @@ namespace TECAir.Application.DTOs.Itineraries;
 // Trae nombres, codigos y ciudades para evitar consultas extra en el cliente.
 public class ItineraryFlightResponse
 {
+    public int ItineraryFlightId { get; set; }
     public int FlightOrder { get; set; }
     public int FlightId { get; set; }
+    public string PlanePlate { get; set; } = string.Empty;
     public string DepartureAirportName { get; set; } = string.Empty;
     public string DepartureCode { get; set; } = string.Empty;
     public string DepartureCity { get; set; } = string.Empty;

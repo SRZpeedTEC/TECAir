@@ -38,15 +38,20 @@ public class ReservationsController(IReservationService reservationService) : Co
             result.Reservation);
     }
 
-    // GET /api/reservations/search?passengerId=...&name=...
-    // Permite localizar reservaciones por pasaporte exacto o por nombre parcial.
+    // GET /api/reservations/search?reservationId=...&passengerId=...&name=...
+    // Permite localizar reservaciones por id exacto, pasaporte exacto o nombre parcial.
     [HttpGet("search")]
     public async Task<ActionResult<IReadOnlyList<ReservationSearchResponse>>> Search(
+        [FromQuery] int? reservationId,
         [FromQuery] string? passengerId,
         [FromQuery] string? name,
         CancellationToken cancellationToken)
     {
-        var result = await reservationService.SearchAsync(passengerId, name, cancellationToken);
+        var result = await reservationService.SearchAsync(
+            reservationId,
+            passengerId,
+            name,
+            cancellationToken);
         if (!result.IsSuccess)
         {
             return BadRequest(new { message = result.ErrorMessage });

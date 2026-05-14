@@ -28,16 +28,17 @@ Accept: application/json
 ### 5. Crear usuario cliente normal
 # Esperado la primera vez: 201 Created.
 # Si se ejecuta de nuevo con el mismo email: 409 Conflict.
+
 POST {{baseUrl}}/users
 Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "prueba.cliente@tecair.com",
-  "password": "hash_demo_prueba_cliente",
-  "name": "Prueba",
-  "lname": "Cliente",
-  "phoneNum": "8888-9001",
+  "email": "santiboza3008@gmail.com",
+  "password": "HolaMundo1",
+  "name": "Santiago",
+  "lname": "Boza Quiros",
+  "phoneNum": "7124-2520",
   "role": "CLIENT",
   "isStudent": false,
   "userCarnet": null,
@@ -45,10 +46,40 @@ Accept: application/json
 }
 
 
+POST {{baseUrl}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "santirob123@gmail.com",
+  "password": "AmoPython123",
+  "name": "Santiago",
+  "lname": "Robles Obando",
+  "phoneNum": "1234-5678",
+  "role": "CLIENT",
+  "isStudent": True,
+  "userCarnet": 2022207100,
+  "collegeName": "Instituto Tecnologico de Costa Rica"
+}
+
+
 ### 6. Verificar usuario cliente creado
 # Esperado: 200 OK despues de ejecutar la prueba anterior.
-GET {{baseUrl}}/users/prueba.cliente@tecair.com
+# La respuesta no debe incluir password ni password_hash.
+GET {{baseUrl}}/users/santiboza3008@gmail.com
 Accept: application/json
+
+
+### 6.1 Verificar login del usuario cliente creado
+# Esperado: 200 OK usando la misma contrasena plana enviada al crear el usuario.
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "santiboza3008@gmail.com",
+  "password": "HolaMundo1"
+}
 
 
 ### 7. Crear usuario estudiante
@@ -60,7 +91,7 @@ Accept: application/json
 
 {
   "email": "prueba.estudiante@tecair.com",
-  "password": "hash_demo_prueba_estudiante",
+  "password": "123456",
   "name": "Prueba",
   "lname": "Estudiante",
   "phoneNum": "8888-9002",
@@ -86,7 +117,7 @@ Accept: application/json
 
 {
   "email": "ana.rojas@tecair.com",
-  "password": "hash_demo_repetido",
+  "password": "123456",
   "name": "Ana",
   "lname": "Rojas",
   "phoneNum": "8888-1001",
@@ -106,7 +137,7 @@ Accept: application/json
 
 {
   "email": "estudiante.invalido@tecair.com",
-  "password": "hash_demo_invalido",
+  "password": "123456",
   "name": "Estudiante",
   "lname": "Invalido",
   "phoneNum": "8888-9003",
@@ -126,7 +157,7 @@ Accept: application/json
 
 {
   "email": "rol.invalido@tecair.com",
-  "password": "hash_demo_rol_invalido",
+  "password": "123456",
   "name": "Rol",
   "lname": "Invalido",
   "phoneNum": "8888-9004",
@@ -145,7 +176,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "password": "hash_demo_carlos_actualizado",
+  "password": "123456",
   "name": "Carlos",
   "minit": null,
   "lname": "Mora",
@@ -164,7 +195,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "password": "hash_demo_no_existe",
+  "password": "123456",
   "name": "No",
   "minit": null,
   "lname": "Existe",
@@ -183,7 +214,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "password": "hash_demo_carlos_actualizado",
+  "password": "123456",
   "name": "Carlos",
   "minit": null,
   "lname": "Mora",
@@ -202,7 +233,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "password": "hash_demo_marco",
+  "password": "123456",
   "name": "Marco",
   "minit": null,
   "lname": "Vargas",
@@ -221,7 +252,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "password": "hash_demo_sofia",
+  "password": "123456",
   "name": "Sofia",
   "minit": null,
   "lname": "Salas",
@@ -242,7 +273,7 @@ Accept: application/json
 
 {
   "email": "usuario.borrar@tecair.com",
-  "password": "hash_demo_borrar",
+  "password": "123456",
   "name": "Usuario",
   "lname": "Borrar",
   "phoneNum": "8888-5010",

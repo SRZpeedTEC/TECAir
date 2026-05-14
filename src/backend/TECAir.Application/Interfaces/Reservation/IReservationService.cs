@@ -10,6 +10,7 @@ public interface IReservationService
         CancellationToken cancellationToken = default);
 
     Task<SearchReservationsServiceResult> SearchAsync(
+        int? reservationId,
         string? passengerId,
         string? name,
         CancellationToken cancellationToken = default);

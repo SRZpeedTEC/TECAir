@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import Nav        from '../../components/Nav.js';
-import Stepper    from '../../components/Stepper.js';
+import Nav from '../../components/Nav.js';
+import Stepper from '../../components/Stepper.js';
 import SummarySide from '../../components/SummarySide.js';
+import { createPassenger, mapGenderToCode } from '../../services/passengerService.js';
+import { createReservation, generatePaymentReference } from '../../services/reservationService.js';
+
+// Fallback al usuario semilla cuando no hay sesion real (loginUser/registerUser
+// estan stubbed). Garantiza que reservation.user_email apunte a un app_user real.
+const FALLBACK_USER_EMAIL = 'ana.rojas@tecair.com';
 
 // Pantalla de datos de pasajeros: formulario con validación para cada viajero
-export default function PaxPage({ state, setState, goBack, goToSeats, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
+export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const total = state.pax.adults;
 
   // Inicializa la lista con los datos ya ingresados o con campos vacíos
@@ -14,6 +20,8 @@ export default function PaxPage({ state, setState, goBack, goToSeats, goToMisVia
     })
   );
   const [errs, setErrs] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState(null);
 
   // Actualiza un campo específico de un pasajero
   const update = (i, key, val) => {
@@ -22,20 +30,77 @@ export default function PaxPage({ state, setState, goBack, goToSeats, goToMisVia
     setPaxList(next);
   };
 
-  // Valida todos los campos requeridos antes de continuar
-  const submit = () => {
+  // Valida todos los campos requeridos antes de continuar y luego crea
+  // pasajeros + reservaciones (una por cada pasajero) contra el backend.
+  const submit = async () => {
     const e = {};
     paxList.forEach((p, i) => {
-      if (!p.firstName)                  e[i + 'firstName'] = true;
-      if (!p.lastName)                   e[i + 'lastName']  = true;
+      if (!p.firstName) e[i + 'firstName'] = true;
+      if (!p.lastName) e[i + 'lastName'] = true;
       if (!p.passport || p.passport.length < 6) e[i + 'passport'] = true;
-      if (!p.dob)                        e[i + 'dob']       = true;
-      if (!p.gender)                     e[i + 'gender']    = true;
+      if (!p.dob) e[i + 'dob'] = true;
+      if (!p.gender) e[i + 'gender'] = true;
     });
     setErrs(e);
-    if (Object.keys(e).length === 0) {
-      setState((s) => ({ ...s, passengers: paxList }));
-      goToSeats();
+    if (Object.keys(e).length > 0) return;
+
+    const itineraryId = state.selectedFlight?.itineraryId;
+    if (!itineraryId) {
+      setApiError('No hay un itinerario seleccionado. Volve a elegir un vuelo.');
+      return;
+    }
+
+    setSubmitting(true);
+    setApiError(null);
+
+    try {
+      // currentUser.email puede no existir en app_user (auth esta stubbed),
+      // por lo que para esta demo siempre cae al usuario semilla real.
+      const userEmail = FALLBACK_USER_EMAIL;
+      const reservations = [];
+
+      for (let i = 0; i < paxList.length; i++) {
+        const p = paxList[i];
+        const passportId = p.passport.trim().toUpperCase();
+
+        // 1. Asegura que el passenger exista. 409 = ya existia, lo reusamos.
+        try {
+          await createPassenger({
+            passportId,
+            birthday: p.dob,
+            gender: mapGenderToCode(p.gender),
+            name: p.firstName.trim(),
+            lname: p.lastName.trim(),
+          });
+        } catch (err) {
+          if (!/409|already exists|exists with that passport|conflict/i.test(err.message)) {
+            throw err;
+          }
+        }
+
+        // 2. Crea la reservacion pagada para este pasajero.
+        const reservation = await createReservation({
+          itineraryId,
+          userEmail,
+          passengerId: passportId,
+          state: 'PAID',
+          paymentReference: generatePaymentReference(i),
+        });
+
+        reservations.push(reservation);
+      }
+
+      setState((s) => ({
+        ...s,
+        passengers: paxList,
+        reservations,
+        bookingEmail: userEmail,
+      }));
+      goToConfirm();
+    } catch (err) {
+      setApiError(err.message || 'No se pudo crear la reservación.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -127,13 +192,22 @@ export default function PaxPage({ state, setState, goBack, goToSeats, goToMisVia
               </div>
             ))}
 
+            {apiError && (
+              <div className="alert mt-3" style={{ background: '#fde8ee', color: '#9b2335', border: 'none', borderRadius: 12 }}>
+                <i className="bi bi-exclamation-triangle me-2"></i>
+                {apiError}
+              </div>
+            )}
+
             {/* Botones de navegación */}
             <div className="d-flex justify-content-between mt-4">
-              <button className="btn btn-burgundy-outline" onClick={goBack}>
+              <button className="btn btn-burgundy-outline" onClick={goBack} disabled={submitting}>
                 <i className="bi bi-arrow-left me-2"></i>Volver a vuelos
               </button>
-              <button className="btn btn-burgundy" onClick={submit}>
-                Continuar a asientos <i className="bi bi-arrow-right ms-2"></i>
+              <button className="btn btn-burgundy" onClick={submit} disabled={submitting}>
+                {submitting
+                  ? <><span className="spinner-border spinner-border-sm me-2"></span>Creando reservación…</>
+                  : <>Confirmar reservación <i className="bi bi-arrow-right ms-2"></i></>}
               </button>
             </div>
           </div>

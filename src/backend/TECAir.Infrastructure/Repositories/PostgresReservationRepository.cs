@@ -156,6 +156,7 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
     }
 
     public async Task<IReadOnlyList<ReservationSearchResponse>> SearchAsync(
+        int? reservationId,
         string? passengerId,
         string? name,
         CancellationToken cancellationToken = default)
@@ -179,7 +180,8 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
             INNER JOIN tecair.itinerary i
                 ON i.itinerary_id = r.itinerary_id
             WHERE
-                (@passenger_id IS NOT NULL AND r.passenger_id = @passenger_id)
+                (@reservation_id IS NOT NULL AND r.reservation_id = @reservation_id)
+                OR (@passenger_id IS NOT NULL AND r.passenger_id = @passenger_id)
                 OR (
                     @name IS NOT NULL
                     AND (
@@ -193,6 +195,8 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
         var reservations = new List<ReservationSearchResponse>();
 
         await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.Add("reservation_id", NpgsqlDbType.Integer).Value =
+            (object?)reservationId ?? DBNull.Value;
         command.Parameters.Add("passenger_id", NpgsqlDbType.Varchar).Value =
             (object?)passengerId ?? DBNull.Value;
         command.Parameters.Add("name", NpgsqlDbType.Varchar).Value = (object?)name ?? DBNull.Value;

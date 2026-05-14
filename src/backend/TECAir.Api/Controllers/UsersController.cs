@@ -45,6 +45,11 @@ public class UsersController(IUserService userService) : ControllerBase
             var result = await userService.CreateAsync(request, cancellationToken);
             if (!result.IsSuccess)
             {
+                if (result.IsConflict)
+                {
+                    return Conflict(new { message = result.ErrorMessage });
+                }
+
                 // Si el servicio detecto datos invalidos, se responde 400.
                 return BadRequest(new { message = result.ErrorMessage });
             }

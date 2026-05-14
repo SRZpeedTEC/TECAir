@@ -34,13 +34,14 @@ RESTART IDENTITY CASCADE;
 -- =========================
 
 -- Estos usuarios permiten probar clientes normales, estudiantes, funcionarios y administradores.
+-- Todos usan la contrasena de prueba "123456", almacenada como BCrypt para no sembrar passwords planos.
 INSERT INTO app_user (email, password_hash, name,  last_name, phone_number, role)
 VALUES
-    ('ana.rojas@tecair.com', 'hash_demo_ana', 'Ana', 'Rojas', '8888-1001', 'CLIENT'),
-    ('carlos.mora@tecair.com', 'hash_demo_carlos', 'Carlos', 'Mora', '8888-1002', 'CLIENT'),
-    ('sofia.salas@tecair.com', 'hash_demo_sofia', 'Sofia', 'Salas', '8888-1003', 'CLIENT'),
-    ('marco.aeropuerto@tecair.com', 'hash_demo_marco', 'Marco', 'Vargas', '8888-2001', 'CLIENT'),
-    ('admin@tecair.com', 'hash_demo_admin', 'Laura', 'Admin', '8888-3001', 'ADMIN');
+    ('ana.rojas@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Ana', 'Rojas', '8888-1001', 'CLIENT'),
+    ('carlos.mora@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Carlos', 'Mora', '8888-1002', 'CLIENT'),
+    ('sofia.salas@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Sofia', 'Salas', '8888-1003', 'CLIENT'),
+    ('marco.aeropuerto@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Marco', 'Vargas', '8888-2001', 'CLIENT'),
+    ('admin@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Laura', 'Admin', '8888-3001', 'ADMIN');
 
 -- Estos registros identifican cuales usuarios son estudiantes y acumulan millas.
 INSERT INTO student (user_email, user_carnet, college_name, miles)

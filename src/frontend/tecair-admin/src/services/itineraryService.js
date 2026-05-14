@@ -10,13 +10,13 @@ export async function searchItineraries(originCode, destinationCode) {
   const data = await apiFetch(`/itineraries/search?${params}`);
 
   return data.map((it) => ({
-    itineraryId:       it.itineraryId       ?? it.ItineraryId,
-    price:             Number(it.price      ?? it.Price),
-    originCode:        it.originCode        ?? it.OriginCode,
-    destinationCode:   it.destinationCode   ?? it.DestinationCode,
-    totalFlights:      it.totalFlights      ?? it.TotalFlights,
+    itineraryId: it.itineraryId ?? it.ItineraryId,
+    price: Number(it.price ?? it.Price),
+    originCode: it.originCode ?? it.OriginCode,
+    destinationCode: it.destinationCode ?? it.DestinationCode,
+    totalFlights: it.totalFlights ?? it.TotalFlights,
     departureDatetime: it.departureDatetime ?? it.DepartureDatetime,
-    arrivalDatetime:   it.arrivalDatetime   ?? it.ArrivalDatetime,
+    arrivalDatetime: it.arrivalDatetime ?? it.ArrivalDatetime,
   }));
 }
 
@@ -30,20 +30,22 @@ export async function getItineraryById(id) {
   const data = await apiFetch(`/itineraries/${id}`);
   return {
     itineraryId: data.itineraryId ?? data.ItineraryId,
-    price:       Number(data.price ?? data.Price),
+    price: Number(data.price ?? data.Price),
     flights: (data.flights ?? data.Flights ?? []).map((f) => ({
-      flightOrder:          f.flightOrder          ?? f.FlightOrder,
-      flightId:             f.flightId             ?? f.FlightId,
+      itineraryFlightId: f.itineraryFlightId ?? f.ItineraryFlightId,
+      flightOrder: f.flightOrder ?? f.FlightOrder,
+      flightId: f.flightId ?? f.FlightId,
+      planePlate: f.planePlate ?? f.PlanePlate,
       departureAirportName: f.departureAirportName ?? f.DepartureAirportName,
-      departureCode:        f.departureCode        ?? f.DepartureCode,
-      departureCity:        f.departureCity        ?? f.DepartureCity,
-      arrivalAirportName:   f.arrivalAirportName   ?? f.ArrivalAirportName,
-      arrivalCode:          f.arrivalCode          ?? f.ArrivalCode,
-      arrivalCity:          f.arrivalCity          ?? f.ArrivalCity,
-      departureDatetime:    f.departureDatetime    ?? f.DepartureDatetime,
-      arrivalDatetime:      f.arrivalDatetime      ?? f.ArrivalDatetime,
-      gate:                 f.gate                 ?? f.Gate,
-      state:                f.state                ?? f.State,
+      departureCode: f.departureCode ?? f.DepartureCode,
+      departureCity: f.departureCity ?? f.DepartureCity,
+      arrivalAirportName: f.arrivalAirportName ?? f.ArrivalAirportName,
+      arrivalCode: f.arrivalCode ?? f.ArrivalCode,
+      arrivalCity: f.arrivalCity ?? f.ArrivalCity,
+      departureDatetime: f.departureDatetime ?? f.DepartureDatetime,
+      arrivalDatetime: f.arrivalDatetime ?? f.ArrivalDatetime,
+      gate: f.gate ?? f.Gate,
+      state: f.state ?? f.State,
     })),
   };
 }
@@ -57,9 +59,9 @@ export async function getItineraryById(id) {
 //   409 → vuelos o órdenes duplicados, escalas que no encadenan, vuelos no OPEN
 export async function createItinerary(payload) {
   return apiFetch('/itineraries', {
-    method:  'POST',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -68,9 +70,9 @@ export async function createItinerary(payload) {
 // Reemplaza precio + lista completa de vuelos.
 export async function updateItinerary(id, payload) {
   return apiFetch(`/itineraries/${id}`, {
-    method:  'PUT',
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload),
+    body: JSON.stringify(payload),
   });
 }
 
