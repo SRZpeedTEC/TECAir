@@ -193,58 +193,40 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
     // Validaciones que dependen solo del JSON recibido.
     private static string? ValidateCreateItineraryRequest(CreateItineraryRequest request)
     {
-        if (request.Price < 0)
-        {
-            return "Price must be greater than or equal to 0.";
-        }
-
-        if (request.Flights is null)
-        {
-            return "Flights list is required.";
-        }
-
-        if (request.Flights.Count == 0)
-        {
-            return "Itinerary must contain at least one flight.";
-        }
-
-        if (request.Flights.Any(flight => flight.FlightId <= 0))
-        {
-            return "Flight id must be greater than 0.";
-        }
-
-        if (request.Flights.Any(flight => flight.FlightOrder <= 0))
-        {
-            return "Flight order must be greater than 0.";
-        }
-
-        return null;
+        return ValidateItineraryRequest(request.Price, request.Flights);
     }
 
     // Mismas reglas de estructura que la creacion, aplicadas al reemplazo completo de vuelos.
     private static string? ValidateUpdateItineraryRequest(UpdateItineraryRequest request)
     {
-        if (request.Price < 0)
+        return ValidateItineraryRequest(request.Price, request.Flights);
+    }
+
+    private static string? ValidateItineraryRequest(
+        decimal price,
+        IReadOnlyCollection<CreateItineraryFlightRequest>? flights)
+    {
+        if (price < 0)
         {
             return "Price must be greater than or equal to 0.";
         }
 
-        if (request.Flights is null)
+        if (flights is null)
         {
             return "Flights list is required.";
         }
 
-        if (request.Flights.Count == 0)
+        if (flights.Count == 0)
         {
             return "Itinerary must contain at least one flight.";
         }
 
-        if (request.Flights.Any(flight => flight.FlightId <= 0))
+        if (flights.Any(flight => flight.FlightId <= 0))
         {
             return "Flight id must be greater than 0.";
         }
 
-        if (request.Flights.Any(flight => flight.FlightOrder <= 0))
+        if (flights.Any(flight => flight.FlightOrder <= 0))
         {
             return "Flight order must be greater than 0.";
         }
