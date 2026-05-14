@@ -168,113 +168,86 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
     // Reglas que se pueden validar solo con el contenido del request.
     private static string? ValidateCreateFlightRequest(CreateFlightRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.PlanePlate))
-        {
-            return "Plane plate is required.";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.AirportDepartsFromId))
-        {
-            return "Departure airport is required.";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.AirportArrivesToId))
-        {
-            return "Arrival airport is required.";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.State))
-        {
-            return "State is required.";
-        }
-
-        if (request.DepartureDatetime == default)
-        {
-            return "Departure datetime is required.";
-        }
-
-        if (request.ArrivalDatetime == default)
-        {
-            return "Arrival datetime is required.";
-        }
-
-        var departureAirport = request.AirportDepartsFromId.Trim().ToUpperInvariant();
-        var arrivalAirport = request.AirportArrivesToId.Trim().ToUpperInvariant();
-        if (departureAirport == arrivalAirport)
-        {
-            return "Departure and arrival airports must be different.";
-        }
-
-        if (request.ArrivalDatetime <= request.DepartureDatetime)
-        {
-            return "Arrival datetime must be after departure datetime.";
-        }
-
-        var state = request.State.Trim().ToUpperInvariant();
-        if (state is not "OPEN" and not "CLOSED")
-        {
-            return "State must be OPEN or CLOSED.";
-        }
-
-        if (request.Gate is not null && string.IsNullOrWhiteSpace(request.Gate))
-        {
-            return "Gate cannot be empty.";
-        }
-
-        return null;
+        return ValidateFlightData(
+            request.PlanePlate,
+            request.AirportDepartsFromId,
+            request.AirportArrivesToId,
+            request.State,
+            request.Gate,
+            request.DepartureDatetime,
+            request.ArrivalDatetime);
     }
 
     private static string? ValidateUpdateFlightRequest(UpdateFlightRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.PlanePlate))
+        return ValidateFlightData(
+            request.PlanePlate,
+            request.AirportDepartsFromId,
+            request.AirportArrivesToId,
+            request.State,
+            request.Gate,
+            request.DepartureDatetime,
+            request.ArrivalDatetime);
+    }
+
+    private static string? ValidateFlightData(
+        string planePlate,
+        string departureAirportId,
+        string arrivalAirportId,
+        string stateValue,
+        string? gate,
+        DateTime departureDatetime,
+        DateTime arrivalDatetime)
+    {
+        if (string.IsNullOrWhiteSpace(planePlate))
         {
             return "Plane plate is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(request.AirportDepartsFromId))
+        if (string.IsNullOrWhiteSpace(departureAirportId))
         {
             return "Departure airport is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(request.AirportArrivesToId))
+        if (string.IsNullOrWhiteSpace(arrivalAirportId))
         {
             return "Arrival airport is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(request.State))
+        if (string.IsNullOrWhiteSpace(stateValue))
         {
             return "State is required.";
         }
 
-        if (request.DepartureDatetime == default)
+        if (departureDatetime == default)
         {
             return "Departure datetime is required.";
         }
 
-        if (request.ArrivalDatetime == default)
+        if (arrivalDatetime == default)
         {
             return "Arrival datetime is required.";
         }
 
-        var departureAirport = request.AirportDepartsFromId.Trim().ToUpperInvariant();
-        var arrivalAirport = request.AirportArrivesToId.Trim().ToUpperInvariant();
+        var departureAirport = departureAirportId.Trim().ToUpperInvariant();
+        var arrivalAirport = arrivalAirportId.Trim().ToUpperInvariant();
         if (departureAirport == arrivalAirport)
         {
             return "Departure and arrival airports must be different.";
         }
 
-        if (request.ArrivalDatetime <= request.DepartureDatetime)
+        if (arrivalDatetime <= departureDatetime)
         {
             return "Arrival datetime must be after departure datetime.";
         }
 
-        var state = request.State.Trim().ToUpperInvariant();
+        var state = stateValue.Trim().ToUpperInvariant();
         if (state is not "OPEN" and not "CLOSED")
         {
             return "State must be OPEN or CLOSED.";
         }
 
-        if (request.Gate is not null && string.IsNullOrWhiteSpace(request.Gate))
+        if (gate is not null && string.IsNullOrWhiteSpace(gate))
         {
             return "Gate cannot be empty.";
         }

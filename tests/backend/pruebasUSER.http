@@ -29,21 +29,6 @@ Accept: application/json
 # Esperado la primera vez: 201 Created.
 # Si se ejecuta de nuevo con el mismo email: 409 Conflict.
 
-POST {{baseUrl}}/users
-Content-Type: application/json
-Accept: application/json
-
-{
-  "email": "santiboza3008@gmail.com",
-  "password": "HolaMundo1",
-  "name": "Santiago",
-  "lname": "Boza Quiros",
-  "phoneNum": "7124-2520",
-  "role": "CLIENT",
-  "isStudent": false,
-  "userCarnet": null,
-  "collegeName": null
-}
 
 
 POST {{baseUrl}}/users
@@ -57,8 +42,8 @@ Accept: application/json
   "lname": "Robles Obando",
   "phoneNum": "1234-5678",
   "role": "CLIENT",
-  "isStudent": True,
-  "userCarnet": 2022207100,
+  "isStudent": true,
+  "userCarnet": "2022207100",
   "collegeName": "Instituto Tecnologico de Costa Rica"
 }
 
@@ -69,7 +54,7 @@ Accept: application/json
 GET {{baseUrl}}/users/santiboza3008@gmail.com
 Accept: application/json
 
-
+  
 ### 6.1 Verificar login del usuario cliente creado
 # Esperado: 200 OK usando la misma contrasena plana enviada al crear el usuario.
 POST {{baseUrl}}/api/auth/login
@@ -77,8 +62,8 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "santiboza3008@gmail.com",
-  "password": "HolaMundo1"
+  "email": "santirob123@gmail.com",
+  "password": "AmoPython123"
 }
 
 
@@ -178,7 +163,6 @@ Accept: application/json
 {
   "password": "123456",
   "name": "Carlos",
-  "minit": null,
   "lname": "Mora",
   "phoneNum": "8888-5002",
   "role": "CLIENT",
@@ -197,7 +181,6 @@ Accept: application/json
 {
   "password": "123456",
   "name": "No",
-  "minit": null,
   "lname": "Existe",
   "phoneNum": "8888-5999",
   "role": "CLIENT",
@@ -216,7 +199,6 @@ Accept: application/json
 {
   "password": "123456",
   "name": "Carlos",
-  "minit": null,
   "lname": "Mora",
   "phoneNum": "8888-5003",
   "role": "EMPLOYEE",
@@ -235,7 +217,6 @@ Accept: application/json
 {
   "password": "123456",
   "name": "Marco",
-  "minit": null,
   "lname": "Vargas",
   "phoneNum": "8888-5004",
   "role": "CLIENT",
@@ -254,7 +235,6 @@ Accept: application/json
 {
   "password": "123456",
   "name": "Sofia",
-  "minit": null,
   "lname": "Salas",
   "phoneNum": "8888-5005",
   "role": "CLIENT",
