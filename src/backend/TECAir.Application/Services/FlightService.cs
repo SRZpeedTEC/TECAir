@@ -260,11 +260,11 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
     {
         return new CreateFlightRequest
         {
-            PlanePlate = request.PlanePlate.Trim(),
-            AirportDepartsFromId = request.AirportDepartsFromId.Trim().ToUpperInvariant(),
-            AirportArrivesToId = request.AirportArrivesToId.Trim().ToUpperInvariant(),
-            State = request.State.Trim().ToUpperInvariant(),
-            Gate = request.Gate?.Trim(),
+            PlanePlate = NormalizePlanePlate(request.PlanePlate),
+            AirportDepartsFromId = NormalizeAirportCode(request.AirportDepartsFromId),
+            AirportArrivesToId = NormalizeAirportCode(request.AirportArrivesToId),
+            State = NormalizeState(request.State),
+            Gate = NormalizeGate(request.Gate),
             DepartureDatetime = request.DepartureDatetime,
             ArrivalDatetime = request.ArrivalDatetime
         };
@@ -274,13 +274,33 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
     {
         return new UpdateFlightRequest
         {
-            PlanePlate = request.PlanePlate.Trim(),
-            AirportDepartsFromId = request.AirportDepartsFromId.Trim().ToUpperInvariant(),
-            AirportArrivesToId = request.AirportArrivesToId.Trim().ToUpperInvariant(),
-            State = request.State.Trim().ToUpperInvariant(),
-            Gate = request.Gate?.Trim(),
+            PlanePlate = NormalizePlanePlate(request.PlanePlate),
+            AirportDepartsFromId = NormalizeAirportCode(request.AirportDepartsFromId),
+            AirportArrivesToId = NormalizeAirportCode(request.AirportArrivesToId),
+            State = NormalizeState(request.State),
+            Gate = NormalizeGate(request.Gate),
             DepartureDatetime = request.DepartureDatetime,
             ArrivalDatetime = request.ArrivalDatetime
         };
+    }
+
+    private static string NormalizePlanePlate(string planePlate)
+    {
+        return planePlate.Trim();
+    }
+
+    private static string NormalizeAirportCode(string airportCode)
+    {
+        return airportCode.Trim().ToUpperInvariant();
+    }
+
+    private static string NormalizeState(string state)
+    {
+        return state.Trim().ToUpperInvariant();
+    }
+
+    private static string? NormalizeGate(string? gate)
+    {
+        return gate?.Trim();
     }
 }
