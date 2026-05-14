@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Npgsql;
 using TECAir.Application.DTOs.Promotions;
 using TECAir.Application.Interfaces;
 
@@ -42,40 +41,25 @@ public class PromotionsController(IPromotionService promotionService) : Controll
         CreatePromotionRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await promotionService.CreateAsync(request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            var result = await promotionService.CreateAsync(request, cancellationToken);
-            if (!result.IsSuccess)
+            if (result.IsNotFound)
             {
-                if (result.IsNotFound)
-                {
-                    return NotFound(new { message = result.ErrorMessage });
-                }
-
-                if (result.IsConflict)
-                {
-                    return Conflict(new { message = result.ErrorMessage });
-                }
-
-                return BadRequest(new { message = result.ErrorMessage });
+                return NotFound(new { message = result.ErrorMessage });
             }
 
-            return Created(
-                $"/promotions/{Uri.EscapeDataString(result.Promotion!.PromotionCode)}",
-                result.Promotion);
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
         }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
-        {
-            return Conflict(new { message = "A promotion with that code already exists." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
-        {
-            return Conflict(new { message = "The promotion references related data that does not exist." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
-        {
-            return BadRequest(new { message = "The promotion data violates a database constraint." });
-        }
+
+        return Created(
+            $"/promotions/{Uri.EscapeDataString(result.Promotion!.PromotionCode)}",
+            result.Promotion);
     }
 
     // PUT /promotions/{promotionCode}
@@ -85,34 +69,23 @@ public class PromotionsController(IPromotionService promotionService) : Controll
         UpdatePromotionRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await promotionService.UpdateAsync(promotionCode, request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            var result = await promotionService.UpdateAsync(promotionCode, request, cancellationToken);
-            if (!result.IsSuccess)
+            if (result.IsNotFound)
             {
-                if (result.IsNotFound)
-                {
-                    return NotFound(new { message = result.ErrorMessage });
-                }
-
-                if (result.IsConflict)
-                {
-                    return Conflict(new { message = result.ErrorMessage });
-                }
-
-                return BadRequest(new { message = result.ErrorMessage });
+                return NotFound(new { message = result.ErrorMessage });
             }
 
-            return Ok(result.Promotion);
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
         }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
-        {
-            return Conflict(new { message = "The promotion references related data that does not exist." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
-        {
-            return BadRequest(new { message = "The promotion data violates a database constraint." });
-        }
+
+        return Ok(result.Promotion);
     }
 
     // DELETE /promotions/{promotionCode}

@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Npgsql;
 using TECAir.Application.DTOs.Baggages;
 using TECAir.Application.Interfaces;
 
@@ -51,34 +50,23 @@ public class BaggagesController(IBaggageService baggageService) : ControllerBase
         CreateBaggageRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await baggageService.CreateAsync(request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            var result = await baggageService.CreateAsync(request, cancellationToken);
-            if (!result.IsSuccess)
+            if (result.IsNotFound)
             {
-                if (result.IsNotFound)
-                {
-                    return NotFound(new { message = result.ErrorMessage });
-                }
-
-                if (result.IsConflict)
-                {
-                    return Conflict(new { message = result.ErrorMessage });
-                }
-
-                return BadRequest(new { message = result.ErrorMessage });
+                return NotFound(new { message = result.ErrorMessage });
             }
 
-            return Created($"/baggages/{result.Baggage!.BagNumber}", result.Baggage);
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
         }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
-        {
-            return Conflict(new { message = "The baggage references a check-in that does not exist." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
-        {
-            return BadRequest(new { message = "The baggage data violates a database constraint." });
-        }
+
+        return Created($"/baggages/{result.Baggage!.BagNumber}", result.Baggage);
     }
 
     // PUT /baggages/{bagNumber}
@@ -88,30 +76,23 @@ public class BaggagesController(IBaggageService baggageService) : ControllerBase
         UpdateBaggageRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await baggageService.UpdateAsync(bagNumber, request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            var result = await baggageService.UpdateAsync(bagNumber, request, cancellationToken);
-            if (!result.IsSuccess)
+            if (result.IsNotFound)
             {
-                if (result.IsNotFound)
-                {
-                    return NotFound(new { message = result.ErrorMessage });
-                }
-
-                if (result.IsConflict)
-                {
-                    return Conflict(new { message = result.ErrorMessage });
-                }
-
-                return BadRequest(new { message = result.ErrorMessage });
+                return NotFound(new { message = result.ErrorMessage });
             }
 
-            return Ok(result.Baggage);
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
         }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
-        {
-            return BadRequest(new { message = "The baggage data violates a database constraint." });
-        }
+
+        return Ok(result.Baggage);
     }
 
     // DELETE /baggages/{bagNumber}

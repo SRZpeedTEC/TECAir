@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Npgsql;
 using TECAir.Application.DTOs.CheckIns;
 using TECAir.Application.Interfaces;
 
@@ -51,40 +50,25 @@ public class CheckInsController(ICheckInService checkInService) : ControllerBase
         CreateCheckInRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await checkInService.CreateAsync(request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            var result = await checkInService.CreateAsync(request, cancellationToken);
-            if (!result.IsSuccess)
+            if (result.IsNotFound)
             {
-                if (result.IsNotFound)
-                {
-                    return NotFound(new { message = result.ErrorMessage });
-                }
-
-                if (result.IsConflict)
-                {
-                    return Conflict(new { message = result.ErrorMessage });
-                }
-
-                return BadRequest(new { message = result.ErrorMessage });
+                return NotFound(new { message = result.ErrorMessage });
             }
 
-            return Created(
-                $"/check-ins/{result.CheckIn!.ConfirmationNumber}",
-                result.CheckIn);
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
         }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
-        {
-            return Conflict(new { message = "The seat is already taken or the reservation already has check-in for that flight." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
-        {
-            return Conflict(new { message = "The check-in references related data that does not exist." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
-        {
-            return BadRequest(new { message = "The check-in data violates a database constraint." });
-        }
+
+        return Created(
+            $"/check-ins/{result.CheckIn!.ConfirmationNumber}",
+            result.CheckIn);
     }
 
     // PUT /check-ins/{confirmationNumber}
@@ -94,41 +78,26 @@ public class CheckInsController(ICheckInService checkInService) : ControllerBase
         UpdateCheckInSeatRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await checkInService.UpdateSeatAsync(
+            confirmationNumber,
+            request,
+            cancellationToken);
+        if (!result.IsSuccess)
         {
-            var result = await checkInService.UpdateSeatAsync(
-                confirmationNumber,
-                request,
-                cancellationToken);
-            if (!result.IsSuccess)
+            if (result.IsNotFound)
             {
-                if (result.IsNotFound)
-                {
-                    return NotFound(new { message = result.ErrorMessage });
-                }
-
-                if (result.IsConflict)
-                {
-                    return Conflict(new { message = result.ErrorMessage });
-                }
-
-                return BadRequest(new { message = result.ErrorMessage });
+                return NotFound(new { message = result.ErrorMessage });
             }
 
-            return Ok(result.CheckIn);
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
         }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
-        {
-            return Conflict(new { message = "The seat is already taken for that itinerary flight." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
-        {
-            return Conflict(new { message = "The check-in references related data that does not exist." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
-        {
-            return BadRequest(new { message = "The check-in data violates a database constraint." });
-        }
+
+        return Ok(result.CheckIn);
     }
 
     // DELETE /check-ins/{confirmationNumber}
