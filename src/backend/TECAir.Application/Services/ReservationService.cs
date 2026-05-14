@@ -63,20 +63,23 @@ public class ReservationService(IReservationRepository reservationRepository) : 
     }
 
     public async Task<SearchReservationsServiceResult> SearchAsync(
+        int? reservationId,
         string? passengerId,
         string? name,
         CancellationToken cancellationToken = default)
     {
+        var normalizedReservationId = reservationId is > 0 ? reservationId : null;
         var normalizedPassengerId = string.IsNullOrWhiteSpace(passengerId) ? null : passengerId.Trim();
         var normalizedName = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
 
-        if (normalizedPassengerId is null && normalizedName is null)
+        if (normalizedReservationId is null && normalizedPassengerId is null && normalizedName is null)
         {
             return SearchReservationsServiceResult.ValidationError(
-                "Query parameter 'passengerId' or 'name' is required.");
+                "Query parameter 'reservationId', 'passengerId' or 'name' is required.");
         }
 
         var reservations = await reservationRepository.SearchAsync(
+            normalizedReservationId,
             normalizedPassengerId,
             normalizedName,
             cancellationToken);

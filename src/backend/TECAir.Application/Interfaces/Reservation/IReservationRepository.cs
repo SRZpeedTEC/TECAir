@@ -14,8 +14,9 @@ public interface IReservationRepository
     // Inserta una reservacion ya pagada y devuelve la informacion creada.
     Task<ReservationResponse> CreateAsync(CreateReservationRequest request, CancellationToken cancellationToken = default);
 
-    // Busca reservaciones por pasaporte exacto o por nombre/apellido parcial.
+    // Busca reservaciones por id exacto, pasaporte exacto o nombre/apellido parcial.
     Task<IReadOnlyList<ReservationSearchResponse>> SearchAsync(
+        int? reservationId,
         string? passengerId,
         string? name,
         CancellationToken cancellationToken = default);
