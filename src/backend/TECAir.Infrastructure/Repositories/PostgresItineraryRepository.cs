@@ -5,7 +5,6 @@ using TECAir.Application.Interfaces;
 namespace TECAir.Infrastructure.Repositories;
 
 // Repositorio encargado de consultar y crear itinerarios en PostgreSQL.
-// Centraliza los SELECT complejos y las transacciones usadas por itinerarios.
 public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : IItineraryRepository
 {
     // Busca itinerarios por origen y destino usando el primer y ultimo vuelo de cada ruta.
@@ -112,8 +111,10 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
 
         const string flightsSql = """
             SELECT
+                fii.itinerary_flight_id,
                 fii.flight_order,
                 f.flight_id,
+                f.plane_plate,
                 departure_airport.airport_name,
                 departure_airport.code,
                 departure_airport.city,
@@ -143,18 +144,20 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         {
             itinerary.Flights.Add(new ItineraryFlightResponse
             {
-                FlightOrder = flightsReader.GetInt32(0),
-                FlightId = flightsReader.GetInt32(1),
-                DepartureAirportName = flightsReader.GetString(2),
-                DepartureCode = flightsReader.GetString(3),
-                DepartureCity = flightsReader.GetString(4),
-                ArrivalAirportName = flightsReader.GetString(5),
-                ArrivalCode = flightsReader.GetString(6),
-                ArrivalCity = flightsReader.GetString(7),
-                DepartureDatetime = flightsReader.GetDateTime(8),
-                ArrivalDatetime = flightsReader.GetDateTime(9),
-                Gate = flightsReader.IsDBNull(10) ? null : flightsReader.GetString(10),
-                State = flightsReader.GetString(11)
+                ItineraryFlightId = flightsReader.GetInt32(0),
+                FlightOrder = flightsReader.GetInt32(1),
+                FlightId = flightsReader.GetInt32(2),
+                PlanePlate = flightsReader.GetString(3),
+                DepartureAirportName = flightsReader.GetString(4),
+                DepartureCode = flightsReader.GetString(5),
+                DepartureCity = flightsReader.GetString(6),
+                ArrivalAirportName = flightsReader.GetString(7),
+                ArrivalCode = flightsReader.GetString(8),
+                ArrivalCity = flightsReader.GetString(9),
+                DepartureDatetime = flightsReader.GetDateTime(10),
+                ArrivalDatetime = flightsReader.GetDateTime(11),
+                Gate = flightsReader.IsDBNull(12) ? null : flightsReader.GetString(12),
+                State = flightsReader.GetString(13)
             });
         }
 
@@ -200,14 +203,12 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         return flights;
     }
 
-    // Crea el itinerario y sus vuelos en una transaccion.
-    // Si falla cualquier INSERT, no se guarda una ruta incompleta.
+    // Crea el itinerario y sus vuelos asociados.
     public async Task<CreateItineraryResponse> CreateAsync(
         CreateItineraryRequest request,
         CancellationToken cancellationToken = default)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(cancellationToken);
 
         const string insertItinerarySql = """
             INSERT INTO tecair.itinerary (price)
@@ -216,7 +217,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             """;
 
         CreateItineraryResponse itinerary;
-        await using (var command = new NpgsqlCommand(insertItinerarySql, connection, transaction))
+        await using (var command = new NpgsqlCommand(insertItinerarySql, connection))
         {
             command.Parameters.AddWithValue("price", request.Price);
 
@@ -250,7 +251,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
 
         foreach (var flight in request.Flights)
         {
-            await using var command = new NpgsqlCommand(insertFlightSql, connection, transaction);
+            await using var command = new NpgsqlCommand(insertFlightSql, connection);
             command.Parameters.AddWithValue("itinerary_id", itinerary.ItineraryId);
             command.Parameters.AddWithValue("flight_id", flight.FlightId);
             command.Parameters.AddWithValue("flight_order", flight.FlightOrder);
@@ -269,8 +270,154 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             });
         }
 
-        // Commit confirma tanto el encabezado como todos los vuelos asociados.
-        await transaction.CommitAsync(cancellationToken);
         return itinerary;
+    }
+
+    public async Task<bool> ItineraryExistsAsync(int itineraryId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.itinerary
+                WHERE itinerary_id = @itinerary_id
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Actualiza el precio y reemplaza todos los vuelos asociados.
+    public async Task<CreateItineraryResponse> UpdateWithFlightsAsync(
+        int itineraryId,
+        UpdateItineraryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+
+        const string updateItinerarySql = """
+            UPDATE tecair.itinerary
+            SET price = @price
+            WHERE itinerary_id = @itinerary_id
+            RETURNING itinerary_id, price;
+            """;
+
+        CreateItineraryResponse itinerary;
+        await using (var command = new NpgsqlCommand(updateItinerarySql, connection))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            command.Parameters.AddWithValue("price", request.Price);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("Failed to update the itinerary.");
+            }
+
+            itinerary = new CreateItineraryResponse
+            {
+                ItineraryId = reader.GetInt32(0),
+                Price = reader.GetDecimal(1)
+            };
+        }
+
+        const string deleteFlightsSql = """
+            DELETE FROM tecair.flight_in_itinerary
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using (var command = new NpgsqlCommand(deleteFlightsSql, connection))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        const string insertFlightSql = """
+            INSERT INTO tecair.flight_in_itinerary (
+                itinerary_id,
+                flight_id,
+                flight_order
+            )
+            VALUES (
+                @itinerary_id,
+                @flight_id,
+                @flight_order
+            )
+            RETURNING itinerary_flight_id, flight_id, flight_order;
+            """;
+
+        foreach (var flight in request.Flights)
+        {
+            await using var command = new NpgsqlCommand(insertFlightSql, connection);
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            command.Parameters.AddWithValue("flight_id", flight.FlightId);
+            command.Parameters.AddWithValue("flight_order", flight.FlightOrder);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("Failed to add a flight to the itinerary.");
+            }
+
+            itinerary.Flights.Add(new CreatedItineraryFlightResponse
+            {
+                ItineraryFlightId = reader.GetInt32(0),
+                FlightId = reader.GetInt32(1),
+                FlightOrder = reader.GetInt32(2)
+            });
+        }
+
+        return itinerary;
+    }
+
+    // Las reservaciones bloquean el borrado porque representan ventas ya realizadas.
+    public async Task<bool> ItineraryHasReservationsAsync(
+        int itineraryId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.reservation
+                WHERE itinerary_id = @itinerary_id
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Borra primero la tabla puente y luego el encabezado.
+    public async Task DeleteAsync(int itineraryId, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+
+        const string deleteFlightsSql = """
+            DELETE FROM tecair.flight_in_itinerary
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using (var command = new NpgsqlCommand(deleteFlightsSql, connection))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        const string deleteItinerarySql = """
+            DELETE FROM tecair.itinerary
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using (var command = new NpgsqlCommand(deleteItinerarySql, connection))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 }

@@ -19,7 +19,7 @@ export default function MisViajesPage({ state, goHome, goToMisViajes, currentUse
       : '—',
     duration:   f.duration,
     flight:     f.id,
-    seat:       state.seats?.[0] || '—',
+    seat:       'Por asignar',
     passengers: state.passengers,
     price:      f.price * state.pax.adults,
   } : null;

@@ -78,4 +78,55 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
 
         return Created($"/api/itineraries/{result.Itinerary!.ItineraryId}", result.Itinerary);
     }
+
+    // PUT /api/itineraries/{itineraryId}
+    // Reemplaza precio y lista de vuelos; el id se mantiene como llave primaria de la ruta.
+    [HttpPut("{itineraryId:int}")]
+    public async Task<ActionResult<CreateItineraryResponse>> Update(
+        int itineraryId,
+        UpdateItineraryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await itineraryService.UpdateAsync(itineraryId, request, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.IsNotFound)
+            {
+                return NotFound(new { message = result.ErrorMessage });
+            }
+
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Itinerary);
+    }
+
+    // DELETE /api/itineraries/{itineraryId}
+    // Solo elimina itinerarios sin reservaciones para no perder historial de ventas.
+    [HttpDelete("{itineraryId:int}")]
+    public async Task<IActionResult> Delete(
+        int itineraryId,
+        CancellationToken cancellationToken)
+    {
+        var result = await itineraryService.DeleteAsync(itineraryId, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.IsNotFound)
+            {
+                return NotFound(new { message = result.ErrorMessage });
+            }
+
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+        }
+
+        return NoContent();
+    }
 }

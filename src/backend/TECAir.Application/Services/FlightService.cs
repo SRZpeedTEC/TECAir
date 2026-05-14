@@ -75,8 +75,156 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             cancellationToken);
     }
 
+    // Actualiza un vuelo existente sin permitir que el body cambie el flight_id.
+    public async Task<UpdateFlightServiceResult> UpdateAsync(
+        int flightId,
+        UpdateFlightRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (flightId <= 0)
+        {
+            return UpdateFlightServiceResult.ValidationError("Flight id must be greater than 0.");
+        }
+
+        var validationError = ValidateUpdateFlightRequest(request);
+        if (validationError is not null)
+        {
+            return UpdateFlightServiceResult.ValidationError(validationError);
+        }
+
+        var normalizedRequest = NormalizeUpdateFlightRequest(request);
+
+        if (!await flightRepository.FlightExistsAsync(flightId, cancellationToken))
+        {
+            return UpdateFlightServiceResult.NotFound($"Flight '{flightId}' was not found.");
+        }
+
+        if (!await flightRepository.PlaneExistsAsync(normalizedRequest.PlanePlate, cancellationToken))
+        {
+            return UpdateFlightServiceResult.NotFound($"Plane '{normalizedRequest.PlanePlate}' was not found.");
+        }
+
+        if (!await flightRepository.AirportExistsAsync(normalizedRequest.AirportDepartsFromId, cancellationToken))
+        {
+            return UpdateFlightServiceResult.NotFound(
+                $"Departure airport '{normalizedRequest.AirportDepartsFromId}' was not found.");
+        }
+
+        if (!await flightRepository.AirportExistsAsync(normalizedRequest.AirportArrivesToId, cancellationToken))
+        {
+            return UpdateFlightServiceResult.NotFound(
+                $"Arrival airport '{normalizedRequest.AirportArrivesToId}' was not found.");
+        }
+
+        if (await flightRepository.PlaneHasOverlappingFlightExceptAsync(
+            flightId,
+            normalizedRequest.PlanePlate,
+            normalizedRequest.DepartureDatetime,
+            normalizedRequest.ArrivalDatetime,
+            cancellationToken))
+        {
+            return UpdateFlightServiceResult.Conflict(
+                "The selected plane is already assigned to another flight during that time range.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedRequest.Gate) &&
+            await flightRepository.GateHasDepartureConflictExceptAsync(
+                flightId,
+                normalizedRequest.AirportDepartsFromId,
+                normalizedRequest.Gate,
+                normalizedRequest.DepartureDatetime,
+                cancellationToken))
+        {
+            return UpdateFlightServiceResult.Conflict(
+                "The selected gate is already assigned to another flight at the same departure time.");
+        }
+
+        var flight = await flightRepository.UpdateAsync(flightId, normalizedRequest, cancellationToken);
+        return UpdateFlightServiceResult.Success(flight);
+    }
+
+    // Borra vuelos solo cuando no estan conectados a itinerarios vendibles.
+    public async Task<DeleteFlightServiceResult> DeleteAsync(
+        int flightId,
+        CancellationToken cancellationToken = default)
+    {
+        if (flightId <= 0 || !await flightRepository.FlightExistsAsync(flightId, cancellationToken))
+        {
+            return DeleteFlightServiceResult.NotFound($"Flight '{flightId}' was not found.");
+        }
+
+        if (await flightRepository.FlightIsUsedInItineraryAsync(flightId, cancellationToken))
+        {
+            // Un vuelo usado en itinerarios ya forma parte de una ruta vendible;
+            // borrarlo romperia la historia de rutas y posibles ventas.
+            return DeleteFlightServiceResult.Conflict(
+                "The flight cannot be deleted because it is already used in an itinerary.");
+        }
+
+        await flightRepository.DeleteAsync(flightId, cancellationToken);
+        return DeleteFlightServiceResult.Success();
+    }
+
     // Reglas que se pueden validar solo con el contenido del request.
     private static string? ValidateCreateFlightRequest(CreateFlightRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.PlanePlate))
+        {
+            return "Plane plate is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.AirportDepartsFromId))
+        {
+            return "Departure airport is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.AirportArrivesToId))
+        {
+            return "Arrival airport is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.State))
+        {
+            return "State is required.";
+        }
+
+        if (request.DepartureDatetime == default)
+        {
+            return "Departure datetime is required.";
+        }
+
+        if (request.ArrivalDatetime == default)
+        {
+            return "Arrival datetime is required.";
+        }
+
+        var departureAirport = request.AirportDepartsFromId.Trim().ToUpperInvariant();
+        var arrivalAirport = request.AirportArrivesToId.Trim().ToUpperInvariant();
+        if (departureAirport == arrivalAirport)
+        {
+            return "Departure and arrival airports must be different.";
+        }
+
+        if (request.ArrivalDatetime <= request.DepartureDatetime)
+        {
+            return "Arrival datetime must be after departure datetime.";
+        }
+
+        var state = request.State.Trim().ToUpperInvariant();
+        if (state is not "OPEN" and not "CLOSED")
+        {
+            return "State must be OPEN or CLOSED.";
+        }
+
+        if (request.Gate is not null && string.IsNullOrWhiteSpace(request.Gate))
+        {
+            return "Gate cannot be empty.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateUpdateFlightRequest(UpdateFlightRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.PlanePlate))
         {
@@ -138,6 +286,20 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
     private static CreateFlightRequest NormalizeCreateFlightRequest(CreateFlightRequest request)
     {
         return new CreateFlightRequest
+        {
+            PlanePlate = request.PlanePlate.Trim(),
+            AirportDepartsFromId = request.AirportDepartsFromId.Trim().ToUpperInvariant(),
+            AirportArrivesToId = request.AirportArrivesToId.Trim().ToUpperInvariant(),
+            State = request.State.Trim().ToUpperInvariant(),
+            Gate = request.Gate?.Trim(),
+            DepartureDatetime = request.DepartureDatetime,
+            ArrivalDatetime = request.ArrivalDatetime
+        };
+    }
+
+    private static UpdateFlightRequest NormalizeUpdateFlightRequest(UpdateFlightRequest request)
+    {
+        return new UpdateFlightRequest
         {
             PlanePlate = request.PlanePlate.Trim(),
             AirportDepartsFromId = request.AirportDepartsFromId.Trim().ToUpperInvariant(),

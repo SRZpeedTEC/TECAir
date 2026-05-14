@@ -211,3 +211,162 @@ Accept: application/json
   "departureDatetime": "2026-07-10T10:00:00",
   "arrivalDatetime": "2026-07-10T11:30:00"
 }
+
+
+### 16. Actualizar vuelo con datos validos
+# Esperado: 200 OK.
+# flightId viene de la ruta y no se permite editarlo desde el body.
+PUT {{baseUrl}}/api/flights/3
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC03",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "OPEN",
+  "gate": "A8",
+  "departureDatetime": "2026-06-11T07:30:00",
+  "arrivalDatetime": "2026-06-11T08:15:00"
+}
+
+
+### 17. Actualizar vuelo inexistente
+# Esperado: 404 Not Found.
+PUT {{baseUrl}}/api/flights/9999
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC03",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "OPEN",
+  "gate": "A8",
+  "departureDatetime": "2026-06-11T07:30:00",
+  "arrivalDatetime": "2026-06-11T08:15:00"
+}
+
+
+### 18. Actualizar vuelo con avion inexistente
+# Esperado: 404 Not Found.
+PUT {{baseUrl}}/api/flights/3
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "NO-EXISTE",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "OPEN",
+  "gate": "A8",
+  "departureDatetime": "2026-06-11T07:30:00",
+  "arrivalDatetime": "2026-06-11T08:15:00"
+}
+
+
+### 19. Actualizar vuelo con mismo aeropuerto de salida y llegada
+# Esperado: 400 Bad Request.
+PUT {{baseUrl}}/api/flights/3
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC03",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "SJO",
+  "state": "OPEN",
+  "gate": "A8",
+  "departureDatetime": "2026-06-11T07:30:00",
+  "arrivalDatetime": "2026-06-11T08:15:00"
+}
+
+
+### 20. Actualizar vuelo con llegada antes de salida
+# Esperado: 400 Bad Request.
+PUT {{baseUrl}}/api/flights/3
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC03",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "OPEN",
+  "gate": "A8",
+  "departureDatetime": "2026-06-11T09:00:00",
+  "arrivalDatetime": "2026-06-11T08:15:00"
+}
+
+
+### 21. Actualizar vuelo causando traslape de avion
+# Vuelo 1 usa TI-TEC01 de 08:00 a 09:20 el 2026-06-10.
+# Esperado: 409 Conflict.
+PUT {{baseUrl}}/api/flights/3
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "OPEN",
+  "gate": "A8",
+  "departureDatetime": "2026-06-10T08:30:00",
+  "arrivalDatetime": "2026-06-10T10:00:00"
+}
+
+
+### 22. Actualizar vuelo causando conflicto de puerta
+# Vuelo 1 usa la puerta A1 en SJO a las 08:00.
+# Esperado: 409 Conflict.
+PUT {{baseUrl}}/api/flights/3
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC03",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "OPEN",
+  "gate": "A1",
+  "departureDatetime": "2026-06-10T08:00:00",
+  "arrivalDatetime": "2026-06-10T09:00:00"
+}
+
+
+### 23. Preparar vuelo no usado para prueba de borrado
+# @name crearVueloParaBorrar
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC03",
+  "airportDepartsFromId": "LIR",
+  "airportArrivesToId": "SJO",
+  "state": "OPEN",
+  "gate": "L8",
+  "departureDatetime": "2026-08-01T08:00:00",
+  "arrivalDatetime": "2026-08-01T08:45:00"
+}
+
+
+### 24. Eliminar vuelo existente no usado
+# Esperado: 204 No Content.
+DELETE {{baseUrl}}/api/flights/{{crearVueloParaBorrar.response.body.$.flightId}}
+Accept: application/json
+
+
+### 25. Eliminar vuelo inexistente
+# Esperado: 404 Not Found.
+DELETE {{baseUrl}}/api/flights/9999
+Accept: application/json
+
+
+### 26. Eliminar vuelo usado en itinerario
+# Vuelo 1 pertenece a itinerarios en los datos semilla.
+# Esperado: 409 Conflict.
+DELETE {{baseUrl}}/api/flights/1
+Accept: application/json

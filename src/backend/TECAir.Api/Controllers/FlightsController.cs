@@ -37,7 +37,7 @@ public class FlightsController(IFlightService flightService) : ControllerBase
         return Created($"/api/flights/{result.Flight!.FlightId}", result.Flight);
     }
 
-    // GET /api/flights/open
+    // GET /api/flights/open/?departureCode=XXX
     // Consulta vuelos disponibles por aeropuerto de salida usando query string.
     [HttpGet("open")]
     public async Task<ActionResult<IReadOnlyList<OpenFlightResponse>>> GetOpenByDepartureAirport(
@@ -51,5 +51,56 @@ public class FlightsController(IFlightService flightService) : ControllerBase
 
         var flights = await flightService.GetOpenByDepartureAirportAsync(departureCode, cancellationToken);
         return Ok(flights);
+    }
+
+    // PUT /api/flights/{flightId}
+    // Actualiza el vuelo sin permitir cambios al flight_id.
+    [HttpPut("{flightId:int}")]
+    public async Task<ActionResult<FlightResponse>> Update(
+        int flightId,
+        UpdateFlightRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await flightService.UpdateAsync(flightId, request, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.IsNotFound)
+            {
+                return NotFound(new { message = result.ErrorMessage });
+            }
+
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Flight);
+    }
+
+    // DELETE /api/flights/{flightId}
+    // No borra vuelos usados por itinerarios para proteger rutas existentes.
+    [HttpDelete("{flightId:int}")]
+    public async Task<IActionResult> Delete(
+        int flightId,
+        CancellationToken cancellationToken)
+    {
+        var result = await flightService.DeleteAsync(flightId, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.IsNotFound)
+            {
+                return NotFound(new { message = result.ErrorMessage });
+            }
+
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+        }
+
+        return NoContent();
     }
 }

@@ -305,8 +305,8 @@ CREATE TABLE reservation (
     state VARCHAR(20) NOT NULL DEFAULT 'PAID',
     payment_reference VARCHAR(120),
     passenger_id VARCHAR(120),
-    plane_plate VARCHAR(20) NOT NULL,
-    seat_number VARCHAR(10) NOT NULL,
+    plane_plate VARCHAR(20),
+    seat_number VARCHAR(10),
 
     -- Esto relaciona reservation con itinerary: indica que ruta esta reservando el usuario.
     CONSTRAINT fk_reservation_itinerary

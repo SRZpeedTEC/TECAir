@@ -6,7 +6,7 @@ namespace TECAir.Application.Services;
 // El servicio contiene reglas de aplicacion.
 // Aqui se validan los datos antes de llamar al repositorio, para que el controller
 // no tenga logica de negocio y el repositorio solo se encargue de SQL.
-public class UserService(IUserRepository userRepository) : IUserService
+public class UserService(IUserRepository userRepository, IPasswordHasher passwordHasher) : IUserService
 {
     // En este caso no hay reglas extra para consultar; simplemente se delega
     // al repositorio que sabe como leer desde PostgreSQL.
@@ -27,8 +27,104 @@ public class UserService(IUserRepository userRepository) : IUserService
             return CreateUserServiceResult.ValidationError(validationError);
         }
 
-        var user = await userRepository.CreateAsync(request, cancellationToken);
+        var normalizedRequest = NormalizeCreateUserRequest(request);
+
+        if (await userRepository.UserExistsAsync(normalizedRequest.Email, cancellationToken))
+        {
+            return CreateUserServiceResult.Conflict(
+                $"User '{normalizedRequest.Email}' already exists.");
+        }
+
+        if (normalizedRequest.IsStudent &&
+            await userRepository.UserCarnetBelongsToAnotherStudentAsync(
+                normalizedRequest.Email,
+                normalizedRequest.UserCarnet!,
+                cancellationToken))
+        {
+            return CreateUserServiceResult.Conflict(
+                $"Student carnet '{normalizedRequest.UserCarnet}' already belongs to another student.");
+        }
+
+        // La transformacion de password plano a hash ocurre en aplicacion,
+        // antes de persistir, para que el repositorio solo guarde el valor recibido.
+        normalizedRequest.Password = passwordHasher.Hash(request.Password);
+
+        var user = await userRepository.CreateAsync(normalizedRequest, cancellationToken);
         return CreateUserServiceResult.Success(user);
+    }
+
+    // Caso de uso "actualizar usuario".
+    // El email viene de la ruta para que la llave primaria no pueda cambiarse desde el JSON.
+    public async Task<UpdateUserServiceResult> UpdateAsync(
+        string email,
+        UpdateUserRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return UpdateUserServiceResult.ValidationError("Email route parameter is required.");
+        }
+
+        var validationError = ValidateUpdateUserRequest(request);
+        if (validationError is not null)
+        {
+            return UpdateUserServiceResult.ValidationError(validationError);
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        var normalizedRequest = NormalizeUpdateUserRequest(request);
+
+        if (!await userRepository.UserExistsAsync(normalizedEmail, cancellationToken))
+        {
+            return UpdateUserServiceResult.NotFound($"User '{normalizedEmail}' was not found.");
+        }
+
+        if (normalizedRequest.IsStudent &&
+            await userRepository.UserCarnetBelongsToAnotherStudentAsync(
+                normalizedEmail,
+                normalizedRequest.UserCarnet!,
+                cancellationToken))
+        {
+            return UpdateUserServiceResult.Conflict(
+                $"Student carnet '{normalizedRequest.UserCarnet}' already belongs to another student.");
+        }
+
+        // Si el cliente envia una nueva contrasena, se guarda solamente el hash.
+        // Cuando viene vacia, el repositorio conserva el hash existente.
+        if (!string.IsNullOrWhiteSpace(normalizedRequest.Password))
+        {
+            normalizedRequest.Password = passwordHasher.Hash(normalizedRequest.Password);
+        }
+
+        var user = await userRepository.UpdateAsync(normalizedEmail, normalizedRequest, cancellationToken);
+        return UpdateUserServiceResult.Success(user);
+    }
+
+    // Caso de uso "eliminar usuario".
+    // No se borran reservaciones manualmente: si existen, la cuenta se conserva por integridad historica.
+    public async Task<DeleteUserServiceResult> DeleteAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return DeleteUserServiceResult.NotFound("User was not found.");
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        if (!await userRepository.UserExistsAsync(normalizedEmail, cancellationToken))
+        {
+            return DeleteUserServiceResult.NotFound($"User '{normalizedEmail}' was not found.");
+        }
+
+        if (await userRepository.UserHasReservationsAsync(normalizedEmail, cancellationToken))
+        {
+            return DeleteUserServiceResult.Conflict(
+                "The user cannot be deleted because it already has reservations.");
+        }
+
+        await userRepository.DeleteAsync(normalizedEmail, cancellationToken);
+        return DeleteUserServiceResult.Success();
     }
 
     // Validaciones propias de la aplicacion.
@@ -78,5 +174,78 @@ public class UserService(IUserRepository userRepository) : IUserService
         }
 
         return null;
+    }
+
+    // Normaliza el body de creacion antes de persistir. Password se mantiene
+    // separado porque luego se reemplaza por su hash.
+    private static CreateUserRequest NormalizeCreateUserRequest(CreateUserRequest request)
+    {
+        return new CreateUserRequest
+        {
+            Email = request.Email.Trim().ToLowerInvariant(),
+            Password = request.Password,
+            Name = request.Name.Trim(),
+            Lname = request.Lname.Trim(),
+            PhoneNum = request.PhoneNum.Trim(),
+            Role = request.Role.Trim().ToUpperInvariant(),
+            IsStudent = request.IsStudent,
+            UserCarnet = string.IsNullOrWhiteSpace(request.UserCarnet) ? null : request.UserCarnet.Trim(),
+            CollegeName = string.IsNullOrWhiteSpace(request.CollegeName) ? null : request.CollegeName.Trim()
+        };
+    }
+
+    // Valida los campos editables. La llave primaria se omite a proposito del DTO.
+    private static string? ValidateUpdateUserRequest(UpdateUserRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return "Name is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Lname))
+        {
+            return "Last name is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.PhoneNum))
+        {
+            return "Phone number is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Role))
+        {
+            return "Role is required.";
+        }
+
+        var role = request.Role.Trim().ToUpperInvariant();
+        if (role is not "CLIENT" and not "ADMIN")
+        {
+            return "Role must be CLIENT or ADMIN.";
+        }
+
+        if (request.IsStudent &&
+            (string.IsNullOrWhiteSpace(request.UserCarnet) || string.IsNullOrWhiteSpace(request.CollegeName)))
+        {
+            return "Student users require UserCarnet and CollegeName.";
+        }
+
+        return null;
+    }
+
+    // Normaliza el body antes de pasar al repositorio para evitar reglas repetidas en SQL.
+    private static UpdateUserRequest NormalizeUpdateUserRequest(UpdateUserRequest request)
+    {
+        return new UpdateUserRequest
+        {
+            Password = request.Password?.Trim() ?? string.Empty,
+            Name = request.Name.Trim(),
+            Minit = string.IsNullOrWhiteSpace(request.Minit) ? null : request.Minit.Trim(),
+            Lname = request.Lname.Trim(),
+            PhoneNum = request.PhoneNum.Trim(),
+            Role = request.Role.Trim().ToUpperInvariant(),
+            IsStudent = request.IsStudent,
+            UserCarnet = string.IsNullOrWhiteSpace(request.UserCarnet) ? null : request.UserCarnet.Trim(),
+            CollegeName = string.IsNullOrWhiteSpace(request.CollegeName) ? null : request.CollegeName.Trim()
+        };
     }
 }

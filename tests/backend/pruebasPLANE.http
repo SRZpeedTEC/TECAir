@@ -1,0 +1,24 @@
+@baseUrl = http://localhost:5000
+
+### 1. Obtener todos los aviones
+# Esperado: 200 OK con aviones ordenados por placa.
+GET {{baseUrl}}/api/planes
+Accept: application/json
+
+
+### 2. Filtrar aviones por placa parcial
+# Esperado: 200 OK con placas que contengan TI.
+GET {{baseUrl}}/api/planes?plate=TI
+Accept: application/json
+
+
+### 3. Filtrar aviones por placa exacta dentro del filtro parcial
+# Esperado: 200 OK con coincidencias si existe la placa.
+GET {{baseUrl}}/api/planes?plate=TI-TEC03
+Accept: application/json
+
+
+### 4. Filtrar aviones sin coincidencias
+# Esperado: 200 OK con lista vacia.
+GET {{baseUrl}}/api/planes?plate=NOEXISTE
+Accept: application/json

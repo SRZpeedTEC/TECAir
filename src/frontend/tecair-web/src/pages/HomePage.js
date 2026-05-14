@@ -1,14 +1,87 @@
-import { useState } from 'react';
-import Nav          from '../components/Nav.js';
-import AirportField from '../components/AirportField.js';
-import DateField    from '../components/DateField.js';
-import PaxField     from '../components/PaxField.js';
-import PROMOS       from '../data/promos.js';
-import { fmtCRC }   from '../utils/format.js';
+import { useState, useEffect } from 'react';
+import Nav             from '../components/Nav.js';
+import AirportField    from '../components/AirportField.js';
+import DateField       from '../components/DateField.js';
+import PaxField        from '../components/PaxField.js';
+import PromotionModal  from '../components/PromotionModal.js';
+import PROMOS          from '../data/promos.js';
+import AIRPORTS        from '../data/airports.js';
+import { fmtCRC }      from '../utils/format.js';
+import { getPromotionsWithItinerary } from '../services/promotionService.js';
+
+// Resuelve un código IATA a un objeto airport completo. Si el código no está
+// en la lista local de aeropuertos, devuelve un objeto mínimo con los datos
+// que sí tenemos de la promoción.
+function resolveAirport(code, fallbackCity) {
+  if (!code) return null;
+  return AIRPORTS.find((a) => a.code === code)
+      ?? { code, city: fallbackCity ?? code, country: '', region: '' };
+}
+
+
+// Paleta de gradientes usada como placeholder cuando la promo del backend no
+// tiene imageUrl. Se rota por índice para que cada tarjeta tenga color distinto.
+const PROMO_GRADIENTS = [
+  { c1: '#7a3b5c', c2: '#3d0f24' },
+  { c1: '#5b1936', c2: '#1a0814' },
+  { c1: '#8b4a6b', c2: '#4a1230' },
+  { c1: '#6b2545', c2: '#2d0a1a' },
+  { c1: '#a85777', c2: '#5b1936' },
+  { c1: '#7a2347', c2: '#3d0f24' },
+];
+
+// Convierte "YYYY-MM-DD" a "dd MMM" en español (ej. "08 jun").
+const MESES_ABBR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function fmtDateRange(start, end) {
+  if (!start || !end) return '';
+  const fmt = (iso) => {
+    const [y, m, d] = String(iso).split('-');
+    if (!y || !m || !d) return iso;
+    return `${d} ${MESES_ABBR[Number(m) - 1] ?? m}`;
+  };
+  return `${fmt(start)} — ${fmt(end)}`;
+}
 
 // Pantalla de inicio: hero, buscador de vuelos flotante, tarjetas de ofertas y características
 export default function HomePage({ state, setState, goToResults, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const [tab, setTab] = useState('rt'); // rt = ida y vuelta | ow = solo ida | mc = multi-ciudad
+
+  // Promociones traídas del backend. Si el endpoint falla o no hay registros
+  // mostramos el array estático original como fallback.
+  const [promotions,    setPromotions]    = useState(null);
+  const [promosLoading, setPromosLoading] = useState(true);
+  const [promosError,   setPromosError]   = useState(null);
+
+  // Promo seleccionada para abrir el modal con detalles + "Reservar ahora".
+  const [selectedPromo, setSelectedPromo] = useState(null);
+
+  // Click en "Reservar ahora": prellena origen y destino, conserva las fechas
+  // y pasajeros que el cliente ya tenía. La promoción aplica a la fecha de
+  // compra (hoy), no a la del vuelo, así que no hace falta ajustar fechas.
+  const handleReservePromo = (p) => {
+    const origin = resolveAirport(p.originCode, p.originCity);
+    const dest   = resolveAirport(p.destinationCode, p.destinationCity);
+    if (!origin || !dest) return;
+
+    setState((s) => ({ ...s, from: origin, to: dest }));
+    setSelectedPromo(null);
+    goToResults();
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getPromotionsWithItinerary();
+        if (!cancelled) setPromotions(data);
+      } catch (err) {
+        if (!cancelled) setPromosError(err.message);
+      } finally {
+        if (!cancelled) setPromosLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Intercambia origen y destino
   const swap = () => setState((s) => ({ ...s, from: s.to, to: s.from }));
@@ -136,33 +209,96 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
           <div className="d-flex justify-content-between align-items-end mb-4">
             <div>
               <h2 className="serif mb-1" style={{ fontSize: '2rem' }}>Ofertas que vuelan rápido</h2>
-              <p className="text-muted mb-0">Tarifas especiales desde San José</p>
+              <p className="text-muted mb-0">
+                {promotions && promotions.length > 0
+                  ? 'Promociones activas en este momento'
+                  : 'Tarifas especiales desde San José'}
+              </p>
             </div>
             <a href="#" className="text-burgundy text-decoration-none d-none d-md-inline">
               Ver todas <i className="bi bi-arrow-right"></i>
             </a>
           </div>
-          <div className="row g-3">
-            {PROMOS.map((p) => (
-              <div className="col-12 col-sm-6 col-lg-4" key={p.code}>
-                <div className="promo-card">
-                  {/* Fondo degradado como placeholder de imagen */}
-                  <div
-                    className="ph ph-img"
-                    style={{ '--c1': p.c1, '--c2': p.c2 }}
-                  ></div>
-                  <div className="overlay"></div>
-                  <div className="promo-text">
-                    <div className="city">{p.city}</div>
-                    <div className="meta">{p.country} · {p.dates}</div>
-                    <div className="price mt-1">
-                      Económica desde <strong>{fmtCRC(p.price)}</strong>
+
+          {promosLoading && (
+            <div className="text-center text-muted py-4">
+              <span className="spinner-border spinner-border-sm me-2"></span>
+              Cargando promociones…
+            </div>
+          )}
+
+          {!promosLoading && promotions && promotions.length > 0 && (
+            <div className="row g-3">
+              {promotions.map((p, idx) => {
+                const grad = PROMO_GRADIENTS[idx % PROMO_GRADIENTS.length];
+                const city = p.destinationCity || p.destinationCode || p.promotionCode;
+                const meta = [p.originCode && p.destinationCode ? `${p.originCode} → ${p.destinationCode}` : null,
+                              fmtDateRange(p.startDate, p.endDate)].filter(Boolean).join(' · ');
+                const bgStyle = p.imageUrl
+                  ? { backgroundImage: `url(${p.imageUrl})` }
+                  : { '--c1': grad.c1, '--c2': grad.c2 };
+                return (
+                  <div className="col-12 col-sm-6 col-lg-4" key={p.promotionCode}>
+                    <button
+                      type="button"
+                      className="promo-card promo-card-button"
+                      onClick={() => setSelectedPromo(p)}
+                      aria-label={`Ver detalle de la promoción ${p.promotionCode} para ${city}`}
+                    >
+                      <div
+                        className={'ph ' + (p.imageUrl ? 'ph-photo' : 'ph-img')}
+                        style={bgStyle}
+                      ></div>
+                      <div className="overlay"></div>
+                      <div className="promo-badge">{p.discountPercent}% OFF</div>
+                      <div className="promo-text">
+                        <div className="city">{city}</div>
+                        <div className="meta">{meta}</div>
+                        <div className="price mt-1">
+                          Desde <strong>{fmtCRC(p.promoPrice)}</strong>
+                          {p.basePrice && p.basePrice > p.promoPrice && (
+                            <span className="ms-2 promo-strike">{fmtCRC(p.basePrice)}</span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Fallback: si el backend falla o no hay promociones, mostramos el set estático. */}
+          {!promosLoading && (!promotions || promotions.length === 0) && (
+            <>
+              {promosError && (
+                <div className="text-muted small mb-3">
+                  <i className="bi bi-info-circle me-1"></i>
+                  No pudimos cargar promociones del servidor. Mostrando destinos sugeridos.
+                </div>
+              )}
+              <div className="row g-3">
+                {PROMOS.map((p) => (
+                  <div className="col-12 col-sm-6 col-lg-4" key={p.code}>
+                    <div className="promo-card">
+                      <div
+                        className="ph ph-img"
+                        style={{ '--c1': p.c1, '--c2': p.c2 }}
+                      ></div>
+                      <div className="overlay"></div>
+                      <div className="promo-text">
+                        <div className="city">{p.city}</div>
+                        <div className="meta">{p.country} · {p.dates}</div>
+                        <div className="price mt-1">
+                          Económica desde <strong>{fmtCRC(p.price)}</strong>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </section>
 
         {/* ─── Tira de características ─── */}
@@ -195,6 +331,12 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
           </div>
         </div>
       </footer>
+
+      <PromotionModal
+        promo={selectedPromo}
+        onClose={() => setSelectedPromo(null)}
+        onReserve={handleReservePromo}
+      />
     </>
   );
 }

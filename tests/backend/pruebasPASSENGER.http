@@ -1,0 +1,45 @@
+@baseUrl = http://localhost:5000
+
+### 1. Crear pasajero valido
+# Esperado la primera vez: 201 Created.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "P12345678",
+  "birthday": "2002-08-15",
+  "gender": "M",
+  "name": "Carlos",
+  "lname": "Ramirez"
+}
+
+
+### 2. Crear pasajero sin passportId
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "",
+  "birthday": "2002-08-15",
+  "gender": "M",
+  "name": "Carlos",
+  "lname": "Ramirez"
+}
+
+
+### 3. Crear pasajero con passportId duplicado
+# Esperado: 409 Conflict si ya se ejecuto la prueba valida.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "P12345678",
+  "birthday": "2002-08-15",
+  "gender": "M",
+  "name": "Carlos",
+  "lname": "Ramirez"
+}

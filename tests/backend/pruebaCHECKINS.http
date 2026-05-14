@@ -1,0 +1,160 @@
+@baseUrl = http://localhost:5000
+
+### 1. Health check de la API
+# Esperado: 200 OK
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Obtener check-in existente por confirmationNumber
+# confirmationNumber = 1 viene en database/postgresql/02_seed_data.sql.
+# Esperado: 200 OK.
+GET {{baseUrl}}/check-ins/1
+Accept: application/json
+
+
+### 3. Obtener check-in inexistente
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/api/check-ins/9999
+Accept: application/json
+
+
+### 4. Obtener check-ins de una reservacion existente
+# reservation_id = 5 tiene dos check-ins en los datos semilla.
+# Esperado: 200 OK con lista de dos elementos.
+GET {{baseUrl}}/reservations/5/check-ins
+Accept: application/json
+
+
+### 5. Obtener check-ins de una reservacion inexistente
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/api/reservations/9999/check-ins
+Accept: application/json
+
+
+### 6. Crear check-in valido
+# @name crearCheckInValido
+# reservation_id = 1 pertenece a itinerary_id = 1.
+# itinerary_flight_id = 1 tambien pertenece al itinerary_id = 1 y usa el avion TI-TEC01.
+# Esperado la primera vez: 201 Created y reservation.state pasa a CHECKED.
+POST {{baseUrl}}/api/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": 1,
+  "itineraryFlightId": 1,
+  "planePlate": "TI-TEC01",
+  "seatNumber": "1C"
+}
+
+
+### 7. Intentar crear check-in duplicado para la misma reservacion y vuelo
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": 1,
+  "itineraryFlightId": 1,
+  "planePlate": "TI-TEC01",
+  "seatNumber": "1D"
+}
+
+
+### 8. Intentar crear check-in con asiento ocupado
+# itinerary_flight_id = 4 ya tiene TI-TEC03/1A en los datos semilla.
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/api/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": 2,
+  "itineraryFlightId": 4,
+  "planePlate": "TI-TEC03",
+  "seatNumber": "1A"
+}
+
+
+### 9. Intentar crear check-in con datos invalidos
+# Falta seatNumber.
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": 1,
+  "itineraryFlightId": 1,
+  "planePlate": "TI-TEC01",
+  "seatNumber": ""
+}
+
+
+### 10. Intentar crear check-in con referencia inexistente
+# reservation_id = 9999 no existe.
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": 9999,
+  "itineraryFlightId": 1,
+  "planePlate": "TI-TEC01",
+  "seatNumber": "2A"
+}
+
+
+### 11. Actualizar asiento de check-in existente
+# Usa el confirmationNumber generado en la prueba 6.
+# Esperado: 200 OK.
+PUT {{baseUrl}}/api/check-ins/{{crearCheckInValido.response.body.$.confirmationNumber}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "seatNumber": "1D"
+}
+
+
+### 12. Actualizar check-in inexistente
+# Esperado: 404 Not Found.
+PUT {{baseUrl}}/check-ins/9999
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC01",
+  "seatNumber": "2A"
+}
+
+
+### 13. Actualizar check-in con datos invalidos
+# Falta planePlate.
+# Esperado: 400 Bad Request.
+PUT {{baseUrl}}/api/check-ins/{{crearCheckInValido.response.body.$.confirmationNumber}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "",
+  "seatNumber": "2A"
+}
+
+
+### 14. Eliminar check-in existente
+# Tambien eliminaria sus maletas por ON DELETE CASCADE si tuviera asociadas.
+# Esperado: 204 No Content.
+DELETE {{baseUrl}}/api/check-ins/{{crearCheckInValido.response.body.$.confirmationNumber}}
+Accept: application/json
+
+
+### 15. Eliminar check-in inexistente
+# Esperado: 404 Not Found.
+DELETE {{baseUrl}}/check-ins/9999
+Accept: application/json
+

@@ -1,0 +1,196 @@
+@baseUrl = http://localhost:5000
+
+### 1. Health check
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Actualizar itinerario con precio y vuelos validos
+# Esperado: 200 OK.
+# itineraryId viene de la ruta; el body solo reemplaza precio y lista ordenada.
+PUT {{baseUrl}}/api/itineraries/2
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 700,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    },
+    {
+      "flightId": 2,
+      "flightOrder": 2
+    }
+  ]
+}
+
+
+### 3. Actualizar itinerario inexistente
+# Esperado: 404 Not Found.
+PUT {{baseUrl}}/api/itineraries/9999
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 700,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 4. Actualizar itinerario con lista de vuelos vacia
+# Esperado: 400 Bad Request.
+PUT {{baseUrl}}/api/itineraries/2
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 700,
+  "flights": []
+}
+
+
+### 5. Actualizar itinerario con flightOrder duplicado
+# Esperado: 409 Conflict.
+PUT {{baseUrl}}/api/itineraries/2
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 700,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    },
+    {
+      "flightId": 2,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 6. Actualizar itinerario con flightId duplicado
+# Esperado: 409 Conflict.
+PUT {{baseUrl}}/api/itineraries/2
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 700,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    },
+    {
+      "flightId": 1,
+      "flightOrder": 2
+    }
+  ]
+}
+
+
+### 7. Actualizar itinerario con conexion ilogica
+# Vuelo 1 llega a PTY y vuelo 4 sale de SJO.
+# Esperado: 400 Bad Request.
+PUT {{baseUrl}}/api/itineraries/2
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 700,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    },
+    {
+      "flightId": 4,
+      "flightOrder": 2
+    }
+  ]
+}
+
+
+### 8. Preparar vuelo para probar escala de mas de un dia
+# @name crearVueloEscalaLarga
+# Vuelo 4 llega a MIA el 2026-06-12 a las 14:00; este sale mas de un dia despues.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC03",
+  "airportDepartsFromId": "MIA",
+  "airportArrivesToId": "MEX",
+  "state": "OPEN",
+  "gate": "M8",
+  "departureDatetime": "2026-06-14T15:00:00",
+  "arrivalDatetime": "2026-06-14T18:00:00"
+}
+
+
+### 9. Actualizar itinerario con mas de un dia entre vuelos consecutivos
+# Esperado: 400 Bad Request.
+PUT {{baseUrl}}/api/itineraries/4
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 800,
+  "flights": [
+    {
+      "flightId": 4,
+      "flightOrder": 1
+    },
+    {
+      "flightId": {{crearVueloEscalaLarga.response.body.$.flightId}},
+      "flightOrder": 2
+    }
+  ]
+}
+
+
+### 10. Preparar itinerario sin reservaciones para borrar
+# @name crearItinerarioParaBorrar
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 95,
+  "flights": [
+    {
+      "flightId": 3,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 11. Eliminar itinerario existente sin reservaciones
+# Esperado: 204 No Content.
+DELETE {{baseUrl}}/api/itineraries/{{crearItinerarioParaBorrar.response.body.$.itineraryId}}
+Accept: application/json
+
+
+### 12. Eliminar itinerario inexistente
+# Esperado: 404 Not Found.
+DELETE {{baseUrl}}/api/itineraries/9999
+Accept: application/json
+
+
+### 13. Eliminar itinerario con reservaciones
+# Itinerario 1 tiene reservaciones en los datos semilla.
+# Esperado: 409 Conflict.
+DELETE {{baseUrl}}/api/itineraries/1
+Accept: application/json

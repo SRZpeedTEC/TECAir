@@ -2,6 +2,8 @@ using Npgsql;
 using TECAir.Application.Interfaces;
 using TECAir.Application.Services;
 using TECAir.Infrastructure.Repositories;
+using TECAir.Infrastructure.Security;
+// Publsh command on TECAir.Api: dotnet publish -c Release -o ./publish
 
 // Program.cs configura la aplicacion web.
 // Aqui se registran controllers, conexion a PostgreSQL, servicios y repositorios.
@@ -23,12 +25,31 @@ builder.Services.AddSingleton(_ => new NpgsqlDataSourceBuilder(connectionString)
 // entrega las implementaciones concretas de servicios y repositorios.
 builder.Services.AddScoped<IAirportRepository, PostgresAirportRepository>();
 builder.Services.AddScoped<IAirportService, AirportService>();
+builder.Services.AddScoped<IBaggageRepository, PostgresBaggageRepository>();
+builder.Services.AddScoped<IBaggageService, BaggageService>();
+builder.Services.AddScoped<ICheckInRepository, PostgresCheckInRepository>();
+builder.Services.AddScoped<ICheckInService, CheckInService>();
 builder.Services.AddScoped<IFlightRepository, PostgresFlightRepository>();
 builder.Services.AddScoped<IFlightService, FlightService>();
 builder.Services.AddScoped<IItineraryRepository, PostgresItineraryRepository>();
 builder.Services.AddScoped<IItineraryService, ItineraryService>();
+builder.Services.AddScoped<IPassengerRepository, PostgresPassengerRepository>();
+builder.Services.AddScoped<IPassengerService, PassengerService>();
+builder.Services.AddScoped<IPlaneRepository, PostgresPlaneRepository>();
+builder.Services.AddScoped<IPlaneService, PlaneService>();
+builder.Services.AddScoped<IPromotionRepository, PostgresPromotionRepository>();
+builder.Services.AddScoped<IPromotionService, PromotionService>();
+builder.Services.AddScoped<IReservationRepository, PostgresReservationRepository>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<ISeatRepository, PostgresSeatRepository>();
+builder.Services.AddScoped<ISeatService, SeatService>();
 builder.Services.AddScoped<IUserRepository, PostgresUserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
+
+// Seguridad: este componente centraliza el hash de contrasenas para que
+// ningun flujo guarde passwords en texto plano en app_user.password_hash.
+builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
 

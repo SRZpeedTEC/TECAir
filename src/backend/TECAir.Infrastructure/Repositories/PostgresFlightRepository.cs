@@ -212,6 +212,162 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return flights;
     }
 
+    public async Task<bool> FlightExistsAsync(int flightId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.flight
+                WHERE flight_id = @flight_id
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Variante para actualizacion: ignora el vuelo actual para que no choque consigo mismo.
+    public async Task<bool> PlaneHasOverlappingFlightExceptAsync(
+        int excludedFlightId,
+        string planePlate,
+        DateTime departureDatetime,
+        DateTime arrivalDatetime,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.flight
+                WHERE
+                    flight_id <> @excluded_flight_id
+                    AND plane_plate = @plane_plate
+                    AND departure_datetime < @arrival_datetime
+                    AND arrival_datetime > @departure_datetime
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("excluded_flight_id", excludedFlightId);
+        command.Parameters.AddWithValue("plane_plate", planePlate);
+        command.Parameters.AddWithValue("departure_datetime", departureDatetime);
+        command.Parameters.AddWithValue("arrival_datetime", arrivalDatetime);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Variante para actualizacion: permite conservar la misma puerta del vuelo editado.
+    public async Task<bool> GateHasDepartureConflictExceptAsync(
+        int excludedFlightId,
+        string airportDepartsFromId,
+        string gate,
+        DateTime departureDatetime,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.flight
+                WHERE
+                    flight_id <> @excluded_flight_id
+                    AND airport_departs_from_id = @airport_departs_from_id
+                    AND LOWER(gate) = LOWER(@gate)
+                    AND departure_datetime = @departure_datetime
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("excluded_flight_id", excludedFlightId);
+        command.Parameters.AddWithValue("airport_departs_from_id", airportDepartsFromId);
+        command.Parameters.AddWithValue("gate", gate);
+        command.Parameters.AddWithValue("departure_datetime", departureDatetime);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Un vuelo usado por flight_in_itinerary no debe borrarse porque ya define una ruta vendible.
+    public async Task<bool> FlightIsUsedInItineraryAsync(
+        int flightId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.flight_in_itinerary
+                WHERE flight_id = @flight_id
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    public async Task<FlightResponse> UpdateAsync(
+        int flightId,
+        UpdateFlightRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE tecair.flight
+            SET
+                plane_plate = @plane_plate,
+                airport_departs_from_id = @airport_departs_from_id,
+                airport_arrives_to_id = @airport_arrives_to_id,
+                state = @state,
+                gate = @gate,
+                departure_datetime = @departure_datetime,
+                arrival_datetime = @arrival_datetime
+            WHERE flight_id = @flight_id
+            RETURNING
+                flight_id,
+                plane_plate,
+                airport_departs_from_id,
+                airport_arrives_to_id,
+                state,
+                gate,
+                departure_datetime,
+                arrival_datetime;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+        command.Parameters.AddWithValue("plane_plate", request.PlanePlate);
+        command.Parameters.AddWithValue("airport_departs_from_id", request.AirportDepartsFromId);
+        command.Parameters.AddWithValue("airport_arrives_to_id", request.AirportArrivesToId);
+        command.Parameters.AddWithValue("state", request.State);
+        command.Parameters.AddWithValue("gate", (object?)request.Gate ?? DBNull.Value);
+        command.Parameters.AddWithValue("departure_datetime", request.DepartureDatetime);
+        command.Parameters.AddWithValue("arrival_datetime", request.ArrivalDatetime);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            throw new InvalidOperationException("Failed to update the flight.");
+        }
+
+        return MapFlightResponse(reader);
+    }
+
+    public async Task DeleteAsync(int flightId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            DELETE FROM tecair.flight
+            WHERE flight_id = @flight_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     // Convierte la fila devuelta por PostgreSQL al DTO de respuesta de vuelos.
     private static FlightResponse MapFlightResponse(NpgsqlDataReader reader)
     {

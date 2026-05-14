@@ -1,0 +1,103 @@
+@baseUrl = http://localhost:5000
+
+### 1. Crear reservacion valida
+# Esperado: 201 Created.
+# Requiere que el pasajero P12345678 exista; ejecutar pruebasPASSENGER.http primero si hace falta.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-2026-0001",
+  "PlanePlate": "TI-TEC01",
+  "SeatNumber": "1A"
+}
+
+
+### 2. Crear reservacion con itineraryId inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 9999,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-2026-0002",
+  "PlanePlate": "TI-TEC01",
+  "SeatNumber": "1A"
+}
+
+
+### 3. Crear reservacion con userEmail inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "no.existe@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-2026-0003",
+  "PlanePlate": "TI-TEC01",
+  "SeatNumber": "1A"
+}
+
+
+### 4. Crear reservacion con passengerId inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "NOEXISTE",
+  "state": "PAID",
+  "paymentReference": "PAY-2026-0004",
+  "PlanePlate": "TI-TEC01",
+  "SeatNumber": "1A"
+}
+
+
+### 5. Crear reservacion con Seat_number pero sin Plane_plate
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-2026-0005",
+  "SeatNumber": "1A"
+}
+
+
+### 6. Buscar reservaciones por passengerId
+# Esperado: 200 OK con las reservaciones del pasajero.
+GET {{baseUrl}}/api/reservations/search?passengerId=P12345678
+Accept: application/json
+
+
+### 7. Buscar reservaciones por nombre
+# Esperado: 200 OK con coincidencias por nombre o apellido.
+GET {{baseUrl}}/api/reservations/search?name=Carlos
+Accept: application/json
+
+
+### 8. Buscar reservaciones sin parametros
+# Esperado: 400 Bad Request.
+GET {{baseUrl}}/api/reservations/search
+Accept: application/json

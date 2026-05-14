@@ -6,6 +6,7 @@ namespace TECAir.Application.DTOs.Users;
 public class CreateUserServiceResult
 {
     public bool IsSuccess { get; private init; }
+    public bool IsConflict { get; private init; }
     public string? ErrorMessage { get; private init; }
     public UserResponse? User { get; private init; }
 
@@ -25,6 +26,17 @@ public class CreateUserServiceResult
         return new CreateUserServiceResult
         {
             IsSuccess = false,
+            ErrorMessage = errorMessage
+        };
+    }
+
+    // Resultado fallido por conflicto de datos unicos antes de escribir en base.
+    public static CreateUserServiceResult Conflict(string errorMessage)
+    {
+        return new CreateUserServiceResult
+        {
+            IsSuccess = false,
+            IsConflict = true,
             ErrorMessage = errorMessage
         };
     }
