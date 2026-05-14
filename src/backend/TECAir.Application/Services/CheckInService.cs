@@ -206,22 +206,27 @@ public class CheckInService(ICheckInRepository checkInRepository) : ICheckInServ
             return "Itinerary flight id is required and must be greater than 0.";
         }
 
-        return ValidateSeatData(request.PlanePlate, request.SeatNumber);
-    }
-
-    private static string? ValidateUpdateCheckInSeatRequest(UpdateCheckInSeatRequest request)
-    {
-        return ValidateSeatData(request.PlanePlate, request.SeatNumber);
-    }
-
-    private static string? ValidateSeatData(string planePlate, string seatNumber)
-    {
-        if (string.IsNullOrWhiteSpace(planePlate))
+        if (string.IsNullOrWhiteSpace(request.PlanePlate))
         {
             return "Plane plate is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(seatNumber))
+        if (string.IsNullOrWhiteSpace(request.SeatNumber))
+        {
+            return "Seat number is required.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateUpdateCheckInSeatRequest(UpdateCheckInSeatRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.PlanePlate))
+        {
+            return "Plane plate is required.";
+        }
+
+        if (string.IsNullOrWhiteSpace(request.SeatNumber))
         {
             return "Seat number is required.";
         }
@@ -235,8 +240,8 @@ public class CheckInService(ICheckInRepository checkInRepository) : ICheckInServ
         {
             ReservationId = request.ReservationId,
             ItineraryFlightId = request.ItineraryFlightId,
-            PlanePlate = NormalizePlanePlate(request.PlanePlate),
-            SeatNumber = NormalizeSeatNumber(request.SeatNumber)
+            PlanePlate = request.PlanePlate.Trim(),
+            SeatNumber = request.SeatNumber.Trim().ToUpperInvariant()
         };
     }
 
@@ -244,18 +249,8 @@ public class CheckInService(ICheckInRepository checkInRepository) : ICheckInServ
     {
         return new UpdateCheckInSeatRequest
         {
-            PlanePlate = NormalizePlanePlate(request.PlanePlate),
-            SeatNumber = NormalizeSeatNumber(request.SeatNumber)
+            PlanePlate = request.PlanePlate.Trim(),
+            SeatNumber = request.SeatNumber.Trim().ToUpperInvariant()
         };
-    }
-
-    private static string NormalizePlanePlate(string planePlate)
-    {
-        return planePlate.Trim();
-    }
-
-    private static string NormalizeSeatNumber(string seatNumber)
-    {
-        return seatNumber.Trim().ToUpperInvariant();
     }
 }

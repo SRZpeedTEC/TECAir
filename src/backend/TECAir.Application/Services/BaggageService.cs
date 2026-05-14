@@ -1,4 +1,3 @@
-using System.Drawing;
 using TECAir.Application.DTOs.Baggages;
 using TECAir.Application.Interfaces;
 
@@ -35,8 +34,9 @@ public class BaggageService(IBaggageRepository baggageRepository) : IBaggageServ
                 $"Check-in '{confirmationNumber}' was not found.");
         }
 
-        var baggages = await baggageRepository.GetByConfirmationNumberAsync(confirmationNumber, 
-        cancellationToken);
+        var baggages = await baggageRepository.GetByConfirmationNumberAsync(
+            confirmationNumber,
+            cancellationToken);
         return GetBaggagesByCheckInServiceResult.Success(baggages);
     }
 
@@ -144,7 +144,7 @@ public class BaggageService(IBaggageRepository baggageRepository) : IBaggageServ
         {
             ConfirmationNumber = request.ConfirmationNumber,
             Weight = request.Weight,
-            Color = NormalizeColor(request.Color)
+            Color = request.Color.Trim()
         };
     }
 
@@ -153,13 +153,7 @@ public class BaggageService(IBaggageRepository baggageRepository) : IBaggageServ
         return new UpdateBaggageRequest
         {
             Weight = request.Weight,
-            Color = NormalizeColor(request.Color)
+            Color = request.Color.Trim()
         };
-    }
-
-
-    private static string NormalizeColor(string color)
-    {
-        return color.Trim();
     }
 }

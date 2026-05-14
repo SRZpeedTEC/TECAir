@@ -184,7 +184,7 @@ public class PromotionService(IPromotionRepository promotionRepository) : IPromo
         {
             PromotionCode = request.PromotionCode.Trim(),
             ItineraryId = request.ItineraryId,
-            ImageUrl = NormalizeImageUrl(request.ImageUrl),
+            ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim(),
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             DiscountPercent = request.DiscountPercent,
@@ -197,16 +197,11 @@ public class PromotionService(IPromotionRepository promotionRepository) : IPromo
         return new UpdatePromotionRequest
         {
             ItineraryId = request.ItineraryId,
-            ImageUrl = NormalizeImageUrl(request.ImageUrl),
+            ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim(),
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             DiscountPercent = request.DiscountPercent,
             PromoPrice = request.PromoPrice
         };
-    }
-
-    private static string? NormalizeImageUrl(string? imageUrl)
-    {
-        return string.IsNullOrWhiteSpace(imageUrl) ? null : imageUrl.Trim();
     }
 }

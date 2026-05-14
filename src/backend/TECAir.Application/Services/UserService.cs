@@ -158,15 +158,15 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
     {
         return new CreateUserRequest
         {
-            Email = NormalizeEmail(request.Email),
+            Email = request.Email.Trim().ToLowerInvariant(),
             Password = request.Password,
-            Name = NormalizeName(request.Name),
-            Lname = NormalizeLastName(request.Lname),
-            PhoneNum = NormalizePhoneNumber(request.PhoneNum),
-            Role = NormalizeRole(request.Role),
+            Name = request.Name.Trim(),
+            Lname = request.Lname.Trim(),
+            PhoneNum = request.PhoneNum.Trim(),
+            Role = request.Role.Trim().ToUpperInvariant(),
             IsStudent = request.IsStudent,
-            UserCarnet = NormalizeOptionalText(request.UserCarnet),
-            CollegeName = NormalizeOptionalText(request.CollegeName)
+            UserCarnet = string.IsNullOrWhiteSpace(request.UserCarnet) ? null : request.UserCarnet.Trim(),
+            CollegeName = string.IsNullOrWhiteSpace(request.CollegeName) ? null : request.CollegeName.Trim()
         };
     }
 
@@ -237,43 +237,13 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
         return new UpdateUserRequest
         {
             Password = request.Password?.Trim() ?? string.Empty,
-            Name = NormalizeName(request.Name),
-            Lname = NormalizeLastName(request.Lname),
-            PhoneNum = NormalizePhoneNumber(request.PhoneNum),
-            Role = NormalizeRole(request.Role),
+            Name = request.Name.Trim(),
+            Lname = request.Lname.Trim(),
+            PhoneNum = request.PhoneNum.Trim(),
+            Role = request.Role.Trim().ToUpperInvariant(),
             IsStudent = request.IsStudent,
-            UserCarnet = NormalizeOptionalText(request.UserCarnet),
-            CollegeName = NormalizeOptionalText(request.CollegeName)
+            UserCarnet = string.IsNullOrWhiteSpace(request.UserCarnet) ? null : request.UserCarnet.Trim(),
+            CollegeName = string.IsNullOrWhiteSpace(request.CollegeName) ? null : request.CollegeName.Trim()
         };
-    }
-
-    private static string NormalizeEmail(string email)
-    {
-        return email.Trim().ToLowerInvariant();
-    }
-
-    private static string NormalizeName(string name)
-    {
-        return name.Trim();
-    }
-
-    private static string NormalizeLastName(string lastName)
-    {
-        return lastName.Trim();
-    }
-
-    private static string NormalizePhoneNumber(string phoneNumber)
-    {
-        return phoneNumber.Trim();
-    }
-
-    private static string NormalizeRole(string role)
-    {
-        return role.Trim().ToUpperInvariant();
-    }
-
-    private static string? NormalizeOptionalText(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
