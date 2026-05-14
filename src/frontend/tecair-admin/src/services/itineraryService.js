@@ -68,12 +68,58 @@ export async function createItinerary(payload) {
 // ── Editar itinerario ──
 // Corresponde a: PUT /api/itineraries/{id}
 // Reemplaza precio + lista completa de vuelos.
+//
+// Nota sobre validación reactiva: el backend hace DELETE+INSERT sobre
+// flight_in_itinerary aunque solo cambie el precio. Si ya existen check-ins
+// asociados a algún vuelo del itinerario, la FK fk_check_in_itinerary_flight
+// (ON DELETE RESTRICT) revienta el DELETE → 500 sin mensaje útil. Hasta que
+// backend valide internamente y devuelva 409, interceptamos el error acá y
+// mostramos un mensaje claro al admin.
 export async function updateItinerary(id, payload) {
-  return apiFetch(`/itineraries/${id}`, {
+  const url = `${import.meta.env.VITE_API_BASE_URL ?? '/api'}/itineraries/${id}`;
+  const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+  if (res.ok) return res.json();
+
+  // Extrae lo que el body traiga (JSON con .message, texto plano o
+  // ProblemDetails de ASP.NET).
+  let bodyText = '';
+  let bodyMsg  = null;
+  try {
+    bodyText = await res.text();
+    try {
+      const j = JSON.parse(bodyText);
+      bodyMsg = j?.message ?? null;
+    } catch { /* no era JSON */ }
+  } catch { /* sin body */ }
+
+  // El log del 500 contiene la firma de la FK. Si en el futuro backend emite
+  // un 409 con mensaje propio, también lo respetamos (cae al return bodyMsg).
+  const blob = `${bodyMsg ?? ''} ${bodyText}`.toLowerCase();
+  const looksLikeCheckInFk =
+    blob.includes('fk_check_in_itinerary_flight') ||
+    blob.includes('check_in') ||
+    blob.includes('check-in');
+
+  if (looksLikeCheckInFk) {
+    throw new Error(
+      'No se puede modificar este itinerario porque ya tiene pasajeros con check-in registrado.'
+    );
+  }
+
+  // El backend hoy no captura el 23001, así que un 500 sin mensaje casi
+  // siempre proviene de esa misma FK. Damos un mensaje informativo en lugar
+  // de "Error 500".
+  if (res.status === 500) {
+    throw new Error(
+      'No se pudo guardar. Si el itinerario ya tiene pasajeros con check-in registrado, no es posible modificarlo.'
+    );
+  }
+
+  throw new Error(bodyMsg ?? `Error ${res.status}`);
 }
 
 // ── Eliminar itinerario ──
