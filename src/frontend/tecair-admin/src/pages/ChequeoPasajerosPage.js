@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import UnderDevelopment from '../components/UnderDevelopment.js';
-import CheckInFlow      from './CheckInFlow.js';
+import CheckInFlow from './CheckInFlow.js';
+import BaggageFlow from './BaggageFlow.js';
 
 // Sub-secciones del proceso de check-in.
 // Control de Equipajes vive aquí porque solo aplica durante el check-in.
@@ -39,7 +39,7 @@ export default function ChequeoPasajerosPage() {
 
       <div role="tabpanel">
         {activeTab === 'checkin'   && <CheckInFlow />}
-        {activeTab === 'equipajes' && <UnderDevelopment />}
+        {activeTab === 'equipajes' && <BaggageFlow />}
       </div>
     </div>
   );
