@@ -10,6 +10,4 @@ public class ReservationSearchResponse
     public string PassengerName { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
     public string? PaymentReference { get; set; }
-    public string? PreferredPlanePlate { get; set; }
-    public string? PreferredSeatNumber { get; set; }
 }

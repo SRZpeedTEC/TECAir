@@ -175,7 +175,8 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             request.State,
             request.Gate,
             request.DepartureDatetime,
-            request.ArrivalDatetime);
+            request.ArrivalDatetime,
+            allowEmptyState: true);
     }
 
     private static string? ValidateUpdateFlightRequest(UpdateFlightRequest request)
@@ -187,7 +188,8 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             request.State,
             request.Gate,
             request.DepartureDatetime,
-            request.ArrivalDatetime);
+            request.ArrivalDatetime,
+            allowEmptyState: false);
     }
 
     private static string? ValidateFlightData(
@@ -197,7 +199,8 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
         string stateValue,
         string? gate,
         DateTime departureDatetime,
-        DateTime arrivalDatetime)
+        DateTime arrivalDatetime,
+        bool allowEmptyState)
     {
         if (string.IsNullOrWhiteSpace(planePlate))
         {
@@ -214,7 +217,7 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             return "Arrival airport is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(stateValue))
+        if (!allowEmptyState && string.IsNullOrWhiteSpace(stateValue))
         {
             return "State is required.";
         }
@@ -242,9 +245,9 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
         }
 
         var state = stateValue.Trim().ToUpperInvariant();
-        if (state is not "OPEN" and not "CLOSED")
+        if (!string.IsNullOrWhiteSpace(state) && state is not "UPCOMING" and not "OPEN" and not "CLOSED")
         {
-            return "State must be OPEN or CLOSED.";
+            return "State must be UPCOMING, OPEN or CLOSED.";
         }
 
         if (gate is not null && string.IsNullOrWhiteSpace(gate))
@@ -263,7 +266,9 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             PlanePlate = request.PlanePlate.Trim(),
             AirportDepartsFromId = request.AirportDepartsFromId.Trim().ToUpperInvariant(),
             AirportArrivesToId = request.AirportArrivesToId.Trim().ToUpperInvariant(),
-            State = request.State.Trim().ToUpperInvariant(),
+            State = string.IsNullOrWhiteSpace(request.State)
+                ? "UPCOMING"
+                : request.State.Trim().ToUpperInvariant(),
             Gate = request.Gate?.Trim(),
             DepartureDatetime = request.DepartureDatetime,
             ArrivalDatetime = request.ArrivalDatetime

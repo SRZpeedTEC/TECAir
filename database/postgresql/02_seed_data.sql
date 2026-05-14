@@ -141,7 +141,10 @@ VALUES
      '2026-06-13 09:00:00', '2026-06-13 12:30:00'),
 
     (6, 'TI-TEC03', 'LIR', 'SJO', 'CLOSED', 'L1',
-     '2026-06-09 18:00:00', '2026-06-09 18:45:00');
+     '2026-06-09 18:00:00', '2026-06-09 18:45:00'),
+
+    (7, 'TI-TEC03', 'LIR', 'MEX', 'UPCOMING', 'L2',
+     '2026-06-15 08:00:00', '2026-06-15 11:00:00');
 -- =========================
 -- Itinerarios o rutas vendibles
 -- =========================
@@ -205,17 +208,15 @@ INSERT INTO reservation (
     user_email,
     state,
     payment_reference,
-    passenger_id,
-    plane_plate,
-    seat_number
+    passenger_id
 )
 OVERRIDING SYSTEM VALUE
 VALUES
-    (1, 1, 'ana.rojas@tecair.com', 'PAID',    'PAY-TECAIR-0001', 'CR-A1234567', 'TI-TEC01', '1A'),
-    (2, 3, 'carlos.mora@tecair.com', 'CHECKED', 'PAY-TECAIR-0002', 'CR-C7654321', 'TI-TEC03', '1A'),
-    (3, 4, 'sofia.salas@tecair.com', 'CHECKED', 'PAY-TECAIR-0003', 'CR-S1122334', 'TI-TEC01', '1A'),
-    (4, 2, 'ana.rojas@tecair.com', 'PAID',    'PAY-TECAIR-0004', 'PA-L9988776', 'TI-TEC01', '1B'),
-    (5, 5, 'carlos.mora@tecair.com', 'CHECKED', 'PAY-TECAIR-0005', 'CR-M4455667', 'TI-TEC01', '1B');
+    (1, 1, 'ana.rojas@tecair.com', 'PAID',    'PAY-TECAIR-0001', 'CR-A1234567'),
+    (2, 3, 'carlos.mora@tecair.com', 'CHECKED', 'PAY-TECAIR-0002', 'CR-C7654321'),
+    (3, 4, 'sofia.salas@tecair.com', 'CHECKED', 'PAY-TECAIR-0003', 'CR-S1122334'),
+    (4, 2, 'ana.rojas@tecair.com', 'PAID',    'PAY-TECAIR-0004', 'PA-L9988776'),
+    (5, 5, 'carlos.mora@tecair.com', 'CHECKED', 'PAY-TECAIR-0005', 'CR-M4455667');
 
 -- =========================
 -- Check-in
