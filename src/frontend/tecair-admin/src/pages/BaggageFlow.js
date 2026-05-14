@@ -95,7 +95,7 @@ function BaggageStepper({ step }) {
 // las maletas.
 // ──────────────────────────────────────────────────────────
 function FindStep({ onSelect }) {
-  const [mode, setMode]     = useState('passport');
+  const [mode, setMode]     = useState('passport'); // 'reservation' | 'passport' | 'name'
   const [query, setQuery]   = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -105,7 +105,13 @@ function FindStep({ onSelect }) {
   // Cache por reservationId → { checkIns, itinerary, loading, error }.
   const [details, setDetails] = useState({});
 
-  const canSearch = query.trim().length > 0 && !loading;
+  const isReservationMode = mode === 'reservation';
+  const trimmedQuery = query.trim();
+  const reservationIdNumber = isReservationMode ? Number(trimmedQuery) : NaN;
+  const reservationIdValid = isReservationMode
+    ? Number.isInteger(reservationIdNumber) && reservationIdNumber > 0
+    : true;
+  const canSearch = trimmedQuery.length > 0 && reservationIdValid && !loading;
 
   const submit = async (e) => {
     e?.preventDefault?.();
@@ -114,9 +120,11 @@ function FindStep({ onSelect }) {
     setError(null);
     setTouched(true);
     try {
-      const data = await searchReservations(
-        mode === 'passport' ? { passengerId: query.trim() } : { name: query.trim() }
-      );
+      const params =
+        mode === 'reservation' ? { reservationId: reservationIdNumber } :
+        mode === 'passport'    ? { passengerId: trimmedQuery }          :
+                                 { name: trimmedQuery };
+      const data = await searchReservations(params);
       setResults(data);
       setDetails({});
     } catch (err) {
@@ -166,22 +174,29 @@ function FindStep({ onSelect }) {
             <select
               className="form-select"
               value={mode}
-              onChange={(e) => { setMode(e.target.value); setResults([]); setTouched(false); }}
+              onChange={(e) => { setMode(e.target.value); setQuery(''); setResults([]); setTouched(false); }}
             >
+              <option value="reservation">N° de reservación</option>
               <option value="passport">Pasaporte</option>
               <option value="name">Nombre</option>
             </select>
           </div>
           <div className="col-md-7">
             <label className="form-label small text-muted">
-              {mode === 'passport' ? 'Número de pasaporte' : 'Nombre o apellido'}
+              {mode === 'reservation' ? 'Número de reservación'
+                : mode === 'passport' ? 'Número de pasaporte'
+                : 'Nombre o apellido'}
             </label>
             <input
-              type="text"
+              type={mode === 'reservation' ? 'number' : 'text'}
+              inputMode={mode === 'reservation' ? 'numeric' : undefined}
+              min={mode === 'reservation' ? 1 : undefined}
               className="form-control"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={mode === 'passport' ? 'A12345678' : 'María'}
+              placeholder={mode === 'reservation' ? '12'
+                : mode === 'passport' ? 'A12345678'
+                : 'María'}
               autoFocus
             />
           </div>

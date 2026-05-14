@@ -1,16 +1,17 @@
 import { apiFetch } from './api.js';
 
-// Busca reservaciones por pasaporte exacto o por coincidencia parcial de nombre/apellido.
-// Corresponde a: GET /api/reservations/search?passengerId=...&name=...
-// Backend exige al menos uno de los dos parametros.
+// Busca reservaciones por id exacto, pasaporte exacto o coincidencia parcial de nombre/apellido.
+// Corresponde a: GET /api/reservations/search?reservationId=...&passengerId=...&name=...
+// Backend exige al menos uno de los tres parametros.
 //
 // Respuesta normalizada a camelCase:
 //   { reservationId, itineraryId, userEmail, passengerId, passengerName,
 //     state, paymentReference, preferredPlanePlate, preferredSeatNumber }
-export async function searchReservations({ passengerId, name }) {
+export async function searchReservations({ reservationId, passengerId, name }) {
   const params = new URLSearchParams();
-  if (passengerId) params.set('passengerId', passengerId);
-  if (name)        params.set('name', name);
+  if (reservationId) params.set('reservationId', reservationId);
+  if (passengerId)   params.set('passengerId', passengerId);
+  if (name)          params.set('name', name);
 
   const data = await apiFetch(`/reservations/search?${params}`);
 
