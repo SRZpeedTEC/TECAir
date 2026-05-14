@@ -67,7 +67,7 @@ VALUES
 -- Aeropuertos
 -- =========================
 
--- Estos aeropuertos permiten probar busquedas por origen y destino.
+-- Estos aeropuertos permiten probar busquedas por origen y destino en varios paises.
 INSERT INTO airport (code, airport_name, city, country)
 VALUES
     ('SJO', 'Aeropuerto Internacional Juan Santamaria', 'San Jose', 'Costa Rica'),
@@ -75,38 +75,96 @@ VALUES
     ('PTY', 'Aeropuerto Internacional Tocumen', 'Ciudad de Panama', 'Panama'),
     ('BOG', 'Aeropuerto Internacional El Dorado', 'Bogota', 'Colombia'),
     ('MEX', 'Aeropuerto Internacional Benito Juarez', 'Ciudad de Mexico', 'Mexico'),
-    ('MIA', 'Aeropuerto Internacional de Miami', 'Miami', 'Estados Unidos');
+    ('MIA', 'Aeropuerto Internacional de Miami', 'Miami', 'Estados Unidos'),
+    ('JFK', 'Aeropuerto Internacional John F. Kennedy', 'Nueva York', 'Estados Unidos'),
+    ('YYZ', 'Aeropuerto Internacional Toronto Pearson', 'Toronto', 'Canada'),
+    ('GRU', 'Aeropuerto Internacional Sao Paulo Guarulhos', 'Sao Paulo', 'Brasil'),
+    ('EZE', 'Aeropuerto Internacional Ministro Pistarini', 'Buenos Aires', 'Argentina'),
+    ('SCL', 'Aeropuerto Internacional Arturo Merino Benitez', 'Santiago', 'Chile'),
+    ('LIM', 'Aeropuerto Internacional Jorge Chavez', 'Lima', 'Peru'),
+    ('UIO', 'Aeropuerto Internacional Mariscal Sucre', 'Quito', 'Ecuador'),
+    ('MVD', 'Aeropuerto Internacional de Carrasco', 'Montevideo', 'Uruguay'),
+    ('ASU', 'Aeropuerto Internacional Silvio Pettirossi', 'Asuncion', 'Paraguay'),
+    ('LPB', 'Aeropuerto Internacional El Alto', 'La Paz', 'Bolivia'),
+    ('MAD', 'Aeropuerto Adolfo Suarez Madrid-Barajas', 'Madrid', 'Espana'),
+    ('CDG', 'Aeropuerto Charles de Gaulle', 'Paris', 'Francia'),
+    ('LHR', 'Aeropuerto de Heathrow', 'Londres', 'Reino Unido'),
+    ('FCO', 'Aeropuerto Leonardo da Vinci-Fiumicino', 'Roma', 'Italia'),
+    ('FRA', 'Aeropuerto de Frankfurt', 'Frankfurt', 'Alemania'),
+    ('AMS', 'Aeropuerto Schiphol de Amsterdam', 'Amsterdam', 'Paises Bajos'),
+    ('ZRH', 'Aeropuerto de Zurich', 'Zurich', 'Suiza'),
+    ('LIS', 'Aeropuerto Humberto Delgado', 'Lisboa', 'Portugal'),
+    ('IST', 'Aeropuerto de Estambul', 'Estambul', 'Turquia'),
+    ('DXB', 'Aeropuerto Internacional de Dubai', 'Dubai', 'Emiratos Arabes Unidos'),
+    ('DOH', 'Aeropuerto Internacional Hamad', 'Doha', 'Qatar'),
+    ('SIN', 'Aeropuerto Changi de Singapur', 'Singapur', 'Singapur'),
+    ('HND', 'Aeropuerto de Haneda', 'Tokio', 'Japon'),
+    ('ICN', 'Aeropuerto Internacional de Incheon', 'Seul', 'Corea del Sur'),
+    ('PEK', 'Aeropuerto Internacional de Pekin-Capital', 'Pekin', 'China'),
+    ('DEL', 'Aeropuerto Internacional Indira Gandhi', 'Nueva Delhi', 'India'),
+    ('BKK', 'Aeropuerto Suvarnabhumi', 'Bangkok', 'Tailandia'),
+    ('SYD', 'Aeropuerto Kingsford Smith', 'Sidney', 'Australia'),
+    ('AKL', 'Aeropuerto Internacional de Auckland', 'Auckland', 'Nueva Zelanda'),
+    ('CAI', 'Aeropuerto Internacional de El Cairo', 'El Cairo', 'Egipto'),
+    ('JNB', 'Aeropuerto Internacional O. R. Tambo', 'Johannesburgo', 'Sudafrica'),
+    ('CMN', 'Aeropuerto Internacional Mohammed V', 'Casablanca', 'Marruecos'),
+    ('ADD', 'Aeropuerto Internacional Bole', 'Adis Abeba', 'Etiopia'),
+    ('NBO', 'Aeropuerto Internacional Jomo Kenyatta', 'Nairobi', 'Kenia');
 
 -- =========================
 -- Aviones y asientos
 -- =========================
 
 -- Estos aviones se usan en los vuelos de prueba.
+-- Todas las capacidades estan entre 150 y 180, y son multiplos de 6 para filas completas A-F.
 INSERT INTO plane (plate, model, capacity)
 VALUES
-    ('TI-TEC01', 'Airbus A320', 12),
-    ('TI-TEC02', 'Boeing 737-800', 12),
-    ('TI-TEC03', 'Embraer E190', 8);
+    ('TI-TEC01', 'Airbus A320', 180),
+    ('TI-TEC02', 'Boeing 737-800', 174),
+    ('TI-TEC03', 'Airbus A320neo', 150),
+    ('TI-TEC04', 'Boeing 737 MAX 8', 168),
+    ('TI-TEC05', 'Airbus A320', 162),
+    ('TI-TEC06', 'Boeing 737-800', 156),
+    ('TI-TEC07', 'Airbus A320neo', 180),
+    ('TI-TEC08', 'Boeing 737 MAX 8', 174),
+    ('TI-TEC09', 'Airbus A320', 150),
+    ('TI-TEC10', 'Boeing 737-800', 168),
+    ('TI-TEC11', 'Airbus A320neo', 162),
+    ('TI-TEC12', 'Boeing 737 MAX 8', 156),
+    ('TI-TEC13', 'Airbus A320', 180),
+    ('TI-TEC14', 'Boeing 737-800', 174),
+    ('TI-TEC15', 'Airbus A320neo', 150),
+    ('TI-TEC16', 'Boeing 737 MAX 8', 168),
+    ('TI-TEC17', 'Airbus A320', 162),
+    ('TI-TEC18', 'Boeing 737-800', 156),
+    ('TI-TEC19', 'Airbus A320neo', 180),
+    ('TI-TEC20', 'Boeing 737 MAX 8', 174),
+    ('TI-TEC21', 'Airbus A320', 150),
+    ('TI-TEC22', 'Boeing 737-800', 168),
+    ('TI-TEC23', 'Airbus A320neo', 162),
+    ('TI-TEC24', 'Boeing 737 MAX 8', 156),
+    ('TI-TEC25', 'Airbus A320', 180),
+    ('TI-TEC26', 'Boeing 737-800', 174),
+    ('TI-TEC27', 'Airbus A320neo', 150),
+    ('TI-TEC28', 'Boeing 737 MAX 8', 168),
+    ('TI-TEC29', 'Airbus A320', 162),
+    ('TI-TEC30', 'Boeing 737-800', 156),
+    ('TI-TEC31', 'Airbus A320neo', 180),
+    ('TI-TEC32', 'Boeing 737 MAX 8', 174),
+    ('TI-TEC33', 'Airbus A320', 150),
+    ('TI-TEC34', 'Boeing 737-800', 168),
+    ('TI-TEC35', 'Airbus A320neo', 162),
+    ('TI-TEC36', 'Boeing 737 MAX 8', 156);
 
--- Estos asientos pertenecen al avion TI-TEC01.
+-- Genera los asientos de cada avion segun su capacidad: filas numeradas y columnas A-F.
 INSERT INTO seat (plane_plate, seat_number)
-VALUES
-    ('TI-TEC01', '1A'), ('TI-TEC01', '1B'), ('TI-TEC01', '1C'), ('TI-TEC01', '1D'),
-    ('TI-TEC01', '2A'), ('TI-TEC01', '2B'), ('TI-TEC01', '2C'), ('TI-TEC01', '2D'),
-    ('TI-TEC01', '3A'), ('TI-TEC01', '3B'), ('TI-TEC01', '3C'), ('TI-TEC01', '3D');
-
--- Estos asientos pertenecen al avion TI-TEC02.
-INSERT INTO seat (plane_plate, seat_number)
-VALUES
-    ('TI-TEC02', '1A'), ('TI-TEC02', '1B'), ('TI-TEC02', '1C'), ('TI-TEC02', '1D'),
-    ('TI-TEC02', '2A'), ('TI-TEC02', '2B'), ('TI-TEC02', '2C'), ('TI-TEC02', '2D'),
-    ('TI-TEC02', '3A'), ('TI-TEC02', '3B'), ('TI-TEC02', '3C'), ('TI-TEC02', '3D');
-
--- Estos asientos pertenecen al avion TI-TEC03.
-INSERT INTO seat (plane_plate, seat_number)
-VALUES
-    ('TI-TEC03', '1A'), ('TI-TEC03', '1B'), ('TI-TEC03', '1C'), ('TI-TEC03', '1D'),
-    ('TI-TEC03', '2A'), ('TI-TEC03', '2B'), ('TI-TEC03', '2C'), ('TI-TEC03', '2D');
+SELECT
+    p.plate,
+    seat_rows.row_number::TEXT || letters.seat_letter
+FROM plane p
+CROSS JOIN LATERAL generate_series(1, p.capacity / 6) AS seat_rows(row_number)
+CROSS JOIN (VALUES ('A'), ('B'), ('C'), ('D'), ('E'), ('F')) AS letters(seat_letter)
+ORDER BY p.plate, seat_rows.row_number, letters.seat_letter;
 
 -- =========================
 -- Vuelos
