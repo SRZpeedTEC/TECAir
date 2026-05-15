@@ -1819,34 +1819,285 @@ body {
 }
 
 /* ─── Formulario de promoción ─── */
-.promo-form-itinerary {
+.promo-form {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  background: var(--burgundy-soft);
-  border: 1px solid var(--burgundy-line);
-  border-radius: 8px;
-  padding: 10px 14px;
+  flex-direction: column;
+  gap: 18px;
 }
 
-.promo-form-itinerary-route {
+/* Header del itinerario: ruta + datos de vuelo + precio base */
+.promo-form-header {
+  background: linear-gradient(135deg, var(--burgundy) 0%, var(--burgundy-deep) 100%);
+  color: #fff;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(91, 25, 54, 0.18);
+}
+
+.promo-form-header-route {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.15rem;
   font-weight: 600;
-  color: var(--burgundy);
+  flex-wrap: wrap;
+}
+
+.promo-form-header-code {
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+}
+
+.promo-form-header-arrow {
+  opacity: 0.85;
+  font-size: 1rem;
+  transform: rotate(45deg);
+}
+
+.promo-form-header-id {
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.promo-form-header-meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+@media (min-width: 540px) {
+  .promo-form-header-meta {
+    grid-template-columns: 1fr 1fr;
+  }
+  .promo-form-header-row-price {
+    grid-column: 1 / -1;
+    border-top: 1px dashed rgba(255, 255, 255, 0.25);
+    padding-top: 8px;
+    margin-top: 2px;
+  }
+}
+
+.promo-form-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.promo-form-header-row > i {
+  opacity: 0.8;
+}
+
+.promo-form-header-row-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.promo-form-header-row-value {
+  font-weight: 600;
+  color: #fff;
+}
+
+.promo-form-header-row-price .promo-form-header-row-value {
+  font-size: 1.05rem;
+}
+
+/* Secciones del formulario */
+.promo-form-section {
+  background: #fff;
+  border: 1px solid var(--burgundy-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.promo-form-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.promo-form-section-title {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--burgundy-deep);
+  margin: 0;
   display: flex;
   align-items: center;
 }
 
-.promo-form-itinerary-id {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85rem;
-  color: var(--burgundy-deep);
+.promo-form-section-title-optional {
+  font-size: 0.78rem;
+  color: #888;
+  font-weight: 400;
+  font-family: inherit;
+  margin-left: 8px;
 }
 
-.promo-form-itinerary-price {
-  font-size: 0.9rem;
+.promo-form-section-hint {
+  font-size: 0.82rem;
+  color: var(--burgundy);
+  background: var(--burgundy-soft);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+/* Chips de presets (período y precio) */
+.promo-form-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.promo-form-presets-label {
+  font-size: 0.78rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+
+.promo-form-chip {
+  border: 1px solid var(--burgundy-line);
+  background: #fff;
+  color: var(--burgundy);
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+
+.promo-form-chip:hover {
+  background: var(--burgundy-soft);
+  border-color: var(--burgundy);
+  transform: translateY(-1px);
+}
+
+.promo-form-chip:active {
+  transform: translateY(0);
+}
+
+/* Badge grande para mostrar el descuento calculado */
+.promo-form-discount-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--burgundy);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 4px 12px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(91, 25, 54, 0.25);
+}
+
+.promo-form-discount-badge.is-zero {
+  background: #999;
+  box-shadow: none;
+}
+
+.promo-form-discount-badge i {
+  font-size: 1.1rem;
+}
+
+/* Timeline visual: Hoy → vuelo, con franja de la promo superpuesta */
+.promo-timeline {
+  margin-top: 4px;
+}
+
+.promo-timeline-track {
+  position: relative;
+  height: 8px;
+  background: var(--burgundy-soft);
+  border-radius: 999px;
+  margin: 32px 14px 38px;
+}
+
+.promo-timeline-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, var(--burgundy) 0%, var(--burgundy-deep) 100%);
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(91, 25, 54, 0.3);
+  transition: left 0.18s ease, width 0.18s ease;
+}
+
+.promo-timeline-dot {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--burgundy);
+  box-shadow: 0 0 0 3px var(--burgundy-soft);
+  transform: translate(-50%, -50%);
+}
+
+.promo-timeline-dot-today  { left: 0%; }
+.promo-timeline-dot-flight { left: 100%; border-color: var(--burgundy-deep); }
+
+.promo-timeline-label {
+  position: absolute;
+  top: -26px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--burgundy-deep);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.promo-timeline-label-start { left: 0;  transform: translateX(-50%); }
+.promo-timeline-label-end   { left: 100%; transform: translateX(-50%); }
+
+.promo-timeline-date {
+  position: absolute;
+  top: 18px;
+  font-size: 0.72rem;
+  color: #777;
+  white-space: nowrap;
+}
+
+.promo-timeline-date-start { left: 0;   transform: translateX(-50%); }
+.promo-timeline-date-end   { left: 100%; transform: translateX(-50%); }
+
+.promo-timeline-footer {
+  font-size: 0.85rem;
   color: #555;
+  text-align: center;
+}
+
+.promo-timeline-empty {
+  background: #fdf2f2;
+  border: 1px solid #f5c2c2;
+  color: #842029;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.88rem;
 }
 
 .promo-form-img-preview {
