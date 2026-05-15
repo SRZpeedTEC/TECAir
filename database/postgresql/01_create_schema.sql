@@ -219,10 +219,15 @@ CREATE TABLE flight (
 CREATE TABLE itinerary (
     itinerary_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     price NUMERIC(10, 2) NOT NULL,
+    state VARCHAR(20) NOT NULL DEFAULT 'EDITION',
 
     -- Esto evita itinerarios con precio negativo.
     CONSTRAINT ck_itinerary_price
-        CHECK (price >= 0)
+        CHECK (price >= 0),
+
+    -- Esto los valores de estado de itineray a valores conocidos
+    CONSTRAINT ck_reservation_state
+        CHECK (state IN ('EDITION', 'PUBLIC'))
 );
 
 -- Esta tabla une itinerarios con vuelos.
@@ -275,6 +280,10 @@ CREATE TABLE promotion (
         REFERENCES itinerary (itinerary_id)
         ON UPDATE CASCADE
         ON DELETE CASCADE,
+
+    -- Esto genera que cada itinerario tenga exclusivamente una promoción
+    CONSTRAINT uq_promotion_itinerary
+        UNIQUE (itinerary_id),
 
     -- Esto valida que la fecha final de la promocion no sea anterior a la fecha inicial.
     CONSTRAINT ck_promotion_dates

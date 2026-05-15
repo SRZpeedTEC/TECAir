@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 using TECAir.Application.DTOs.Promotions;
 using TECAir.Application.Interfaces;
 
@@ -41,25 +42,40 @@ public class PromotionsController(IPromotionService promotionService) : Controll
         CreatePromotionRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await promotionService.CreateAsync(request, cancellationToken);
-        if (!result.IsSuccess)
+        try
         {
-            if (result.IsNotFound)
+            var result = await promotionService.CreateAsync(request, cancellationToken);
+            if (!result.IsSuccess)
             {
-                return NotFound(new { message = result.ErrorMessage });
+                if (result.IsNotFound)
+                {
+                    return NotFound(new { message = result.ErrorMessage });
+                }
+
+                if (result.IsConflict)
+                {
+                    return Conflict(new { message = result.ErrorMessage });
+                }
+
+                return BadRequest(new { message = result.ErrorMessage });
             }
 
-            if (result.IsConflict)
-            {
-                return Conflict(new { message = result.ErrorMessage });
-            }
-
-            return BadRequest(new { message = result.ErrorMessage });
+            return Created(
+                $"/promotions/{Uri.EscapeDataString(result.Promotion!.PromotionCode)}",
+                result.Promotion);
         }
-
-        return Created(
-            $"/promotions/{Uri.EscapeDataString(result.Promotion!.PromotionCode)}",
-            result.Promotion);
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return Conflict(new { message = "A promotion with that code or itinerary already exists." });
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+        {
+            return Conflict(new { message = "The promotion references related data that does not exist." });
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
+        {
+            return BadRequest(new { message = "The promotion data violates a database constraint." });
+        }
     }
 
     // PUT /promotions/{promotionCode}
@@ -69,23 +85,38 @@ public class PromotionsController(IPromotionService promotionService) : Controll
         UpdatePromotionRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await promotionService.UpdateAsync(promotionCode, request, cancellationToken);
-        if (!result.IsSuccess)
+        try
         {
-            if (result.IsNotFound)
+            var result = await promotionService.UpdateAsync(promotionCode, request, cancellationToken);
+            if (!result.IsSuccess)
             {
-                return NotFound(new { message = result.ErrorMessage });
+                if (result.IsNotFound)
+                {
+                    return NotFound(new { message = result.ErrorMessage });
+                }
+
+                if (result.IsConflict)
+                {
+                    return Conflict(new { message = result.ErrorMessage });
+                }
+
+                return BadRequest(new { message = result.ErrorMessage });
             }
 
-            if (result.IsConflict)
-            {
-                return Conflict(new { message = result.ErrorMessage });
-            }
-
-            return BadRequest(new { message = result.ErrorMessage });
+            return Ok(result.Promotion);
         }
-
-        return Ok(result.Promotion);
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return Conflict(new { message = "A promotion with that code or itinerary already exists." });
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
+        {
+            return Conflict(new { message = "The promotion references related data that does not exist." });
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
+        {
+            return BadRequest(new { message = "The promotion data violates a database constraint." });
+        }
     }
 
     // DELETE /promotions/{promotionCode}

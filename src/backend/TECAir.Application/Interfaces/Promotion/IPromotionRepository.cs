@@ -15,4 +15,8 @@ public interface IPromotionRepository
     Task DeleteAsync(string promotionCode, CancellationToken cancellationToken = default);
     Task<bool> PromotionExistsAsync(string promotionCode, CancellationToken cancellationToken = default);
     Task<bool> ItineraryExistsAsync(int itineraryId, CancellationToken cancellationToken = default);
+    Task<bool> ItineraryAlreadyHasPromotionAsync(
+        int itineraryId,
+        string? excludingPromotionCode = null,
+        CancellationToken cancellationToken = default);
 }

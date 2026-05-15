@@ -80,7 +80,25 @@ Accept: application/json
 }
 
 
-### 8. Intentar crear promocion con itinerario inexistente
+### 8. Intentar crear promocion para itinerary que ya tiene promocion
+# itinerary_id = 1 ya tiene PROMO-PANAMA-15 por UNIQUE(itinerary_id).
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/promotions
+Content-Type: application/json
+Accept: application/json
+
+{
+  "promotionCode": "PROMO-ITINERARIO-REPETIDO",
+  "itineraryId": 1,
+  "imageUrl": null,
+  "startDate": "2026-05-15",
+  "endDate": "2026-06-15",
+  "discountPercent": 10,
+  "promoPrice": 100
+}
+
+
+### 9. Intentar crear promocion con itinerario inexistente
 # Esperado: 404 Not Found.
 POST {{baseUrl}}/promotions
 Content-Type: application/json
@@ -97,15 +115,15 @@ Accept: application/json
 }
 
 
-### 9. Actualizar promocion existente
-# No cambia promotionCode; solo datos editables.
+### 10. Actualizar promocion existente
+# No cambia promotionCode; solo datos editables y conserva itinerary_id = 5.
 # Esperado: 200 OK.
 PUT {{baseUrl}}/api/promotions/PROMO-TEST-2026
 Content-Type: application/json
 Accept: application/json
 
 {
-  "itineraryId": 4,
+  "itineraryId": 5,
   "imageUrl": "https://example.com/promos/test-actualizada.jpg",
   "startDate": "2026-05-20",
   "endDate": "2026-07-20",
@@ -114,7 +132,24 @@ Accept: application/json
 }
 
 
-### 10. Actualizar promocion inexistente
+### 11. Intentar mover promocion a itinerary que ya tiene otra promocion
+# itinerary_id = 1 ya tiene PROMO-PANAMA-15.
+# Esperado: 409 Conflict.
+PUT {{baseUrl}}/api/promotions/PROMO-TEST-2026
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "imageUrl": "https://example.com/promos/test-actualizada.jpg",
+  "startDate": "2026-05-20",
+  "endDate": "2026-07-20",
+  "discountPercent": 18.00,
+  "promoPrice": 287
+}
+
+
+### 12. Actualizar promocion inexistente
 # Esperado: 404 Not Found.
 PUT {{baseUrl}}/promotions/PROMO-NO-EXISTE
 Content-Type: application/json
@@ -130,7 +165,7 @@ Accept: application/json
 }
 
 
-### 11. Actualizar promocion con datos invalidos
+### 13. Actualizar promocion con datos invalidos
 # imageUrl viene como string vacio.
 # Esperado: 400 Bad Request.
 PUT {{baseUrl}}/api/promotions/PROMO-TEST-2026
@@ -138,7 +173,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "itineraryId": 4,
+  "itineraryId": 5,
   "imageUrl": "   ",
   "startDate": "2026-05-20",
   "endDate": "2026-07-20",
@@ -147,13 +182,13 @@ Accept: application/json
 }
 
 
-### 12. Eliminar promocion existente
+### 14. Eliminar promocion existente
 # Esperado: 204 No Content.
 DELETE {{baseUrl}}/api/promotions/PROMO-TEST-2026
 Accept: application/json
 
 
-### 13. Eliminar promocion inexistente
+### 15. Eliminar promocion inexistente
 # Esperado: 404 Not Found.
 DELETE {{baseUrl}}/promotions/PROMO-NO-EXISTE
 Accept: application/json
