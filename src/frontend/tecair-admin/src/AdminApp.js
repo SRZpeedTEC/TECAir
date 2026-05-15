@@ -8,6 +8,7 @@ import ReservacionVuelosPage from './pages/ReservacionVuelosPage.js';
 import ChequeoPasajerosPage from './pages/ChequeoPasajerosPage.js';
 import GestionVuelosPage from './pages/GestionVuelosPage.js';
 import GestionItinerariosPage from './pages/GestionItinerariosPage.js';
+import GestionPromocionesPage from './pages/GestionPromocionesPage.js';
 import AperturaVuelosPage from './pages/AperturaVuelosPage.js';
 import CierreVuelosPage from './pages/CierreVuelosPage.js';
 
@@ -20,6 +21,7 @@ const SECTIONS = {
   'chequeo': { title: 'Chequeo de Pasajeros', icon: 'bi-person-check', Page: ChequeoPasajerosPage },
   'gestion-vuelos': { title: 'Gestión de Vuelos', icon: 'bi-airplane', Page: GestionVuelosPage },
   'itinerarios': { title: 'Gestión de Itinerarios', icon: 'bi-map', Page: GestionItinerariosPage },
+  'promociones': { title: 'Gestión de Promociones', icon: 'bi-tag', Page: GestionPromocionesPage },
   'apertura': { title: 'Apertura de Vuelos', icon: 'bi-unlock', Page: AperturaVuelosPage },
   'cierre': { title: 'Cierre de Vuelos', icon: 'bi-lock', Page: CierreVuelosPage },
 };

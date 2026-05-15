@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { key: 'chequeo', label: 'Chequeo de Pasajeros', icon: 'bi-person-check' },
   { key: 'gestion-vuelos', label: 'Gestión de Vuelos', icon: 'bi-airplane' },
   { key: 'itinerarios', label: 'Gestión de Itinerarios', icon: 'bi-map' },
+  { key: 'promociones', label: 'Gestión de Promociones', icon: 'bi-tag' },
   { key: 'apertura', label: 'Apertura de Vuelos', icon: 'bi-unlock' },
   { key: 'cierre', label: 'Cierre de Vuelos', icon: 'bi-lock' },
 ];
