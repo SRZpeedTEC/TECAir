@@ -6,14 +6,12 @@ import ConfirmPage from './pages/reservations/ConfirmPage.js';
 import MisViajesPage from './pages/reservations/MisViajesPage.js';
 import StudentProgramPage from './pages/StudentProgramPage.js';
 import AuthModal from './components/AuthModal.js';
-import AIRPORTS from './data/airports.js';
 
 const INITIAL_STATE = {
-  from: AIRPORTS[0],
-  to: AIRPORTS[10],
-  depart: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-  ret: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
-  pax: { adults: 2 },
+  from: null,
+  to: null,
+  depart: null,
+  pax: { adults: 1 },
   selectedFlight: null,
   passengers: [],
 };

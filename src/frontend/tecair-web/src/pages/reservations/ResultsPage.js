@@ -126,7 +126,7 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
                 {state.from?.city} <i className="bi bi-arrow-right mx-1 text-burgundy"></i> {state.to?.city}
               </div>
               <div className="small text-muted">
-                {fmtDateShort(state.depart)}{state.ret && ` — ${fmtDateShort(state.ret)}`}
+                {fmtDateShort(state.depart)}
                 {' · '}{totalPax} {totalPax === 1 ? 'pasajero' : 'pasajeros'} · Económica
               </div>
             </div>
