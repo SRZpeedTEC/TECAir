@@ -41,11 +41,28 @@ export async function getItineraryById(id) {
   };
 }
 
-// Obtiene todas las promociones y las enriquece con datos del itinerario
+// Devuelve YYYY-MM-DD para comparar contra startDate/endDate sin lidiar con TZ.
+function todayIso() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+// True si hoy está dentro del rango [startDate, endDate] de la promoción.
+function isPromotionActive(p) {
+  const today = todayIso();
+  const start = String(p.startDate ?? '').slice(0, 10);
+  const end   = String(p.endDate   ?? '').slice(0, 10);
+  if (!start || !end) return false;
+  return start <= today && today <= end;
+}
+
+// Obtiene las promociones vigentes hoy y las enriquece con datos del itinerario
 // (origen + destino + ciudad de destino). Si una promo no puede enriquecerse,
 // igual se devuelve con los campos básicos.
 export async function getPromotionsWithItinerary() {
-  const promos = await getAllPromotions();
+  const promos = (await getAllPromotions()).filter(isPromotionActive);
 
   const enriched = await Promise.all(promos.map(async (p) => {
     try {
