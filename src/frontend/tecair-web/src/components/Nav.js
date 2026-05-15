@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import ExplorePanel from './ExplorePanel.js';
 
 // Props:
 //   currentUser      – objeto UserResponse o null
@@ -9,7 +8,6 @@ import ExplorePanel from './ExplorePanel.js';
 //   onMisViajes      – navega a mis viajes
 //   onLogoClick      – navega al home
 export default function Nav({ onLogoClick, onOpenAuth, onLogout, onStudentProgram, onMisViajes, currentUser }) {
-  const [exploreOpen,  setExploreOpen]  = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const firstName = currentUser?.fullName?.split(' ')[0] ?? '';
@@ -30,12 +28,6 @@ export default function Nav({ onLogoClick, onOpenAuth, onLogout, onStudentProgra
             </a>
 
             <div className="d-none d-md-flex align-items-center gap-1">
-              <span
-                className={'nav-link-airtec ' + (exploreOpen ? 'active' : '')}
-                onClick={() => setExploreOpen(!exploreOpen)}
-              >
-                Explorar <i className="bi bi-chevron-down ms-1" style={{ fontSize: '0.75rem' }}></i>
-              </span>
               <span className="nav-link-airtec" onClick={onMisViajes} style={{ cursor: 'pointer' }}>
                 <i className="bi bi-ticket-perforated me-1"></i>Mis viajes
               </span>
@@ -188,10 +180,6 @@ export default function Nav({ onLogoClick, onOpenAuth, onLogout, onStudentProgra
           </div>
         </div>
       </nav>
-
-      {exploreOpen && (
-        <ExplorePanel onClose={() => setExploreOpen(false)} />
-      )}
     </>
   );
 }

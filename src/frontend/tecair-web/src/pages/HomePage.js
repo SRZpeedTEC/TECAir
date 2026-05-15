@@ -44,8 +44,6 @@ function fmtDateRange(start, end) {
 
 // Pantalla de inicio: hero, buscador de vuelos flotante, tarjetas de ofertas y características
 export default function HomePage({ state, setState, goToResults, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
-  const [tab, setTab] = useState('rt'); // rt = ida y vuelta | ow = solo ida | mc = multi-ciudad
-
   // Promociones traídas del backend. Si el endpoint falla o no hay registros
   // mostramos el array estático original como fallback.
   const [promotions,    setPromotions]    = useState(null);
@@ -87,7 +85,7 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
   const swap = () => setState((s) => ({ ...s, from: s.to, to: s.from }));
 
   // El botón de búsqueda se activa solo cuando los campos obligatorios están completos
-  const canSearch = state.from && state.to && state.depart && (tab === 'ow' || state.ret);
+  const canSearch = state.from && state.to && state.depart && (state.pax?.adults || 0) >= 1;
 
   return (
     <>
@@ -123,19 +121,6 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
       <div className="container">
         {/* ─── Tarjeta de búsqueda flotante (sobresale sobre el hero) ─── */}
         <div className="search-card">
-          {/* Pestañas: tipo de viaje */}
-          <div className="search-tabs">
-            <div className={'search-tab ' + (tab === 'rt' ? 'active' : '')} onClick={() => setTab('rt')}>
-              <i className="bi bi-arrow-left-right"></i> Ida y vuelta
-            </div>
-            <div className={'search-tab ' + (tab === 'ow' ? 'active' : '')} onClick={() => setTab('ow')}>
-              <i className="bi bi-arrow-right"></i> Solo ida
-            </div>
-            <div className={'search-tab ' + (tab === 'mc' ? 'active' : '')} onClick={() => setTab('mc')}>
-              <i className="bi bi-geo-alt"></i> Multi-ciudad
-            </div>
-          </div>
-
           {/* Campos del buscador */}
           <div className="row g-2 align-items-stretch">
             <div className="col-12 col-lg-3">
@@ -170,18 +155,7 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
                 min={new Date()}
               />
             </div>
-            {/* Fecha de regreso solo se muestra en modo "ida y vuelta" */}
-            {tab === 'rt' && (
-              <div className="col-6 col-lg-2">
-                <DateField
-                  label="Regreso"
-                  value={state.ret}
-                  onChange={(d) => setState((s) => ({ ...s, ret: d }))}
-                  min={state.depart || new Date()}
-                />
-              </div>
-            )}
-            <div className={'col-12 ' + (tab === 'rt' ? 'col-lg-2' : 'col-lg-4')}>
+            <div className="col-12 col-lg-4">
               <PaxField
                 value={state.pax}
                 onChange={(v) => setState((s) => ({ ...s, pax: v }))}
@@ -189,11 +163,8 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
             </div>
           </div>
 
-          {/* Pie de la tarjeta: garantía y botón de búsqueda */}
-          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
-            <div className="text-muted small">
-              <i className="bi bi-shield-check text-burgundy"></i> Cambios sin costo hasta 24h antes
-            </div>
+          {/* Pie de la tarjeta: botón de búsqueda */}
+          <div className="d-flex justify-content-end align-items-center flex-wrap gap-2 mt-3">
             <button
               className="btn btn-burgundy px-4"
               disabled={!canSearch}
@@ -305,11 +276,10 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
         <section className="mt-5 pt-4 border-top">
           <div className="row g-4 text-center">
             {[
-              { ic: 'shield-check', t: 'Cambios flexibles', s: 'Modifica tu vuelo sin costo hasta 24h antes.' },
-              { ic: 'luggage',      t: 'Equipaje incluido',  s: '7 kg de mano + 1 personal en todas las tarifas.' },
-              { ic: 'headset',      t: 'Soporte 24/7',       s: 'Habla con un humano cuando lo necesites.' },
+              { ic: 'luggage', t: 'Equipaje incluido', s: '7 kg de mano + 1 personal en todas las tarifas.' },
+              { ic: 'headset', t: 'Soporte 24/7',     s: 'Habla con un humano cuando lo necesites.' },
             ].map((f, i) => (
-              <div className="col-md-4" key={i}>
+              <div className="col-md-6" key={i}>
                 <i className={'bi bi-' + f.ic + ' text-burgundy'} style={{ fontSize: '1.8rem' }}></i>
                 <h6 className="mt-2 mb-1 serif" style={{ fontSize: '1.1rem' }}>{f.t}</h6>
                 <p className="text-muted small mb-0">{f.s}</p>

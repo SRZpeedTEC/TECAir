@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+import UnderDevelopment from '../components/UnderDevelopment.js';
+
+export default function GestionVuelosPage() {
+  return <UnderDevelopment />;
+=======
 import { useState } from 'react';
 
 import FlightForm     from '../components/FlightForm.js';
@@ -69,4 +75,5 @@ export default function GestionVuelosPage() {
       )}
     </div>
   );
+>>>>>>> admin-view-develop
 }

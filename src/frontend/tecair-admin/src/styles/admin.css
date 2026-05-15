@@ -1757,7 +1757,7 @@ body {
   margin: 0;
 }
 
-.promo-itinerary-card-meta > div {
+.promo-itinerary-card-meta>div {
   display: flex;
   flex-direction: column;
 }

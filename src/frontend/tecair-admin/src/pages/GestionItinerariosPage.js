@@ -1,3 +1,9 @@
+<<<<<<< HEAD
+import UnderDevelopment from '../components/UnderDevelopment.js';
+
+export default function GestionItinerariosPage() {
+  return <UnderDevelopment />;
+=======
 import { useState } from 'react';
 
 import ItineraryBuilder    from '../components/ItineraryBuilder.js';
@@ -60,4 +66,5 @@ export default function GestionItinerariosPage() {
       )}
     </div>
   );
+>>>>>>> admin-view-develop
 }
