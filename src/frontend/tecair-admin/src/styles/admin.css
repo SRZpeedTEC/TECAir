@@ -488,6 +488,11 @@ body {
   text-transform: uppercase;
 }
 
+.flight-state-upcoming {
+  background: #e6ecf6;
+  color: #2a4570;
+}
+
 .flight-state-open {
   background: #e0f1e7;
   color: #1f5e3a;

@@ -21,10 +21,11 @@ export default function GestionVuelosPage() {
   const [successMessage, setSuccessMessage] = useState(null);
 
   // El form de creación entrega un payload listo; aquí solo orquestamos la llamada.
+  // Los vuelos nuevos nacen en UPCOMING — pasan a OPEN desde Apertura de Vuelos.
   const handleCreate = async (payload) => {
     setSuccessMessage(null);
-    const created = await createFlight({ ...payload, state: 'OPEN' });
-    setSuccessMessage(`Vuelo #${created.flightId} creado correctamente.`);
+    const created = await createFlight({ ...payload, state: 'UPCOMING' });
+    setSuccessMessage(`Vuelo #${created.flightId} creado correctamente en estado UPCOMING.`);
   };
 
   const handleCancelCreate = () => {

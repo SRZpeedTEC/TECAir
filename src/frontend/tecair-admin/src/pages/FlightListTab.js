@@ -49,7 +49,7 @@ function flightToFormValues(flight) {
     },
     planePlate:    flight.planePlate,
     gate:          flight.gate ?? '',
-    state:         flight.state ?? 'OPEN',
+    state:         flight.state ?? 'UPCOMING',
     departureDate: dep.date,
     departureTime: dep.time,
     arrivalDate:   arr.date,
