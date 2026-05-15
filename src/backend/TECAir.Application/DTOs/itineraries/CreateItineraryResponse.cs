@@ -6,5 +6,6 @@ public class CreateItineraryResponse
 {
     public int ItineraryId { get; set; }
     public decimal Price { get; set; }
+    public string State { get; set; } = string.Empty;
     public List<CreatedItineraryFlightResponse> Flights { get; set; } = [];
 }

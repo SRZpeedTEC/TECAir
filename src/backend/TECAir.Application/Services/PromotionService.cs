@@ -48,6 +48,14 @@ public class PromotionService(IPromotionRepository promotionRepository) : IPromo
                 $"Promotion '{normalizedRequest.PromotionCode}' already exists.");
         }
 
+        if (await promotionRepository.ItineraryAlreadyHasPromotionAsync(
+            normalizedRequest.ItineraryId,
+            cancellationToken: cancellationToken))
+        {
+            return CreatePromotionServiceResult.Conflict(
+                $"Itinerary '{normalizedRequest.ItineraryId}' already has a promotion.");
+        }
+
         var promotion = await promotionRepository.CreateAsync(normalizedRequest, cancellationToken);
         return CreatePromotionServiceResult.Success(promotion);
     }
@@ -80,6 +88,15 @@ public class PromotionService(IPromotionRepository promotionRepository) : IPromo
         {
             return UpdatePromotionServiceResult.NotFound(
                 $"Itinerary '{normalizedRequest.ItineraryId}' was not found.");
+        }
+
+        if (await promotionRepository.ItineraryAlreadyHasPromotionAsync(
+            normalizedRequest.ItineraryId,
+            normalizedCode,
+            cancellationToken))
+        {
+            return UpdatePromotionServiceResult.Conflict(
+                $"Itinerary '{normalizedRequest.ItineraryId}' already has another promotion.");
         }
 
         var promotion = await promotionRepository.UpdateAsync(normalizedCode, normalizedRequest, cancellationToken);

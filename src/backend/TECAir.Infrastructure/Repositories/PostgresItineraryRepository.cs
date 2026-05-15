@@ -1,5 +1,7 @@
 using Npgsql;
+using NpgsqlTypes;
 using TECAir.Application.DTOs.Itineraries;
+using TECAir.Application.DTOs.Promotions;
 using TECAir.Application.Interfaces;
 
 namespace TECAir.Infrastructure.Repositories;
@@ -26,12 +28,15 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             SELECT
                 i.itinerary_id,
                 i.price,
+                i.state,
                 departure_airport.code AS origin_code,
                 arrival_airport.code AS destination_code,
                 bounds.total_flights,
                 first_flight.departure_datetime,
                 last_flight.arrival_datetime
             FROM tecair.itinerary i
+            LEFT JOIN tecair.promotion p
+                ON p.itinerary_id = i.itinerary_id
             INNER JOIN itinerary_bounds bounds
                 ON bounds.itinerary_id = i.itinerary_id
             INNER JOIN tecair.flight_in_itinerary first_link
@@ -67,52 +72,59 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             {
                 ItineraryId = reader.GetInt32(0),
                 Price = reader.GetDecimal(1),
-                OriginCode = reader.GetString(2),
-                DestinationCode = reader.GetString(3),
-                TotalFlights = reader.GetInt64(4) is var totalFlights ? checked((int)totalFlights) : 0,
-                DepartureDatetime = reader.GetDateTime(5),
-                ArrivalDatetime = reader.GetDateTime(6)
+                State = reader.GetString(2),
+                OriginCode = reader.GetString(3),
+                DestinationCode = reader.GetString(4),
+                TotalFlights = reader.GetInt64(5) is var totalFlights ? checked((int)totalFlights) : 0,
+                DepartureDatetime = reader.GetDateTime(6),
+                ArrivalDatetime = reader.GetDateTime(7)
             });
         }
 
         return itineraries;
     }
 
-    // Obtiene primero el encabezado del itinerario y luego sus vuelos ordenados.
+    public Task<IReadOnlyList<ItineraryDetailsResponse>> GetAllWithPromotionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return GetWithPromotionsAsync(publicOnly: false, itineraryId: null, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<ItineraryDetailsResponse>> GetPublicWithPromotionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return GetWithPromotionsAsync(publicOnly: true, itineraryId: null, cancellationToken);
+    }
+
+    // Obtiene encabezado, promocion opcional y vuelos ordenados de un itinerario especifico.
     public async Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default)
     {
-        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+        var itineraries = await GetWithPromotionsAsync(
+            publicOnly: false,
+            itineraryId,
+            cancellationToken);
+        return itineraries.FirstOrDefault();
+    }
 
-        const string itinerarySql = """
+    private async Task<IReadOnlyList<ItineraryDetailsResponse>> GetWithPromotionsAsync(
+        bool publicOnly,
+        int? itineraryId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
             SELECT
-                itinerary_id,
-                price
-            FROM tecair.itinerary
-            WHERE itinerary_id = @itinerary_id;
-            """;
-
-        await using var itineraryCommand = new NpgsqlCommand(itinerarySql, connection);
-        itineraryCommand.Parameters.AddWithValue("itinerary_id", itineraryId);
-
-        await using var itineraryReader = await itineraryCommand.ExecuteReaderAsync(cancellationToken);
-        if (!await itineraryReader.ReadAsync(cancellationToken))
-        {
-            return null;
-        }
-
-        var itinerary = new ItineraryDetailsResponse
-        {
-            ItineraryId = itineraryReader.GetInt32(0),
-            Price = itineraryReader.GetDecimal(1)
-        };
-
-        // Cerramos el reader antes de ejecutar otra consulta sobre la misma conexion.
-        await itineraryReader.CloseAsync();
-
-        const string flightsSql = """
-            SELECT
-                fii.itinerary_flight_id,
-                fii.flight_order,
+                i.itinerary_id,
+                i.price,
+                i.state,
+                p.promotion_code,
+                p.itinerary_id,
+                p.image_url,
+                p.start_date,
+                p.end_date,
+                p.discount_percent,
+                p.promo_price,
+                ifl.itinerary_flight_id,
+                ifl.flight_order,
                 f.flight_id,
                 f.plane_plate,
                 departure_airport.airport_name,
@@ -125,43 +137,51 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
                 f.arrival_datetime,
                 f.gate,
                 f.state
-            FROM tecair.flight_in_itinerary fii
+            FROM tecair.itinerary i
+            LEFT JOIN tecair.promotion p
+                ON p.itinerary_id = i.itinerary_id
+            INNER JOIN tecair.flight_in_itinerary ifl
+                ON ifl.itinerary_id = i.itinerary_id
             INNER JOIN tecair.flight f
-                ON f.flight_id = fii.flight_id
+                ON f.flight_id = ifl.flight_id
             INNER JOIN tecair.airport departure_airport
                 ON departure_airport.code = f.airport_departs_from_id
             INNER JOIN tecair.airport arrival_airport
                 ON arrival_airport.code = f.airport_arrives_to_id
-            WHERE fii.itinerary_id = @itinerary_id
-            ORDER BY fii.flight_order;
+            WHERE
+                (@public_only = FALSE OR i.state = 'PUBLIC')
+                AND (@itinerary_id IS NULL OR i.itinerary_id = @itinerary_id)
+            ORDER BY i.itinerary_id, ifl.flight_order;
             """;
 
-        await using var flightsCommand = new NpgsqlCommand(flightsSql, connection);
-        flightsCommand.Parameters.AddWithValue("itinerary_id", itineraryId);
+        var itinerariesById = new Dictionary<int, ItineraryDetailsResponse>();
 
-        await using var flightsReader = await flightsCommand.ExecuteReaderAsync(cancellationToken);
-        while (await flightsReader.ReadAsync(cancellationToken))
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("public_only", publicOnly);
+        command.Parameters.Add("itinerary_id", NpgsqlDbType.Integer).Value =
+            (object?)itineraryId ?? DBNull.Value;
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            itinerary.Flights.Add(new ItineraryFlightResponse
+            var currentItineraryId = reader.GetInt32(0);
+            if (!itinerariesById.TryGetValue(currentItineraryId, out var itinerary))
             {
-                ItineraryFlightId = flightsReader.GetInt32(0),
-                FlightOrder = flightsReader.GetInt32(1),
-                FlightId = flightsReader.GetInt32(2),
-                PlanePlate = flightsReader.GetString(3),
-                DepartureAirportName = flightsReader.GetString(4),
-                DepartureCode = flightsReader.GetString(5),
-                DepartureCity = flightsReader.GetString(6),
-                ArrivalAirportName = flightsReader.GetString(7),
-                ArrivalCode = flightsReader.GetString(8),
-                ArrivalCity = flightsReader.GetString(9),
-                DepartureDatetime = flightsReader.GetDateTime(10),
-                ArrivalDatetime = flightsReader.GetDateTime(11),
-                Gate = flightsReader.IsDBNull(12) ? null : flightsReader.GetString(12),
-                State = flightsReader.GetString(13)
-            });
+                itinerary = new ItineraryDetailsResponse
+                {
+                    ItineraryId = currentItineraryId,
+                    Price = reader.GetDecimal(1),
+                    State = reader.GetString(2),
+                    Promotion = MapPromotionResponseOrNull(reader)
+                };
+
+                itinerariesById.Add(currentItineraryId, itinerary);
+            }
+
+            itinerary.Flights.Add(MapItineraryFlightResponse(reader));
         }
 
-        return itinerary;
+        return itinerariesById.Values.ToList();
     }
 
     // Trae datos minimos de vuelos para validar una solicitud de creacion.
@@ -211,15 +231,16 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
 
         const string insertItinerarySql = """
-            INSERT INTO tecair.itinerary (price)
-            VALUES (@price)
-            RETURNING itinerary_id, price;
+            INSERT INTO tecair.itinerary (price, state)
+            VALUES (@price, @state)
+            RETURNING itinerary_id, price, state;
             """;
 
         CreateItineraryResponse itinerary;
         await using (var command = new NpgsqlCommand(insertItinerarySql, connection))
         {
             command.Parameters.AddWithValue("price", request.Price);
+            command.Parameters.AddWithValue("state", request.State);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             if (!await reader.ReadAsync(cancellationToken))
@@ -230,7 +251,8 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             itinerary = new CreateItineraryResponse
             {
                 ItineraryId = reader.GetInt32(0),
-                Price = reader.GetDecimal(1)
+                Price = reader.GetDecimal(1),
+                State = reader.GetString(2)
             };
         }
 
@@ -300,9 +322,11 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
 
         const string updateItinerarySql = """
             UPDATE tecair.itinerary
-            SET price = @price
+            SET
+                price = @price,
+                state = @state
             WHERE itinerary_id = @itinerary_id
-            RETURNING itinerary_id, price;
+            RETURNING itinerary_id, price, state;
             """;
 
         CreateItineraryResponse itinerary;
@@ -310,6 +334,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         {
             command.Parameters.AddWithValue("itinerary_id", itineraryId);
             command.Parameters.AddWithValue("price", request.Price);
+            command.Parameters.AddWithValue("state", request.State);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             if (!await reader.ReadAsync(cancellationToken))
@@ -320,7 +345,8 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             itinerary = new CreateItineraryResponse
             {
                 ItineraryId = reader.GetInt32(0),
-                Price = reader.GetDecimal(1)
+                Price = reader.GetDecimal(1),
+                State = reader.GetString(2)
             };
         }
 
@@ -419,5 +445,45 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             command.Parameters.AddWithValue("itinerary_id", itineraryId);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
+    }
+
+    private static PromotionResponse? MapPromotionResponseOrNull(NpgsqlDataReader reader)
+    {
+        if (reader.IsDBNull(3))
+        {
+            return null;
+        }
+
+        return new PromotionResponse
+        {
+            PromotionCode = reader.GetString(3),
+            ItineraryId = reader.GetInt32(4),
+            ImageUrl = reader.IsDBNull(5) ? null : reader.GetString(5),
+            StartDate = reader.GetFieldValue<DateOnly>(6),
+            EndDate = reader.GetFieldValue<DateOnly>(7),
+            DiscountPercent = reader.GetDecimal(8),
+            PromoPrice = reader.GetInt32(9)
+        };
+    }
+
+    private static ItineraryFlightResponse MapItineraryFlightResponse(NpgsqlDataReader reader)
+    {
+        return new ItineraryFlightResponse
+        {
+            ItineraryFlightId = reader.GetInt32(10),
+            FlightOrder = reader.GetInt32(11),
+            FlightId = reader.GetInt32(12),
+            PlanePlate = reader.GetString(13),
+            DepartureAirportName = reader.GetString(14),
+            DepartureCode = reader.GetString(15),
+            DepartureCity = reader.GetString(16),
+            ArrivalAirportName = reader.GetString(17),
+            ArrivalCode = reader.GetString(18),
+            ArrivalCity = reader.GetString(19),
+            DepartureDatetime = reader.GetDateTime(20),
+            ArrivalDatetime = reader.GetDateTime(21),
+            Gate = reader.IsDBNull(22) ? null : reader.GetString(22),
+            State = reader.GetString(23)
+        };
     }
 }

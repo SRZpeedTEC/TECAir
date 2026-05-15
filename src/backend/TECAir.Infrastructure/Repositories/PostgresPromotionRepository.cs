@@ -197,6 +197,33 @@ public sealed class PostgresPromotionRepository(NpgsqlDataSource dataSource) : I
         return result is true;
     }
 
+    public async Task<bool> ItineraryAlreadyHasPromotionAsync(
+        int itineraryId,
+        string? excludingPromotionCode = null,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.promotion
+                WHERE
+                    itinerary_id = @itinerary_id
+                    AND (
+                        @excluding_promotion_code IS NULL
+                        OR promotion_code <> @excluding_promotion_code
+                    )
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+        command.Parameters.Add("excluding_promotion_code", NpgsqlDbType.Varchar).Value =
+            (object?)excludingPromotionCode ?? DBNull.Value;
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
     private static void AddCreateParameters(NpgsqlCommand command, CreatePromotionRequest request)
     {
         command.Parameters.AddWithValue("promotion_code", request.PromotionCode);

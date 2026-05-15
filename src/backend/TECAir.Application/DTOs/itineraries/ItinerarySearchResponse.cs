@@ -6,6 +6,7 @@ public class ItinerarySearchResponse
 {
     public int ItineraryId { get; set; }
     public decimal Price { get; set; }
+    public string State { get; set; } = string.Empty;
     public string OriginCode { get; set; } = string.Empty;
     public string DestinationCode { get; set; } = string.Empty;
     public int TotalFlights { get; set; }

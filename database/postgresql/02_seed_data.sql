@@ -209,13 +209,13 @@ VALUES
 
 -- Estos itinerarios representan las rutas que el cliente puede reservar.
 -- Un itinerario directo tiene un vuelo; un itinerario con escala tiene varios vuelos.
-INSERT INTO itinerary (itinerary_id, price) OVERRIDING SYSTEM VALUE
+INSERT INTO itinerary (itinerary_id, price, state) OVERRIDING SYSTEM VALUE
 VALUES
-    (1, 180.00),
-    (2, 420.00),
-    (3, 95.00),
-    (4, 350.00),
-    (5, 510.00);
+    (1, 180000.00, 'EDITION'),
+    (2, 420000.00, 'EDITION'),
+    (3, 95000.00, 'EDITION'),
+    (4, 350000.00, 'EDITION'),
+    (5, 510000.00, 'EDITION');
 
 -- Esto relaciona cada itinerario con sus vuelos.
 -- flight_order indica el orden de los vuelos dentro de la ruta.
