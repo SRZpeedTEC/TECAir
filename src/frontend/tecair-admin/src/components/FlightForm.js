@@ -25,7 +25,7 @@ const EMPTY_FORM = {
   arrivesTo:     null,
   planePlate:    '',
   gate:          '',
-  state:         'OPEN',
+  state:         'UPCOMING',
   departureDate: '',
   departureTime: '',
   arrivalDate:   '',
@@ -120,7 +120,7 @@ export default function FlightForm({
         planePlate:           form.planePlate,
         airportDepartsFromId: form.departsFrom.code.toUpperCase(),
         airportArrivesToId:   form.arrivesTo.code.toUpperCase(),
-        state:                form.state || 'OPEN',
+        state:                form.state || 'UPCOMING',
         gate:                 form.gate.trim(),
         departureDatetime:    combineDateTime(form.departureDate, form.departureTime).toISOString(),
         arrivalDatetime:      combineDateTime(form.arrivalDate,   form.arrivalTime).toISOString(),
@@ -279,8 +279,8 @@ export default function FlightForm({
           <div className="col-12">
             <div className="flight-state-readonly">
               <span className="flight-state-readonly-label">Estado actual</span>
-              <span className={`flight-state-badge flight-state-${form.state?.toLowerCase() ?? 'open'}`}>
-                {form.state ?? 'OPEN'}
+              <span className={`flight-state-badge flight-state-${form.state?.toLowerCase() ?? 'upcoming'}`}>
+                {form.state ?? 'UPCOMING'}
               </span>
               <span className="flight-state-readonly-hint">
                 Cambia el estado desde Apertura o Cierre de Vuelos.
