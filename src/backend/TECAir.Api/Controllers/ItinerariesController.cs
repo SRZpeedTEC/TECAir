@@ -10,6 +10,26 @@ namespace TECAir.Api.Controllers;
 [Route("api/itineraries")]
 public class ItinerariesController(IItineraryService itineraryService) : ControllerBase
 {
+    // GET /api/itineraries/with-promotions
+    // Vista admin: devuelve itinerarios en edicion y publicos con promocion opcional y vuelos.
+    [HttpGet("with-promotions")]
+    public async Task<ActionResult<IReadOnlyList<ItineraryDetailsResponse>>> GetAllWithPromotions(
+        CancellationToken cancellationToken)
+    {
+        var itineraries = await itineraryService.GetAllWithPromotionsAsync(cancellationToken);
+        return Ok(itineraries);
+    }
+
+    // GET /api/itineraries/public/with-promotions
+    // Vista usuario: devuelve solo itinerarios publicos con promocion opcional y vuelos.
+    [HttpGet("public/with-promotions")]
+    public async Task<ActionResult<IReadOnlyList<ItineraryDetailsResponse>>> GetPublicWithPromotions(
+        CancellationToken cancellationToken)
+    {
+        var itineraries = await itineraryService.GetPublicWithPromotionsAsync(cancellationToken);
+        return Ok(itineraries);
+    }
+
     // GET /api/itineraries/search?originCode=...&destinationCode=...
     // Busca itinerarios cuyo primer vuelo salga del origen y cuyo ultimo vuelo llegue al destino.
     [HttpGet("search")]

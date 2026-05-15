@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Npgsql;
 using TECAir.Application.DTOs.Users;
 using TECAir.Application.Interfaces;
 
@@ -40,35 +39,20 @@ public class UsersController(IUserService userService) : ControllerBase
         CreateUserRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await userService.CreateAsync(request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            var result = await userService.CreateAsync(request, cancellationToken);
-            if (!result.IsSuccess)
+            if (result.IsConflict)
             {
-                if (result.IsConflict)
-                {
-                    return Conflict(new { message = result.ErrorMessage });
-                }
-
-                // Si el servicio detecto datos invalidos, se responde 400.
-                return BadRequest(new { message = result.ErrorMessage });
+                return Conflict(new { message = result.ErrorMessage });
             }
 
-            // Si se creo correctamente, se responde 201 e incluimos la ruta del recurso creado.
-            return Created($"/users/{Uri.EscapeDataString(result.User!.Email)}", result.User);
+            // Si el servicio detecto datos invalidos, se responde 400.
+            return BadRequest(new { message = result.ErrorMessage });
         }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
-        {
-            // PostgreSQL envia UniqueViolation cuando se repite una llave unica,
-            // por ejemplo el email del usuario o el carnet del estudiante.
-            return Conflict(new { message = "A user with that email or student carnet already exists." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
-        {
-            // PostgreSQL envia CheckViolation cuando se rompe una restriccion CHECK,
-            // por ejemplo un rol que no sea CLIENT o ADMIN.
-            return BadRequest(new { message = "The user data violates a database constraint." });
-        }
+
+        // Si se creo correctamente, se responde 201 e incluimos la ruta del recurso creado.
+        return Created($"/users/{Uri.EscapeDataString(result.User!.Email)}", result.User);
     }
 
     // PUT /api/users/{email}
@@ -79,34 +63,23 @@ public class UsersController(IUserService userService) : ControllerBase
         UpdateUserRequest request,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await userService.UpdateAsync(email, request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            var result = await userService.UpdateAsync(email, request, cancellationToken);
-            if (!result.IsSuccess)
+            if (result.IsNotFound)
             {
-                if (result.IsNotFound)
-                {
-                    return NotFound(new { message = result.ErrorMessage });
-                }
-
-                if (result.IsConflict)
-                {
-                    return Conflict(new { message = result.ErrorMessage });
-                }
-
-                return BadRequest(new { message = result.ErrorMessage });
+                return NotFound(new { message = result.ErrorMessage });
             }
 
-            return Ok(result.User);
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
         }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
-        {
-            return Conflict(new { message = "A user with that phone number or student carnet already exists." });
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.CheckViolation)
-        {
-            return BadRequest(new { message = "The user data violates a database constraint." });
-        }
+
+        return Ok(result.User);
     }
 
     // DELETE /api/users/{email}
@@ -116,27 +89,20 @@ public class UsersController(IUserService userService) : ControllerBase
         string email,
         CancellationToken cancellationToken)
     {
-        try
+        var result = await userService.DeleteAsync(email, cancellationToken);
+        if (!result.IsSuccess)
         {
-            var result = await userService.DeleteAsync(email, cancellationToken);
-            if (!result.IsSuccess)
+            if (result.IsNotFound)
             {
-                if (result.IsNotFound)
-                {
-                    return NotFound(new { message = result.ErrorMessage });
-                }
-
-                if (result.IsConflict)
-                {
-                    return Conflict(new { message = result.ErrorMessage });
-                }
+                return NotFound(new { message = result.ErrorMessage });
             }
 
-            return NoContent();
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
         }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
-        {
-            return Conflict(new { message = "The user cannot be deleted because related records still exist." });
-        }
+
+        return NoContent();
     }
 }

@@ -142,38 +142,14 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
             return "Password is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            return "Name is required.";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Lname))
-        {
-            return "Last name is required.";
-        }
-
-        if (string.IsNullOrWhiteSpace(request.PhoneNum))
-        {
-            return "Phone number is required.";
-        }
-
-        var role = request.Role.Trim().ToUpperInvariant();
-        // La tabla app_user tambien tiene esta restriccion, pero validarla aqui
-        // permite responder con un mensaje mas claro antes de llegar a la base.
-        if (role is not "CLIENT" and not "ADMIN")
-        {
-            return "Role must be CLIENT or ADMIN.";
-        }
-
-        // Si el usuario se marca como estudiante, tambien debe traer los datos
-        // necesarios para crear la fila relacionada en la tabla student.
-        if (request.IsStudent &&
-            (string.IsNullOrWhiteSpace(request.UserCarnet) || string.IsNullOrWhiteSpace(request.CollegeName)))
-        {
-            return "Student users require UserCarnet and CollegeName.";
-        }
-
-        return null;
+        return ValidateUserData(
+            request.Name,
+            request.Lname,
+            request.PhoneNum,
+            request.Role,
+            request.IsStudent,
+            request.UserCarnet,
+            request.CollegeName);
     }
 
     // Normaliza el body de creacion antes de persistir. Password se mantiene
@@ -197,34 +173,57 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
     // Valida los campos editables. La llave primaria se omite a proposito del DTO.
     private static string? ValidateUpdateUserRequest(UpdateUserRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Name))
+        return ValidateUserData(
+            request.Name,
+            request.Lname,
+            request.PhoneNum,
+            request.Role,
+            request.IsStudent,
+            request.UserCarnet,
+            request.CollegeName);
+    }
+
+    private static string? ValidateUserData(
+        string name,
+        string lname,
+        string phoneNum,
+        string roleValue,
+        bool isStudent,
+        string? userCarnet,
+        string? collegeName)
+    {
+        if (string.IsNullOrWhiteSpace(name))
         {
             return "Name is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(request.Lname))
+        if (string.IsNullOrWhiteSpace(lname))
         {
             return "Last name is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(request.PhoneNum))
+        if (string.IsNullOrWhiteSpace(phoneNum))
         {
             return "Phone number is required.";
         }
 
-        if (string.IsNullOrWhiteSpace(request.Role))
+        if (string.IsNullOrWhiteSpace(roleValue))
         {
             return "Role is required.";
         }
 
-        var role = request.Role.Trim().ToUpperInvariant();
+        var role = roleValue.Trim().ToUpperInvariant();
+        // La tabla app_user tambien tiene esta restriccion, pero validarla aqui
+        // permite responder con un mensaje mas claro antes de llegar a la base.
         if (role is not "CLIENT" and not "ADMIN")
         {
             return "Role must be CLIENT or ADMIN.";
         }
 
-        if (request.IsStudent &&
-            (string.IsNullOrWhiteSpace(request.UserCarnet) || string.IsNullOrWhiteSpace(request.CollegeName)))
+        // Si el usuario se marca como estudiante, tambien debe traer los datos
+        // necesarios para crear la fila relacionada en la tabla student.
+        if (isStudent &&
+            (string.IsNullOrWhiteSpace(userCarnet) || string.IsNullOrWhiteSpace(collegeName)))
         {
             return "Student users require UserCarnet and CollegeName.";
         }
@@ -239,7 +238,6 @@ public class UserService(IUserRepository userRepository, IPasswordHasher passwor
         {
             Password = request.Password?.Trim() ?? string.Empty,
             Name = request.Name.Trim(),
-            Minit = string.IsNullOrWhiteSpace(request.Minit) ? null : request.Minit.Trim(),
             Lname = request.Lname.Trim(),
             PhoneNum = request.PhoneNum.Trim(),
             Role = request.Role.Trim().ToUpperInvariant(),

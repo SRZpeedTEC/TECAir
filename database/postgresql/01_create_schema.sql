@@ -164,12 +164,13 @@ CREATE TABLE seat (
 
 -- Esta tabla guarda vuelos individuales.
 -- Un vuelo tiene avion, aeropuerto de salida, aeropuerto de llegada, estado, puerta y horarios.
+-- UPCOMING es el estado inicial antes de abrir el vuelo para check-in.
 CREATE TABLE flight (
     flight_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     plane_plate VARCHAR(20) NOT NULL,
     airport_departs_from_id VARCHAR(20) NOT NULL,
     airport_arrives_to_id VARCHAR(20) NOT NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    state VARCHAR(20) NOT NULL DEFAULT 'UPCOMING',
     gate VARCHAR(10),
     departure_datetime TIMESTAMP NOT NULL,
     arrival_datetime TIMESTAMP NOT NULL,
@@ -206,7 +207,7 @@ CREATE TABLE flight (
 
     -- Esto limita el estado del vuelo a valores controlados por el sistema.
     CONSTRAINT ck_flight_state
-        CHECK (state IN ('OPEN', 'CLOSED')),
+        CHECK (state IN ('UPCOMING', 'OPEN', 'CLOSED')),
 
     -- Esto evita que gate sea nulo
     CONSTRAINT ck_flight_gate_not_blank
@@ -218,10 +219,15 @@ CREATE TABLE flight (
 CREATE TABLE itinerary (
     itinerary_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     price NUMERIC(10, 2) NOT NULL,
+    state VARCHAR(20) NOT NULL DEFAULT 'EDITION',
 
     -- Esto evita itinerarios con precio negativo.
     CONSTRAINT ck_itinerary_price
-        CHECK (price >= 0)
+        CHECK (price >= 0),
+
+    -- Esto los valores de estado de itineray a valores conocidos
+    CONSTRAINT ck_reservation_state
+        CHECK (state IN ('EDITION', 'PUBLIC'))
 );
 
 -- Esta tabla une itinerarios con vuelos.
@@ -275,6 +281,10 @@ CREATE TABLE promotion (
         ON UPDATE CASCADE
         ON DELETE CASCADE,
 
+    -- Esto genera que cada itinerario tenga exclusivamente una promoción
+    CONSTRAINT uq_promotion_itinerary
+        UNIQUE (itinerary_id),
+
     -- Esto valida que la fecha final de la promocion no sea anterior a la fecha inicial.
     CONSTRAINT ck_promotion_dates
         CHECK (end_date >= start_date),
@@ -305,8 +315,6 @@ CREATE TABLE reservation (
     state VARCHAR(20) NOT NULL DEFAULT 'PAID',
     payment_reference VARCHAR(120),
     passenger_id VARCHAR(120),
-    plane_plate VARCHAR(20),
-    seat_number VARCHAR(10),
 
     -- Esto relaciona reservation con itinerary: indica que ruta esta reservando el usuario.
     CONSTRAINT fk_reservation_itinerary
@@ -326,13 +334,6 @@ CREATE TABLE reservation (
     CONSTRAINT fk_reservation_passenger
         FOREIGN KEY (passenger_id)
         REFERENCES passenger (passport_id)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT,
-    
-    -- El asiento asignado debe existir en el avion indicado.
-    CONSTRAINT fk_reservation_seat
-        FOREIGN KEY (plane_plate, seat_number)
-        REFERENCES seat (plane_plate, seat_number)
         ON UPDATE CASCADE
         ON DELETE RESTRICT,
 

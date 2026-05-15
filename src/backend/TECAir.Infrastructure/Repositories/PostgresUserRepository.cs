@@ -104,12 +104,12 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
         // Primer INSERT: datos comunes de cualquier usuario.
         await using (var command = new NpgsqlCommand(insertUserSql, connection))
         {
-            command.Parameters.AddWithValue("email", request.Email.Trim());
+            command.Parameters.AddWithValue("email", request.Email);
             command.Parameters.AddWithValue("password_hash", request.Password);
-            command.Parameters.AddWithValue("name", request.Name.Trim());
-            command.Parameters.AddWithValue("last_name", request.Lname.Trim());
-            command.Parameters.AddWithValue("phone_number", request.PhoneNum.Trim());
-            command.Parameters.AddWithValue("role", request.Role.Trim().ToUpperInvariant());
+            command.Parameters.AddWithValue("name", request.Name);
+            command.Parameters.AddWithValue("last_name", request.Lname);
+            command.Parameters.AddWithValue("phone_number", request.PhoneNum);
+            command.Parameters.AddWithValue("role", request.Role);
 
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -131,9 +131,9 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
                 """;
 
             await using var command = new NpgsqlCommand(insertStudentSql, connection);
-            command.Parameters.AddWithValue("user_email", request.Email.Trim());
-            command.Parameters.AddWithValue("user_carnet", request.UserCarnet!.Trim());
-            command.Parameters.AddWithValue("college_name", request.CollegeName!.Trim());
+            command.Parameters.AddWithValue("user_email", request.Email);
+            command.Parameters.AddWithValue("user_carnet", request.UserCarnet!);
+            command.Parameters.AddWithValue("college_name", request.CollegeName!);
 
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
@@ -280,7 +280,6 @@ public sealed class PostgresUserRepository(NpgsqlDataSource dataSource) : IUserR
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
 
-        // El request conserva Minit por contrato, pero el esquema actual de app_user no tiene esa columna.
         var updatedUser = await GetByEmailAsync(email, cancellationToken);
         return updatedUser ?? throw new InvalidOperationException("Failed to retrieve the updated user.");
     }
