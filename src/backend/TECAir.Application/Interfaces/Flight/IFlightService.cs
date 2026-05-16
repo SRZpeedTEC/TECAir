@@ -15,10 +15,23 @@ public interface IFlightService
         string departureCode,
         CancellationToken cancellationToken = default);
 
+    // Consulta vuelos disponibles con filtros opcionales.
+    Task<IReadOnlyList<AvailableFlightResponse>> GetAvailableAsync(
+        string? originCode = null,
+        string? destinationCode = null,
+        int? flightId = null,
+        CancellationToken cancellationToken = default);
+
     // Actualiza los campos editables de un vuelo existente.
     Task<UpdateFlightServiceResult> UpdateAsync(
         int flightId,
         UpdateFlightRequest request,
+        CancellationToken cancellationToken = default);
+
+    // Actualiza solo el estado de un vuelo existente.
+    Task<UpdateFlightServiceResult> UpdateStateAsync(
+        int flightId,
+        UpdateFlightStateRequest request,
         CancellationToken cancellationToken = default);
 
     // Elimina un vuelo si no forma parte de itinerarios.
