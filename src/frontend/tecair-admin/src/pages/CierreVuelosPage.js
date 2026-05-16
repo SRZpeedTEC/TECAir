@@ -19,7 +19,6 @@ export default function CierreVuelosPage() {
         actionLabel="Cerrar vuelo"
         actionVerb="cerrar"
         icon="bi-lock"
-        windowHours={4}
       />
     </div>
   );

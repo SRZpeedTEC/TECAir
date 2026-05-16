@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import ConfirmDialog from './ConfirmDialog.js';
+import AirportTypeahead from './AirportTypeahead.js';
+import ConfirmDialog    from './ConfirmDialog.js';
 import {
-  listFlightsByDepartureWindow,
+  searchFlightsByRoute,
   transitionFlightState,
 } from '../services/flightService.js';
 
@@ -11,12 +12,11 @@ import {
 // vuelos se pueden listar y qué transiciones son válidas vive en backend.
 //
 // Props:
-//   fromState     — estado actual que listamos ('UPCOMING' | 'OPEN')
-//   toState       — estado destino del botón de acción ('OPEN' | 'CLOSED')
-//   actionLabel   — texto del botón ("Abrir vuelo" | "Cerrar vuelo")
-//   actionVerb    — verbo para mensajes ("abrir" | "cerrar")
-//   icon          — clase bootstrap-icons para el badge de empty/encabezado
-//   windowHours   — ventana en horas que pedimos al backend (default 4)
+//   fromState   — estado actual que listamos ('UPCOMING' | 'OPEN')
+//   toState     — estado destino del botón de acción ('OPEN' | 'CLOSED')
+//   actionLabel — texto del botón ("Abrir vuelo" | "Cerrar vuelo")
+//   actionVerb  — verbo para mensajes ("abrir" | "cerrar")
+//   icon        — clase bootstrap-icons para el estado vacío
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const fmtDateTime = (value) => {
@@ -31,8 +31,10 @@ export default function FlightTransitionPanel({
   actionLabel,
   actionVerb,
   icon = 'bi-airplane',
-  windowHours = 4,
 }) {
+  const [origin,      setOrigin]      = useState(null);
+  const [destination, setDestination] = useState(null);
+
   const [flights,   setFlights]   = useState([]);
   const [loading,   setLoading]   = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -44,12 +46,21 @@ export default function FlightTransitionPanel({
 
   const [toast, setToast] = useState(null);
 
-  const fetchFlights = async () => {
+  const canSearch = !!origin && !!destination && !loading;
+
+  const handleSearch = async (e) => {
+    e?.preventDefault?.();
+    if (!canSearch) return;
     setLoading(true);
     setLoadError(null);
     setTouched(true);
+    setToast(null);
     try {
-      const data = await listFlightsByDepartureWindow({ state: fromState, hours: windowHours });
+      const data = await searchFlightsByRoute({
+        state:         fromState,
+        departureCode: origin.code,
+        arrivalCode:   destination.code,
+      });
       setFlights(data);
     } catch (err) {
       setLoadError(err.message);
@@ -58,12 +69,6 @@ export default function FlightTransitionPanel({
       setLoading(false);
     }
   };
-
-  // Carga inicial al montar y cuando cambia el filtro de estado.
-  useEffect(() => {
-    fetchFlights();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromState]);
 
   const openConfirm = (flight) => {
     setToast(null);
@@ -79,7 +84,16 @@ export default function FlightTransitionPanel({
       await transitionFlightState(target.flightId, toState);
       setToast(`Vuelo #${target.flightId} ahora está en estado ${toState}.`);
       setTarget(null);
-      await fetchFlights();
+      // Refresca la lista con los mismos filtros para que el vuelo recién
+      // transicionado salga del listado actual.
+      if (origin && destination) {
+        const data = await searchFlightsByRoute({
+          state:         fromState,
+          departureCode: origin.code,
+          arrivalCode:   destination.code,
+        });
+        setFlights(data);
+      }
     } catch (err) {
       setActionError(err.message);
     } finally {
@@ -92,41 +106,51 @@ export default function FlightTransitionPanel({
       <div className="admin-alert admin-alert-info mb-3" role="status">
         <i className="bi bi-info-circle-fill"></i>
         <span>
-          Se muestran los vuelos en estado <strong>{fromState}</strong> cuya salida ocurre en las
-          próximas <strong>{windowHours} horas</strong>. Al confirmar, el vuelo pasa a estado{' '}
-          <strong>{toState}</strong>.
+          Busca vuelos en estado <strong>{fromState}</strong> por aeropuerto de origen y destino.
+          Al confirmar, el vuelo pasa a estado <strong>{toState}</strong>.
         </span>
       </div>
 
       <div className="admin-card">
-        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <div>
-            <h6 className="serif mb-1">Vuelos por {actionVerb}</h6>
-            <p className="text-muted-small m-0">
-              Ventana: próximas {windowHours} horas · Estado actual: {fromState}
-            </p>
+        <form onSubmit={handleSearch}>
+          <div className="row g-3 align-items-end">
+            <div className="col-md-5">
+              <AirportTypeahead
+                id="transition-origin"
+                label="Aeropuerto origen *"
+                value={origin}
+                onChange={setOrigin}
+                exclude={destination?.code}
+              />
+            </div>
+            <div className="col-md-5">
+              <AirportTypeahead
+                id="transition-destination"
+                label="Aeropuerto destino *"
+                value={destination}
+                onChange={setDestination}
+                exclude={origin?.code}
+              />
+            </div>
+            <div className="col-md-2">
+              <button type="submit" className="btn-burgundy w-100" disabled={!canSearch}>
+                {loading
+                  ? <><span className="spinner-border spinner-border-sm me-2"></span>Buscando…</>
+                  : <><i className="bi bi-search me-2"></i>Buscar</>}
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            className="btn-burgundy-outline"
-            onClick={fetchFlights}
-            disabled={loading}
-          >
-            {loading
-              ? <><span className="spinner-border spinner-border-sm me-2"></span>Cargando…</>
-              : <><i className="bi bi-arrow-clockwise me-2"></i>Refrescar</>}
-          </button>
-        </div>
+        </form>
 
         {toast && (
-          <div className="admin-alert admin-alert-success mb-3" role="status">
+          <div className="admin-alert admin-alert-success mt-3" role="status">
             <i className="bi bi-check-circle-fill"></i>
             <span>{toast}</span>
           </div>
         )}
 
         {loadError && (
-          <div className="admin-alert admin-alert-error mb-3" role="alert">
+          <div className="admin-alert admin-alert-error mt-3" role="alert">
             <i className="bi bi-exclamation-circle-fill"></i>
             <span>{loadError}</span>
           </div>
@@ -136,14 +160,15 @@ export default function FlightTransitionPanel({
           <div className="flight-list-empty">
             <i className={`bi ${icon}`}></i>
             <p className="m-0">
-              No hay vuelos en estado <strong>{fromState}</strong> dentro de la ventana de{' '}
-              {windowHours} horas.
+              No hay vuelos en estado <strong>{fromState}</strong> de{' '}
+              <strong>{origin?.city} ({origin?.code})</strong> a{' '}
+              <strong>{destination?.city} ({destination?.code})</strong>.
             </p>
           </div>
         )}
 
         {flights.length > 0 && (
-          <div className="flight-list-table-wrap">
+          <div className="flight-list-table-wrap mt-3">
             <table className="flight-list-table">
               <thead>
                 <tr>
@@ -200,7 +225,7 @@ export default function FlightTransitionPanel({
         open={!!target}
         onCancel={() => { setTarget(null); setActionError(null); }}
         onConfirm={handleConfirm}
-        title={`${actionLabel}`}
+        title={actionLabel}
         loading={transitioning}
         error={actionError}
         confirmLabel={actionLabel}

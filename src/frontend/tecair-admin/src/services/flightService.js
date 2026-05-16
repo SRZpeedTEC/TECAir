@@ -63,20 +63,23 @@ export async function updateFlight(flightId, payload) {
 // interfaz queda lista y estas llamadas fallarán con 404 — la UI mostrará
 // el mensaje del error tal cual venga.
 //
-// 1) GET /api/flights/by-departure-window?state=UPCOMING|OPEN&hours=4
-//    Lista vuelos en el estado indicado cuya departure_datetime cae en
-//    las próximas N horas (default 4). Toda la lógica de filtrado debe
-//    vivir en backend para no replicar reglas en el frontend.
+// 1) GET /api/flights/search?state=UPCOMING|OPEN&departureCode=XXX&arrivalCode=YYY
+//    Lista vuelos en el estado indicado que salen de departureCode y llegan
+//    a arrivalCode. Toda la regla (filtrado por estado + códigos) vive en
+//    backend para no replicarla en el frontend.
 //    Respuesta esperada: mismo shape que OpenFlightResponse.
 //
 // 2) PATCH /api/flights/{flightId}/state  body: { state: 'OPEN' | 'CLOSED' }
 //    Transición controlada: solo permite UPCOMING→OPEN y OPEN→CLOSED.
 //    Cualquier otra transición debe devolver 409 desde backend.
 
-export async function listFlightsByDepartureWindow({ state, hours = 4 } = {}) {
-  if (!state) throw new Error("state es obligatorio (UPCOMING | OPEN).");
-  const params = new URLSearchParams({ state, hours: String(hours) });
-  const data = await apiFetch(`/flights/by-departure-window?${params}`);
+export async function searchFlightsByRoute({ state, departureCode, arrivalCode } = {}) {
+  if (!state)         throw new Error("state es obligatorio (UPCOMING | OPEN).");
+  if (!departureCode) throw new Error("departureCode es obligatorio.");
+  if (!arrivalCode)   throw new Error("arrivalCode es obligatorio.");
+
+  const params = new URLSearchParams({ state, departureCode, arrivalCode });
+  const data = await apiFetch(`/flights/search?${params}`);
 
   return data.map((f) => ({
     flightId:             f.flightId             ?? f.FlightId,
