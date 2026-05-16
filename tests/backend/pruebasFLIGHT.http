@@ -92,7 +92,107 @@ GET {{baseUrl}}/api/flights/open
 Accept: application/json
 
 
-### 6. Crear vuelo sin avion
+### 6. Consultar vuelos disponibles sin filtros
+# Esperado: 200 OK con vuelos UPCOMING y OPEN. No debe incluir CLOSED.
+GET {{baseUrl}}/api/flights/available
+Accept: application/json
+
+
+### 7. Consultar vuelos disponibles por origen y destino
+# Esperado: 200 OK con vuelos disponibles de SJO a PTY.
+GET {{baseUrl}}/api/flights/available?originCode=SJO&destinationCode=PTY
+Accept: application/json
+
+
+### 8. Consultar vuelos disponibles por flightId
+# Esperado: 200 OK con flightId = 1 si esta UPCOMING u OPEN.
+GET {{baseUrl}}/api/flights/available?flightId=1
+Accept: application/json
+
+
+### 9. Consultar vuelos disponibles con flightId CLOSED
+# Vuelo 6 esta CLOSED en seed data.
+# Esperado: 200 OK con lista vacia.
+GET {{baseUrl}}/api/flights/available?flightId=6
+Accept: application/json
+
+
+### 10. Consultar vuelos disponibles combinando origen, destino y flightId
+# Esperado: 200 OK con flightId = 1 si sale de SJO y llega a PTY.
+GET {{baseUrl}}/api/flights/available?originCode=SJO&destinationCode=PTY&flightId=1
+Accept: application/json
+
+
+### 11. PATCH estado UPCOMING -> OPEN
+# Vuelo 7 esta UPCOMING en seed data.
+# Esperado: 200 OK con state = OPEN y sin modificar los demas campos.
+PATCH {{baseUrl}}/api/flights/7/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "OPEN"
+}
+
+
+### 12. PATCH estado OPEN -> CLOSED
+# Esperado: 200 OK con state = CLOSED.
+PATCH {{baseUrl}}/api/flights/7/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "CLOSED"
+}
+
+
+### 13. PATCH estado invalido
+# Esperado: 400 Bad Request.
+PATCH {{baseUrl}}/api/flights/7/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "BOARDING"
+}
+
+
+### 14. PATCH estado de vuelo inexistente
+# Esperado: 404 Not Found.
+PATCH {{baseUrl}}/api/flights/9999/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "OPEN"
+}
+
+
+### 15. PATCH intentando CLOSED -> UPCOMING
+# Vuelo 7 quedo CLOSED en la prueba 12.
+# Esperado: 400 Bad Request.
+PATCH {{baseUrl}}/api/flights/7/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "UPCOMING"
+}
+
+
+### 16. PATCH intentando CLOSED -> OPEN
+# Vuelo 7 quedo CLOSED en la prueba 12.
+# Esperado: 400 Bad Request.
+PATCH {{baseUrl}}/api/flights/7/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "OPEN"
+}
+
+
+### 17. Crear vuelo sin avion
 # Esperado: 400 Bad Request.
 POST {{baseUrl}}/api/flights
 Content-Type: application/json
@@ -109,7 +209,7 @@ Accept: application/json
 }
 
 
-### 7. Crear vuelo con avion inexistente
+### 18. Crear vuelo con avion inexistente
 # Esperado: 404 Not Found.
 POST {{baseUrl}}/api/flights
 Content-Type: application/json
@@ -126,7 +226,7 @@ Accept: application/json
 }
 
 
-### 8. Crear vuelo con aeropuerto de llegada inexistente
+### 19. Crear vuelo con aeropuerto de llegada inexistente
 # Esperado: 404 Not Found.
 POST {{baseUrl}}/api/flights
 Content-Type: application/json
@@ -143,7 +243,7 @@ Accept: application/json
 }
 
 
-### 9. Crear vuelo con aeropuertos iguales
+### 20. Crear vuelo con aeropuertos iguales
 # Esperado: 400 Bad Request.
 POST {{baseUrl}}/api/flights
 Content-Type: application/json
@@ -160,7 +260,7 @@ Accept: application/json
 }
 
 
-### 10. Crear vuelo con llegada antes de salida
+### 21. Crear vuelo con llegada antes de salida
 # Esperado: 400 Bad Request.
 POST {{baseUrl}}/api/flights
 Content-Type: application/json
@@ -177,7 +277,7 @@ Accept: application/json
 }
 
 
-### 11. Crear vuelo valido para pruebas de conflicto
+### 22. Crear vuelo valido para pruebas de conflicto
 # Esperado: 201 Created.
 # Este vuelo reserva el avion TI-TEC01 y la puerta Z1 en SJO a las 08:00.
 POST {{baseUrl}}/api/flights
@@ -195,7 +295,7 @@ Accept: application/json
 }
 
 
-### 12. Crear vuelo con el mismo avion y horario traslapado
+### 23. Crear vuelo con el mismo avion y horario traslapado
 # Esperado: 409 Conflict.
 POST {{baseUrl}}/api/flights
 Content-Type: application/json
@@ -212,7 +312,7 @@ Accept: application/json
 }
 
 
-### 13. Crear vuelo con misma puerta y misma hora de salida
+### 24. Crear vuelo con misma puerta y misma hora de salida
 # Esperado: 409 Conflict.
 POST {{baseUrl}}/api/flights
 Content-Type: application/json
@@ -229,7 +329,7 @@ Accept: application/json
 }
 
 
-### 14. Crear vuelo con el mismo avion pero sin traslape
+### 25. Crear vuelo con el mismo avion pero sin traslape
 # Esperado: 201 Created.
 # La salida coincide con la llegada del vuelo 11, por lo que los rangos no se traslapan.
 POST {{baseUrl}}/api/flights
@@ -247,7 +347,7 @@ Accept: application/json
 }
 
 
-### 15. Crear vuelo con misma puerta pero diferente hora de salida
+### 26. Crear vuelo con misma puerta pero diferente hora de salida
 # Esperado: 201 Created.
 POST {{baseUrl}}/api/flights
 Content-Type: application/json
@@ -264,7 +364,7 @@ Accept: application/json
 }
 
 
-### 16. Actualizar vuelo con datos validos
+### 27. Actualizar vuelo con datos validos
 # Esperado: 200 OK.
 # flightId viene de la ruta y no se permite editarlo desde el body.
 PUT {{baseUrl}}/api/flights/3
@@ -282,7 +382,7 @@ Accept: application/json
 }
 
 
-### 17. Actualizar vuelo inexistente
+### 28. Actualizar vuelo inexistente
 # Esperado: 404 Not Found.
 PUT {{baseUrl}}/api/flights/9999
 Content-Type: application/json
@@ -299,7 +399,7 @@ Accept: application/json
 }
 
 
-### 18. Actualizar vuelo con avion inexistente
+### 29. Actualizar vuelo con avion inexistente
 # Esperado: 404 Not Found.
 PUT {{baseUrl}}/api/flights/3
 Content-Type: application/json
@@ -316,7 +416,7 @@ Accept: application/json
 }
 
 
-### 19. Actualizar vuelo con mismo aeropuerto de salida y llegada
+### 30. Actualizar vuelo con mismo aeropuerto de salida y llegada
 # Esperado: 400 Bad Request.
 PUT {{baseUrl}}/api/flights/3
 Content-Type: application/json
@@ -333,7 +433,7 @@ Accept: application/json
 }
 
 
-### 20. Actualizar vuelo con llegada antes de salida
+### 31. Actualizar vuelo con llegada antes de salida
 # Esperado: 400 Bad Request.
 PUT {{baseUrl}}/api/flights/3
 Content-Type: application/json
@@ -350,7 +450,7 @@ Accept: application/json
 }
 
 
-### 21. Actualizar vuelo causando traslape de avion
+### 32. Actualizar vuelo causando traslape de avion
 # Vuelo 1 usa TI-TEC01 de 08:00 a 09:20 el 2026-06-10.
 # Esperado: 409 Conflict.
 PUT {{baseUrl}}/api/flights/3
@@ -368,7 +468,7 @@ Accept: application/json
 }
 
 
-### 22. Actualizar vuelo causando conflicto de puerta
+### 33. Actualizar vuelo causando conflicto de puerta
 # Vuelo 1 usa la puerta A1 en SJO a las 08:00.
 # Esperado: 409 Conflict.
 PUT {{baseUrl}}/api/flights/3
@@ -386,7 +486,7 @@ Accept: application/json
 }
 
 
-### 23. Preparar vuelo no usado para prueba de borrado
+### 34. Preparar vuelo no usado para prueba de borrado
 # @name crearVueloParaBorrar
 # Esperado: 201 Created.
 POST {{baseUrl}}/api/flights
@@ -404,19 +504,19 @@ Accept: application/json
 }
 
 
-### 24. Eliminar vuelo existente no usado
+### 35. Eliminar vuelo existente no usado
 # Esperado: 204 No Content.
 DELETE {{baseUrl}}/api/flights/{{crearVueloParaBorrar.response.body.$.flightId}}
 Accept: application/json
 
 
-### 25. Eliminar vuelo inexistente
+### 36. Eliminar vuelo inexistente
 # Esperado: 404 Not Found.
 DELETE {{baseUrl}}/api/flights/9999
 Accept: application/json
 
 
-### 26. Eliminar vuelo usado en itinerario
+### 37. Eliminar vuelo usado en itinerario
 # Vuelo 1 pertenece a itinerarios en los datos semilla.
 # Esperado: 409 Conflict.
 DELETE {{baseUrl}}/api/flights/1

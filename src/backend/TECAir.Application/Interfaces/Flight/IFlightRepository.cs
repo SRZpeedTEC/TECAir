@@ -33,8 +33,18 @@ public interface IFlightRepository
         string departureCode,
         CancellationToken cancellationToken = default);
 
+    // Lista vuelos disponibles con filtros opcionales.
+    Task<IReadOnlyList<AvailableFlightResponse>> GetAvailableAsync(
+        string? originCode = null,
+        string? destinationCode = null,
+        int? flightId = null,
+        CancellationToken cancellationToken = default);
+
     // Verifica que exista el vuelo antes de actualizarlo o borrarlo.
     Task<bool> FlightExistsAsync(int flightId, CancellationToken cancellationToken = default);
+
+    // Obtiene el estado actual del vuelo para validar transiciones.
+    Task<string?> GetFlightStateAsync(int flightId, CancellationToken cancellationToken = default);
 
     // Detecta traslapes al actualizar, ignorando el vuelo que se esta editando.
     Task<bool> PlaneHasOverlappingFlightExceptAsync(
@@ -59,6 +69,12 @@ public interface IFlightRepository
     Task<FlightResponse> UpdateAsync(
         int flightId,
         UpdateFlightRequest request,
+        CancellationToken cancellationToken = default);
+
+    // Actualiza solo el estado del vuelo y devuelve la fila resultante.
+    Task<FlightResponse> UpdateStateAsync(
+        int flightId,
+        string state,
         CancellationToken cancellationToken = default);
 
     // Borra un vuelo existente.

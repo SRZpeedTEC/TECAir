@@ -6,28 +6,91 @@ GET {{baseUrl}}/health
 Accept: application/json
 
 
-### 2. GET todos los itinerarios con promociones para admin
+### 2. Preparar itinerario PUBLIC con promocion activa
+# itinerary_id = 1 tiene PROMO-PANAMA-15 activa si CURRENT_DATE esta entre 2026-05-01 y 2026-06-30.
 # Esperado: 200 OK.
-# Debe incluir itinerarios EDITION y PUBLIC, cada uno con state, promotion o null, y flights.
-GET {{baseUrl}}/api/itineraries/with-promotions
+PUT {{baseUrl}}/api/itineraries/1
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 180000,
+  "state": "PUBLIC",
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 3. Preparar itinerario PUBLIC con promocion vencida
+# itinerary_id = 2 tiene PROMO-BOGOTA-EXP vencida si CURRENT_DATE es posterior a 2026-04-30.
+# Esperado: 200 OK.
+PUT {{baseUrl}}/api/itineraries/2
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 420000,
+  "state": "PUBLIC",
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    },
+    {
+      "flightId": 2,
+      "flightOrder": 2
+    }
+  ]
+}
+
+
+### 4. Preparar itinerario PUBLIC con promocion futura
+# itinerary_id = 4 tiene PROMO-MIAMI-10 futura si CURRENT_DATE es anterior a 2026-06-01.
+# Esperado: 200 OK.
+PUT {{baseUrl}}/api/itineraries/4
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 350000,
+  "state": "PUBLIC",
+  "flights": [
+    {
+      "flightId": 4,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 5. GET admin de itinerarios resumidos sin promociones
+# Esperado: 200 OK.
+# Debe incluir itinerarios EDITION y PUBLIC.
+# Cada elemento debe traer itineraryId, price, state, originCode, destinationCode,
+# departureDatetime, arrivalDatetime y totalFlights. No debe traer flights ni promotion.
+GET {{baseUrl}}/api/itineraries/origin-dest
 Accept: application/json
 
 
-### 3. Obtener itinerary por id con promocion
+### 6. Obtener itinerary por id con promocion activa
 # itinerary_id = 1 tiene PROMO-PANAMA-15 en los datos semilla.
-# Esperado: 200 OK con state, promotion y flights con itineraryFlightId.
+# Esperado: 200 OK con resumen, promotion activa y sin flights.
 GET {{baseUrl}}/api/itineraries/1
 Accept: application/json
 
 
-### 4. Obtener itinerary por id sin promocion
+### 7. Obtener itinerary por id sin promocion
 # itinerary_id = 5 no tiene promocion en los datos semilla.
-# Esperado: 200 OK con promotion = null y flights con itineraryFlightId.
+# Esperado: 200 OK con resumen, promotion = null y sin flights.
 GET {{baseUrl}}/api/itineraries/5
 Accept: application/json
 
 
-### 5. Preparar itinerary PUBLIC para probar vista usuario
+### 8. Preparar itinerary PUBLIC para probar vista usuario
 # @name crearItinerarioPublico
 # Esperado: 201 Created.
 POST {{baseUrl}}/api/itineraries
@@ -46,20 +109,45 @@ Accept: application/json
 }
 
 
-### 6. GET solo itinerarios PUBLIC con promociones para usuario
+### 9. GET cliente public/with-promotions sin filtros
 # Esperado: 200 OK.
-# Todos los elementos deben venir con state = PUBLIC.
+# Todos los elementos deben venir con state = PUBLIC, sin flights.
+# Las promociones activas deben aparecer; las vencidas/futuras deben venir como promotion = null.
 GET {{baseUrl}}/api/itineraries/public/with-promotions
 Accept: application/json
 
 
-### 7. Confirmar que el itinerary PUBLIC creado viene con state y promotion null
-# Esperado: 200 OK con state = PUBLIC, promotion = null y flights[0].itineraryFlightId.
+### 10. GET cliente public/with-promotions filtrando por originCode y destinationCode
+# Esperado: 200 OK con rutas cuyo primer vuelo sale de SJO y ultimo vuelo llega a BOG.
+GET {{baseUrl}}/api/itineraries/public/with-promotions?originCode=SJO&destinationCode=BOG
+Accept: application/json
+
+
+### 11. GET cliente con promocion activa
+# Esperado: 200 OK. itinerary_id = 1 debe traer promotion con PROMO-PANAMA-15 y sin flights.
+GET {{baseUrl}}/api/itineraries/public/with-promotions?originCode=SJO&destinationCode=PTY
+Accept: application/json
+
+
+### 12. GET cliente con promocion vencida
+# Esperado: 200 OK. itinerary_id = 2 debe aparecer con promotion = null porque PROMO-BOGOTA-EXP vencio.
+GET {{baseUrl}}/api/itineraries/public/with-promotions?originCode=SJO&destinationCode=BOG
+Accept: application/json
+
+
+### 13. GET cliente con promocion fuera de fecha futura
+# Esperado: 200 OK. itinerary_id = 4 debe aparecer con promotion = null antes de 2026-06-01.
+GET {{baseUrl}}/api/itineraries/public/with-promotions?originCode=SJO&destinationCode=MIA
+Accept: application/json
+
+
+### 14. Confirmar que el itinerary PUBLIC creado viene resumido y con promotion null
+# Esperado: 200 OK con state = PUBLIC, promotion = null y sin flights.
 GET {{baseUrl}}/api/itineraries/{{crearItinerarioPublico.response.body.$.itineraryId}}
 Accept: application/json
 
 
-### 8. Actualizar itinerario con precio, state y vuelos validos
+### 15. Actualizar itinerario con precio, state y vuelos validos
 # Esperado: 200 OK.
 # itineraryId viene de la ruta; el body reemplaza precio, state y lista ordenada.
 PUT {{baseUrl}}/api/itineraries/2
@@ -82,7 +170,7 @@ Accept: application/json
 }
 
 
-### 9. Actualizar itinerario inexistente
+### 16. Actualizar itinerario inexistente
 # Esperado: 404 Not Found.
 PUT {{baseUrl}}/api/itineraries/9999
 Content-Type: application/json
@@ -100,7 +188,7 @@ Accept: application/json
 }
 
 
-### 10. Actualizar itinerario con state invalido
+### 17. Actualizar itinerario con state invalido
 # Esperado: 400 Bad Request.
 PUT {{baseUrl}}/api/itineraries/2
 Content-Type: application/json
@@ -118,7 +206,7 @@ Accept: application/json
 }
 
 
-### 11. Actualizar itinerario con lista de vuelos vacia
+### 18. Actualizar itinerario con lista de vuelos vacia
 # Esperado: 400 Bad Request.
 PUT {{baseUrl}}/api/itineraries/2
 Content-Type: application/json
@@ -131,7 +219,7 @@ Accept: application/json
 }
 
 
-### 12. Actualizar itinerario con flightOrder duplicado
+### 19. Actualizar itinerario con flightOrder duplicado
 # Esperado: 409 Conflict.
 PUT {{baseUrl}}/api/itineraries/2
 Content-Type: application/json
@@ -153,7 +241,7 @@ Accept: application/json
 }
 
 
-### 13. Actualizar itinerario con flightId duplicado
+### 20. Actualizar itinerario con flightId duplicado
 # Esperado: 409 Conflict.
 PUT {{baseUrl}}/api/itineraries/2
 Content-Type: application/json
@@ -175,7 +263,7 @@ Accept: application/json
 }
 
 
-### 14. Actualizar itinerario con conexion ilogica
+### 21. Actualizar itinerario con conexion ilogica
 # Vuelo 1 llega a PTY y vuelo 4 sale de SJO.
 # Esperado: 400 Bad Request.
 PUT {{baseUrl}}/api/itineraries/2
@@ -198,7 +286,7 @@ Accept: application/json
 }
 
 
-### 15. Preparar vuelo para probar escala de mas de un dia
+### 22. Preparar vuelo para probar escala de mas de un dia
 # @name crearVueloEscalaLarga
 # Vuelo 4 llega a MIA el 2026-06-12 a las 14:00; este sale mas de un dia despues.
 POST {{baseUrl}}/api/flights
@@ -216,7 +304,7 @@ Accept: application/json
 }
 
 
-### 16. Actualizar itinerario con mas de un dia entre vuelos consecutivos
+### 23. Actualizar itinerario con mas de un dia entre vuelos consecutivos
 # Esperado: 400 Bad Request.
 PUT {{baseUrl}}/api/itineraries/4
 Content-Type: application/json
@@ -238,7 +326,7 @@ Accept: application/json
 }
 
 
-### 17. Preparar itinerario sin reservaciones para borrar
+### 24. Preparar itinerario sin reservaciones para borrar
 # @name crearItinerarioParaBorrar
 # Esperado: 201 Created.
 POST {{baseUrl}}/api/itineraries
@@ -257,25 +345,25 @@ Accept: application/json
 }
 
 
-### 18. Eliminar itinerario PUBLIC creado para pruebas
+### 25. Eliminar itinerario PUBLIC creado para pruebas
 # Esperado: 204 No Content.
 DELETE {{baseUrl}}/api/itineraries/{{crearItinerarioPublico.response.body.$.itineraryId}}
 Accept: application/json
 
 
-### 19. Eliminar itinerario existente sin reservaciones
+### 26. Eliminar itinerario existente sin reservaciones
 # Esperado: 204 No Content.
 DELETE {{baseUrl}}/api/itineraries/{{crearItinerarioParaBorrar.response.body.$.itineraryId}}
 Accept: application/json
 
 
-### 20. Eliminar itinerario inexistente
+### 27. Eliminar itinerario inexistente
 # Esperado: 404 Not Found.
 DELETE {{baseUrl}}/api/itineraries/9999
 Accept: application/json
 
 
-### 21. Eliminar itinerario con reservaciones
+### 28. Eliminar itinerario con reservaciones
 # Itinerario 1 tiene reservaciones en los datos semilla.
 # Esperado: 409 Conflict.
 DELETE {{baseUrl}}/api/itineraries/1

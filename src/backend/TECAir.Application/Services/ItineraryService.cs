@@ -19,20 +19,27 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             cancellationToken);
     }
 
-    public Task<IReadOnlyList<ItineraryDetailsResponse>> GetAllWithPromotionsAsync(
+    public Task<IReadOnlyList<ItinerarySummaryResponse>> GetAllOriginDestAsync(
         CancellationToken cancellationToken = default)
     {
-        return itineraryRepository.GetAllWithPromotionsAsync(cancellationToken);
+        return itineraryRepository.GetAllOriginDestAsync(cancellationToken);
     }
 
-    public Task<IReadOnlyList<ItineraryDetailsResponse>> GetPublicWithPromotionsAsync(
+    public Task<IReadOnlyList<ItineraryWithPromotionSummaryResponse>> GetPublicWithPromotionsAsync(
+        string? originCode = null,
+        string? destinationCode = null,
         CancellationToken cancellationToken = default)
     {
-        return itineraryRepository.GetPublicWithPromotionsAsync(cancellationToken);
+        return itineraryRepository.GetPublicWithPromotionsAsync(
+            NormalizeOptionalCode(originCode),
+            NormalizeOptionalCode(destinationCode),
+            cancellationToken);
     }
 
-    // Consulta el detalle de un itinerario por id.
-    public Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default)
+    // Consulta el resumen de un itinerario por id.
+    public Task<ItineraryWithPromotionSummaryResponse?> GetByIdAsync(
+        int itineraryId,
+        CancellationToken cancellationToken = default)
     {
         return itineraryRepository.GetByIdAsync(itineraryId, cancellationToken);
     }
@@ -263,6 +270,13 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
     private static string NormalizeState(string state)
     {
         return state.Trim().ToUpperInvariant();
+    }
+
+    private static string? NormalizeOptionalCode(string? code)
+    {
+        return string.IsNullOrWhiteSpace(code)
+            ? null
+            : code.Trim().ToUpperInvariant();
     }
 
     // Evita que el mismo vuelo o el mismo orden aparezcan mas de una vez.

@@ -1,4 +1,5 @@
 using Npgsql;
+using NpgsqlTypes;
 using TECAir.Application.DTOs.Flights;
 using TECAir.Application.Interfaces;
 
@@ -212,6 +213,51 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return flights;
     }
 
+    // Lista vuelos UPCOMING u OPEN con filtros opcionales combinados con AND.
+    public async Task<IReadOnlyList<AvailableFlightResponse>> GetAvailableAsync(
+        string? originCode = null,
+        string? destinationCode = null,
+        int? flightId = null,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                f.flight_id,
+                f.plane_plate,
+                f.airport_departs_from_id,
+                f.airport_arrives_to_id,
+                f.state,
+                f.gate,
+                f.departure_datetime,
+                f.arrival_datetime
+            FROM tecair.flight f
+            WHERE
+                f.state IN ('UPCOMING', 'OPEN')
+                AND (@origin_code IS NULL OR f.airport_departs_from_id = @origin_code)
+                AND (@destination_code IS NULL OR f.airport_arrives_to_id = @destination_code)
+                AND (@flight_id IS NULL OR f.flight_id = @flight_id)
+            ORDER BY f.departure_datetime ASC, f.flight_id ASC;
+            """;
+
+        var flights = new List<AvailableFlightResponse>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.Add("origin_code", NpgsqlDbType.Varchar).Value =
+            (object?)originCode ?? DBNull.Value;
+        command.Parameters.Add("destination_code", NpgsqlDbType.Varchar).Value =
+            (object?)destinationCode ?? DBNull.Value;
+        command.Parameters.Add("flight_id", NpgsqlDbType.Integer).Value =
+            (object?)flightId ?? DBNull.Value;
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            flights.Add(MapAvailableFlightResponse(reader));
+        }
+
+        return flights;
+    }
+
     public async Task<bool> FlightExistsAsync(int flightId, CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -227,6 +273,21 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
 
         var result = await command.ExecuteScalarAsync(cancellationToken);
         return result is true;
+    }
+
+    public async Task<string?> GetFlightStateAsync(int flightId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT state
+            FROM tecair.flight
+            WHERE flight_id = @flight_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result as string;
     }
 
     // Variante para actualizacion: ignora el vuelo actual para que no choque consigo mismo.
@@ -355,6 +416,39 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return MapFlightResponse(reader);
     }
 
+    public async Task<FlightResponse> UpdateStateAsync(
+        int flightId,
+        string state,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE tecair.flight
+            SET state = @state
+            WHERE flight_id = @flight_id
+            RETURNING
+                flight_id,
+                plane_plate,
+                airport_departs_from_id,
+                airport_arrives_to_id,
+                state,
+                gate,
+                departure_datetime,
+                arrival_datetime;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+        command.Parameters.AddWithValue("state", state);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            throw new InvalidOperationException("Failed to update the flight state.");
+        }
+
+        return MapFlightResponse(reader);
+    }
+
     public async Task DeleteAsync(int flightId, CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -369,6 +463,21 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
     }
 
     // Convierte la fila devuelta por PostgreSQL al DTO de respuesta de vuelos.
+    private static AvailableFlightResponse MapAvailableFlightResponse(NpgsqlDataReader reader)
+    {
+        return new AvailableFlightResponse
+        {
+            FlightId = reader.GetInt32(0),
+            PlanePlate = reader.GetString(1),
+            OriginCode = reader.GetString(2),
+            DestinationCode = reader.GetString(3),
+            State = reader.GetString(4),
+            Gate = reader.IsDBNull(5) ? null : reader.GetString(5),
+            DepartureDatetime = reader.GetDateTime(6),
+            ArrivalDatetime = reader.GetDateTime(7)
+        };
+    }
+
     private static FlightResponse MapFlightResponse(NpgsqlDataReader reader)
     {
         return new FlightResponse

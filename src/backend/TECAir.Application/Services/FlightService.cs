@@ -75,6 +75,19 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             cancellationToken);
     }
 
+    public Task<IReadOnlyList<AvailableFlightResponse>> GetAvailableAsync(
+        string? originCode = null,
+        string? destinationCode = null,
+        int? flightId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return flightRepository.GetAvailableAsync(
+            NormalizeOptionalCode(originCode),
+            NormalizeOptionalCode(destinationCode),
+            flightId,
+            cancellationToken);
+    }
+
     // Actualiza un vuelo existente sin permitir que el body cambie el flight_id.
     public async Task<UpdateFlightServiceResult> UpdateAsync(
         int flightId,
@@ -140,6 +153,40 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
         }
 
         var flight = await flightRepository.UpdateAsync(flightId, normalizedRequest, cancellationToken);
+        return UpdateFlightServiceResult.Success(flight);
+    }
+
+    // Actualiza solo el estado y valida las transiciones permitidas.
+    public async Task<UpdateFlightServiceResult> UpdateStateAsync(
+        int flightId,
+        UpdateFlightStateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (flightId <= 0)
+        {
+            return UpdateFlightServiceResult.ValidationError("Flight id must be greater than 0.");
+        }
+
+        var validationError = ValidateState(request.State);
+        if (validationError is not null)
+        {
+            return UpdateFlightServiceResult.ValidationError(validationError);
+        }
+
+        var newState = NormalizeState(request.State);
+        var currentState = await flightRepository.GetFlightStateAsync(flightId, cancellationToken);
+        if (currentState is null)
+        {
+            return UpdateFlightServiceResult.NotFound($"Flight '{flightId}' was not found.");
+        }
+
+        validationError = ValidateStateTransition(currentState, newState);
+        if (validationError is not null)
+        {
+            return UpdateFlightServiceResult.ValidationError(validationError);
+        }
+
+        var flight = await flightRepository.UpdateStateAsync(flightId, newState, cancellationToken);
         return UpdateFlightServiceResult.Success(flight);
     }
 
@@ -258,6 +305,39 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
         return null;
     }
 
+    private static string? ValidateState(string stateValue)
+    {
+        if (string.IsNullOrWhiteSpace(stateValue))
+        {
+            return "State is required.";
+        }
+
+        var state = NormalizeState(stateValue);
+        if (state is not "UPCOMING" and not "OPEN" and not "CLOSED")
+        {
+            return "State must be UPCOMING, OPEN or CLOSED.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateStateTransition(string currentState, string newState)
+    {
+        if (currentState == newState)
+        {
+            return null;
+        }
+
+        return (currentState, newState) switch
+        {
+            ("UPCOMING", "OPEN") => null,
+            ("UPCOMING", "CLOSED") => null,
+            ("OPEN", "CLOSED") => null,
+            ("CLOSED", _) => "Closed flights cannot be reopened or moved back to upcoming.",
+            _ => $"Flight state cannot change from {currentState} to {newState}."
+        };
+    }
+
     // Normaliza valores de entrada para que las comparaciones y el guardado sean consistentes.
     private static CreateFlightRequest NormalizeCreateFlightRequest(CreateFlightRequest request)
     {
@@ -287,5 +367,17 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             DepartureDatetime = request.DepartureDatetime,
             ArrivalDatetime = request.ArrivalDatetime
         };
+    }
+
+    private static string NormalizeState(string state)
+    {
+        return state.Trim().ToUpperInvariant();
+    }
+
+    private static string? NormalizeOptionalCode(string? code)
+    {
+        return string.IsNullOrWhiteSpace(code)
+            ? null
+            : code.Trim().ToUpperInvariant();
     }
 }

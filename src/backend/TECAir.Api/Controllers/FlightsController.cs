@@ -53,6 +53,29 @@ public class FlightsController(IFlightService flightService) : ControllerBase
         return Ok(flights);
     }
 
+    // GET /api/flights/available?originCode=...&destinationCode=...&flightId=...
+    // Consulta vuelos disponibles: UPCOMING u OPEN, con filtros opcionales.
+    [HttpGet("available")]
+    public async Task<ActionResult<IReadOnlyList<AvailableFlightResponse>>> GetAvailable(
+        [FromQuery] string? originCode,
+        [FromQuery] string? destinationCode,
+        [FromQuery] int? flightId,
+        CancellationToken cancellationToken)
+    {
+        if (flightId.HasValue && flightId.Value <= 0)
+        {
+            return BadRequest(new { message = "Flight id must be greater than 0." });
+        }
+
+        var flights = await flightService.GetAvailableAsync(
+            originCode,
+            destinationCode,
+            flightId,
+            cancellationToken);
+
+        return Ok(flights);
+    }
+
     // PUT /api/flights/{flightId}
     // Actualiza el vuelo sin permitir cambios al flight_id.
     [HttpPut("{flightId:int}")]
@@ -62,6 +85,33 @@ public class FlightsController(IFlightService flightService) : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await flightService.UpdateAsync(flightId, request, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.IsNotFound)
+            {
+                return NotFound(new { message = result.ErrorMessage });
+            }
+
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Flight);
+    }
+
+    // PATCH /api/flights/{flightId}/state
+    // Actualiza unicamente el estado del vuelo.
+    [HttpPatch("{flightId:int}/state")]
+    public async Task<ActionResult<FlightResponse>> UpdateState(
+        int flightId,
+        UpdateFlightStateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await flightService.UpdateStateAsync(flightId, request, cancellationToken);
         if (!result.IsSuccess)
         {
             if (result.IsNotFound)
