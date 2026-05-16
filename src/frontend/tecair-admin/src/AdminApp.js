@@ -3,7 +3,6 @@ import { useState } from 'react';
 import AdminLayout from './components/AdminLayout.js';
 
 import GestionUsuariosPage from './pages/GestionUsuariosPage.js';
-import BusquedaVuelosPage from './pages/BusquedaVuelosPage.js';
 import ReservacionVuelosPage from './pages/ReservacionVuelosPage.js';
 import ChequeoPasajerosPage from './pages/ChequeoPasajerosPage.js';
 import GestionVuelosPage from './pages/GestionVuelosPage.js';
@@ -16,8 +15,7 @@ import CierreVuelosPage from './pages/CierreVuelosPage.js';
 // Agregar aquí una nueva entrada es suficiente para extender la navegación.
 const SECTIONS = {
   'usuarios': { title: 'Gestión de Usuarios', icon: 'bi-people', Page: GestionUsuariosPage },
-  'busqueda': { title: 'Búsqueda de Vuelos', icon: 'bi-search', Page: BusquedaVuelosPage },
-  'reservacion': { title: 'Reservación de Vuelos', icon: 'bi-calendar-check', Page: ReservacionVuelosPage },
+  'reservacion': { title: 'Búsqueda y Reservación de Vuelos', icon: 'bi-calendar-check', Page: ReservacionVuelosPage },
   'chequeo': { title: 'Chequeo de Pasajeros', icon: 'bi-person-check', Page: ChequeoPasajerosPage },
   'gestion-vuelos': { title: 'Gestión de Vuelos', icon: 'bi-airplane', Page: GestionVuelosPage },
   'itinerarios': { title: 'Gestión de Itinerarios', icon: 'bi-map', Page: GestionItinerariosPage },

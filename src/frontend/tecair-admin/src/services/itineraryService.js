@@ -1,10 +1,37 @@
 import { apiFetch } from './api.js';
 
-// ── Búsqueda de itinerarios por origen y destino ──
+// Convierte "YYYY-MM-DD" a Date local sin desfase horario.
+function parseISODateLocal(iso) {
+  if (!iso) return null;
+  const [y, m, d] = String(iso).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+// Si la promoción está vigente hoy, devuelve un objeto normalizado.
+// Si no hay promo o quedó fuera de vigencia, devuelve null.
+function pickActivePromotion(promo) {
+  if (!promo) return null;
+  const start = parseISODateLocal(promo.startDate ?? promo.StartDate);
+  const end   = parseISODateLocal(promo.endDate   ?? promo.EndDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (!start || !end || today < start || today > end) return null;
+  return {
+    promotionCode:   promo.promotionCode   ?? promo.PromotionCode,
+    itineraryId:     promo.itineraryId     ?? promo.ItineraryId,
+    imageUrl:        promo.imageUrl        ?? promo.ImageUrl ?? null,
+    startDate:       promo.startDate       ?? promo.StartDate,
+    endDate:         promo.endDate         ?? promo.EndDate,
+    discountPercent: Number(promo.discountPercent ?? promo.DiscountPercent),
+    promoPrice:      Number(promo.promoPrice      ?? promo.PromoPrice),
+  };
+}
+
+// ── Búsqueda general de itinerarios por ruta ──
 // Corresponde a: GET /api/itineraries/search?originCode=&destinationCode=
-// Respuesta API (camelCase ya normalizado): ItinerarySearchResponse[]
-//   { itineraryId, price, originCode, destinationCode, totalFlights,
-//     departureDatetime, arrivalDatetime }
+// Trae itinerarios en CUALQUIER estado (incluye DRAFT/PRIVATE) sin promoción.
+// La usan flujos de administración (lista de itinerarios, creación de promos).
 export async function searchItineraries(originCode, destinationCode) {
   const params = new URLSearchParams({ originCode, destinationCode });
   const data = await apiFetch(`/itineraries/search?${params}`);
@@ -18,6 +45,50 @@ export async function searchItineraries(originCode, destinationCode) {
     departureDatetime: it.departureDatetime ?? it.DepartureDatetime,
     arrivalDatetime: it.arrivalDatetime ?? it.ArrivalDatetime,
   }));
+}
+
+// ── Itinerarios públicos con promoción embebida ──
+// Corresponde a: GET /api/itineraries/public/with-promotions
+// Solo PUBLIC; cada uno trae sus vuelos ordenados y promoción opcional.
+// Se filtra por ruta client-side porque el endpoint no acepta parámetros.
+//
+// Forma de salida (camelCase):
+//   { itineraryId, price (base), originCode, destinationCode, totalFlights,
+//     departureDatetime, arrivalDatetime,
+//     basePrice, displayPrice, activePromotion }
+export async function searchPublicItinerariesWithPromotions(originCode, destinationCode) {
+  const data = await apiFetch('/itineraries/public/with-promotions');
+
+  return data
+    .map((it) => {
+      const flights = (it.flights ?? it.Flights ?? [])
+        .slice()
+        .sort((a, b) => (a.flightOrder ?? a.FlightOrder) - (b.flightOrder ?? b.FlightOrder));
+      if (flights.length === 0) return null;
+      const first = flights[0];
+      const last  = flights[flights.length - 1];
+      const itOriginCode      = first.departureCode ?? first.DepartureCode;
+      const itDestinationCode = last.arrivalCode    ?? last.ArrivalCode;
+      if (itOriginCode !== originCode || itDestinationCode !== destinationCode) return null;
+
+      const basePrice    = Number(it.price ?? it.Price);
+      const activePromo  = pickActivePromotion(it.promotion ?? it.Promotion);
+      const displayPrice = activePromo ? activePromo.promoPrice : basePrice;
+
+      return {
+        itineraryId:       it.itineraryId ?? it.ItineraryId,
+        price:             basePrice,
+        originCode:        itOriginCode,
+        destinationCode:   itDestinationCode,
+        totalFlights:      flights.length,
+        departureDatetime: first.departureDatetime ?? first.DepartureDatetime,
+        arrivalDatetime:   last.arrivalDatetime    ?? last.ArrivalDatetime,
+        basePrice,
+        displayPrice,
+        activePromotion:   activePromo,
+      };
+    })
+    .filter(Boolean);
 }
 
 // ── Detalle por id ──

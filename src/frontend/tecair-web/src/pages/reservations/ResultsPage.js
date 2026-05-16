@@ -1,52 +1,19 @@
 import { useState, useEffect } from 'react';
 import Nav                   from '../../components/Nav.js';
 import { searchItineraries } from '../../services/itineraryService.js';
-import { getAllPromotions }  from '../../services/promotionService.js';
 import { fmtCRC, fmtDateShort } from '../../utils/format.js';
-
-// Convierte "YYYY-MM-DD" a Date local sin desfase horario.
-function parseISODateLocal(iso) {
-  if (!iso) return null;
-  const [y, m, d] = String(iso).split('-').map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
-}
-
-// Devuelve la promoción activa hoy para un itinerario, o null si no hay.
-// La vigencia se evalúa contra la fecha de compra (hoy), no contra la fecha
-// del vuelo. Si hubiera varias, gana la de mayor descuento.
-//
-// Esta lógica es temporal: cuando backend incluya `onPromotion` + `promoPrice`
-// directamente en /api/itineraries/search, este cruce client-side desaparece.
-function pickActivePromotion(promotions, itineraryId) {
-  if (!promotions?.length) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const candidates = promotions
-    .filter((p) => p.itineraryId === itineraryId)
-    .filter((p) => {
-      const s = parseISODateLocal(p.startDate);
-      const e = parseISODateLocal(p.endDate);
-      return s && e && today >= s && today <= e;
-    })
-    .sort((a, b) => b.discountPercent - a.discountPercent);
-
-  return candidates[0] ?? null;
-}
 
 // Pantalla de resultados: consulta la API y muestra los itinerarios disponibles
 export default function ResultsPage({ state, setState, goBack, goToPax, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
   const [itineraries, setItineraries] = useState([]);
-  const [promotions,  setPromotions]  = useState([]);
   const [isLoading,   setIsLoading]   = useState(false);
   const [error,       setError]       = useState(null);
 
   const [filter, setFilter] = useState('all');    // all | direct | stops
   const [sortBy, setSortBy] = useState('price');  // price | duration
 
-  // Llama a la API cada vez que cambia origen o destino. Trae también las
-  // promociones (en paralelo) para mostrarlas aplicadas al precio.
+  // Los itinerarios ya vienen con su promoción activa embebida desde el
+  // endpoint /itineraries/public/with-promotions — un único GET por búsqueda.
   useEffect(() => {
     if (!state.from?.code || !state.to?.code) return;
 
@@ -54,35 +21,14 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
     setError(null);
     setItineraries([]);
 
-    Promise.all([
-      searchItineraries(state.from.code, state.to.code),
-      // Si /promotions falla no es bloqueante: igual mostramos vuelos sin
-      // descuento aplicado en lugar de fallar la pantalla entera.
-      getAllPromotions().catch(() => []),
-    ])
-      .then(([results, promos]) => {
-        setItineraries(results);
-        setPromotions(promos);
-      })
+    searchItineraries(state.from.code, state.to.code)
+      .then(setItineraries)
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
   }, [state.from?.code, state.to?.code]);
 
-  // Anota cada itinerario con su promoción activa (si aplica para la fecha
-  // buscada) y sobreescribe el precio mostrado con el promocional.
-  const itinerariesWithPromo = itineraries.map((it) => {
-    const promo = pickActivePromotion(promotions, it.itineraryId);
-    if (!promo) return { ...it, activePromotion: null, displayPrice: it.price };
-    return {
-      ...it,
-      activePromotion: promo,
-      basePrice:       it.price,
-      displayPrice:    promo.promoPrice,
-    };
-  });
-
   // Aplica filtro de escalas
-  let list = itinerariesWithPromo.filter((f) =>
+  let list = itineraries.filter((f) =>
     filter === 'all'    ? true :
     filter === 'direct' ? f.stops === 0 :
                           f.stops > 0
