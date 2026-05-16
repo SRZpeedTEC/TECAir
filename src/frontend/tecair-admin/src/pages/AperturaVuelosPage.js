@@ -20,7 +20,6 @@ export default function AperturaVuelosPage() {
         actionLabel="Abrir vuelo"
         actionVerb="abrir"
         icon="bi-unlock"
-        windowHours={4}
       />
     </div>
   );
