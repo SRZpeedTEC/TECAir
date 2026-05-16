@@ -11,16 +11,18 @@ public interface IItineraryRepository
         string destinationCode,
         CancellationToken cancellationToken = default);
 
-    // Obtiene todos los itinerarios con promocion opcional y vuelos.
-    Task<IReadOnlyList<ItineraryDetailsResponse>> GetAllWithPromotionsAsync(
+    // Obtiene todos los itinerarios en formato resumido.
+    Task<IReadOnlyList<ItinerarySummaryResponse>> GetAllOriginDestAsync(
         CancellationToken cancellationToken = default);
 
-    // Obtiene solo itinerarios publicos con promocion opcional y vuelos.
-    Task<IReadOnlyList<ItineraryDetailsResponse>> GetPublicWithPromotionsAsync(
+    // Obtiene solo itinerarios publicos resumidos, con promocion activa opcional.
+    Task<IReadOnlyList<ItineraryWithPromotionSummaryResponse>> GetPublicWithPromotionsAsync(
+        string? originCode = null,
+        string? destinationCode = null,
         CancellationToken cancellationToken = default);
 
-    // Obtiene el encabezado y vuelos de un itinerario especifico.
-    Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default);
+    // Obtiene el resumen de un itinerario especifico.
+    Task<ItineraryWithPromotionSummaryResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default);
 
     // Trae datos minimos de vuelos para validar una creacion de itinerario.
     Task<IReadOnlyList<ItineraryFlightValidationData>> GetFlightsForCreateAsync(

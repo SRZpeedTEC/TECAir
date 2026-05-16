@@ -10,23 +10,28 @@ namespace TECAir.Api.Controllers;
 [Route("api/itineraries")]
 public class ItinerariesController(IItineraryService itineraryService) : ControllerBase
 {
-    // GET /api/itineraries/with-promotions
-    // Vista admin: devuelve itinerarios en edicion y publicos con promocion opcional y vuelos.
-    [HttpGet("with-promotions")]
-    public async Task<ActionResult<IReadOnlyList<ItineraryDetailsResponse>>> GetAllWithPromotions(
+    // GET /api/itineraries/origin-dest
+    // Vista admin: devuelve itinerarios en edicion y publicos con origen, destino y horarios resumidos.
+    [HttpGet("origin-dest")]
+    public async Task<ActionResult<IReadOnlyList<ItinerarySummaryResponse>>> GetAllOriginDest(
         CancellationToken cancellationToken)
     {
-        var itineraries = await itineraryService.GetAllWithPromotionsAsync(cancellationToken);
+        var itineraries = await itineraryService.GetAllOriginDestAsync(cancellationToken);
         return Ok(itineraries);
     }
 
     // GET /api/itineraries/public/with-promotions
-    // Vista usuario: devuelve solo itinerarios publicos con promocion opcional y vuelos.
+    // Vista usuario: devuelve solo itinerarios publicos resumidos con promocion activa opcional.
     [HttpGet("public/with-promotions")]
-    public async Task<ActionResult<IReadOnlyList<ItineraryDetailsResponse>>> GetPublicWithPromotions(
+    public async Task<ActionResult<IReadOnlyList<ItineraryWithPromotionSummaryResponse>>> GetPublicWithPromotions(
+        [FromQuery] string? originCode,
+        [FromQuery] string? destinationCode,
         CancellationToken cancellationToken)
     {
-        var itineraries = await itineraryService.GetPublicWithPromotionsAsync(cancellationToken);
+        var itineraries = await itineraryService.GetPublicWithPromotionsAsync(
+            originCode,
+            destinationCode,
+            cancellationToken);
         return Ok(itineraries);
     }
 
@@ -53,9 +58,9 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
     }
 
     // GET /api/itineraries/{id}
-    // Devuelve el detalle de un itinerario junto con sus vuelos ordenados.
+    // Devuelve el resumen de un itinerario.
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<ItineraryDetailsResponse>> GetById(
+    public async Task<ActionResult<ItineraryWithPromotionSummaryResponse>> GetById(
         int id,
         CancellationToken cancellationToken)
     {

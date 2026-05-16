@@ -84,104 +84,187 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         return itineraries;
     }
 
-    public Task<IReadOnlyList<ItineraryDetailsResponse>> GetAllWithPromotionsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        return GetWithPromotionsAsync(publicOnly: false, itineraryId: null, cancellationToken);
-    }
-
-    public Task<IReadOnlyList<ItineraryDetailsResponse>> GetPublicWithPromotionsAsync(
-        CancellationToken cancellationToken = default)
-    {
-        return GetWithPromotionsAsync(publicOnly: true, itineraryId: null, cancellationToken);
-    }
-
-    // Obtiene encabezado, promocion opcional y vuelos ordenados de un itinerario especifico.
-    public async Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default)
-    {
-        var itineraries = await GetWithPromotionsAsync(
-            publicOnly: false,
-            itineraryId,
-            cancellationToken);
-        return itineraries.FirstOrDefault();
-    }
-
-    private async Task<IReadOnlyList<ItineraryDetailsResponse>> GetWithPromotionsAsync(
-        bool publicOnly,
-        int? itineraryId,
+    public async Task<IReadOnlyList<ItinerarySummaryResponse>> GetAllOriginDestAsync(
         CancellationToken cancellationToken = default)
     {
         const string sql = """
+            WITH itinerary_bounds AS (
+                SELECT
+                    fii.itinerary_id,
+                    MIN(fii.flight_order) AS first_flight_order,
+                    MAX(fii.flight_order) AS last_flight_order,
+                    COUNT(*) AS total_flights
+                FROM tecair.flight_in_itinerary fii
+                GROUP BY fii.itinerary_id
+            )
             SELECT
                 i.itinerary_id,
                 i.price,
                 i.state,
+                first_flight.airport_departs_from_id AS origin_code,
+                last_flight.airport_arrives_to_id AS destination_code,
+                first_flight.departure_datetime,
+                last_flight.arrival_datetime,
+                bounds.total_flights
+            FROM tecair.itinerary i
+            INNER JOIN itinerary_bounds bounds
+                ON bounds.itinerary_id = i.itinerary_id
+            INNER JOIN tecair.flight_in_itinerary first_link
+                ON first_link.itinerary_id = i.itinerary_id
+               AND first_link.flight_order = bounds.first_flight_order
+            INNER JOIN tecair.flight first_flight
+                ON first_flight.flight_id = first_link.flight_id
+            INNER JOIN tecair.flight_in_itinerary last_link
+                ON last_link.itinerary_id = i.itinerary_id
+               AND last_link.flight_order = bounds.last_flight_order
+            INNER JOIN tecair.flight last_flight
+                ON last_flight.flight_id = last_link.flight_id
+            ORDER BY first_flight.departure_datetime, i.itinerary_id;
+            """;
+
+        var itineraries = new List<ItinerarySummaryResponse>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            itineraries.Add(MapItinerarySummaryResponse(reader));
+        }
+
+        return itineraries;
+    }
+
+    public async Task<IReadOnlyList<ItineraryWithPromotionSummaryResponse>> GetPublicWithPromotionsAsync(
+        string? originCode = null,
+        string? destinationCode = null,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            WITH itinerary_bounds AS (
+                SELECT
+                    fii.itinerary_id,
+                    MIN(fii.flight_order) AS first_flight_order,
+                    MAX(fii.flight_order) AS last_flight_order,
+                    COUNT(*) AS total_flights
+                FROM tecair.flight_in_itinerary fii
+                GROUP BY fii.itinerary_id
+            )
+            SELECT
+                i.itinerary_id,
+                i.price,
+                i.state,
+                first_flight.airport_departs_from_id AS origin_code,
+                last_flight.airport_arrives_to_id AS destination_code,
+                first_flight.departure_datetime,
+                last_flight.arrival_datetime,
+                bounds.total_flights,
                 p.promotion_code,
                 p.itinerary_id,
                 p.image_url,
                 p.start_date,
                 p.end_date,
                 p.discount_percent,
-                p.promo_price,
-                ifl.itinerary_flight_id,
-                ifl.flight_order,
-                f.flight_id,
-                f.plane_plate,
-                departure_airport.airport_name,
-                departure_airport.code,
-                departure_airport.city,
-                arrival_airport.airport_name,
-                arrival_airport.code,
-                arrival_airport.city,
-                f.departure_datetime,
-                f.arrival_datetime,
-                f.gate,
-                f.state
+                p.promo_price
             FROM tecair.itinerary i
+            INNER JOIN itinerary_bounds bounds
+                ON bounds.itinerary_id = i.itinerary_id
+            INNER JOIN tecair.flight_in_itinerary first_link
+                ON first_link.itinerary_id = i.itinerary_id
+               AND first_link.flight_order = bounds.first_flight_order
+            INNER JOIN tecair.flight first_flight
+                ON first_flight.flight_id = first_link.flight_id
+            INNER JOIN tecair.flight_in_itinerary last_link
+                ON last_link.itinerary_id = i.itinerary_id
+               AND last_link.flight_order = bounds.last_flight_order
+            INNER JOIN tecair.flight last_flight
+                ON last_flight.flight_id = last_link.flight_id
             LEFT JOIN tecair.promotion p
                 ON p.itinerary_id = i.itinerary_id
-            INNER JOIN tecair.flight_in_itinerary ifl
-                ON ifl.itinerary_id = i.itinerary_id
-            INNER JOIN tecair.flight f
-                ON f.flight_id = ifl.flight_id
-            INNER JOIN tecair.airport departure_airport
-                ON departure_airport.code = f.airport_departs_from_id
-            INNER JOIN tecair.airport arrival_airport
-                ON arrival_airport.code = f.airport_arrives_to_id
+               AND CURRENT_DATE BETWEEN p.start_date AND p.end_date
             WHERE
-                (@public_only = FALSE OR i.state = 'PUBLIC')
-                AND (@itinerary_id IS NULL OR i.itinerary_id = @itinerary_id)
-            ORDER BY i.itinerary_id, ifl.flight_order;
+                i.state = 'PUBLIC'
+                AND (@origin_code IS NULL OR first_flight.airport_departs_from_id = @origin_code)
+                AND (@destination_code IS NULL OR last_flight.airport_arrives_to_id = @destination_code)
+            ORDER BY first_flight.departure_datetime, i.itinerary_id;
             """;
 
-        var itinerariesById = new Dictionary<int, ItineraryDetailsResponse>();
+        var itineraries = new List<ItineraryWithPromotionSummaryResponse>();
 
         await using var command = dataSource.CreateCommand(sql);
-        command.Parameters.AddWithValue("public_only", publicOnly);
-        command.Parameters.Add("itinerary_id", NpgsqlDbType.Integer).Value =
-            (object?)itineraryId ?? DBNull.Value;
+        command.Parameters.Add("origin_code", NpgsqlDbType.Varchar).Value =
+            (object?)originCode ?? DBNull.Value;
+        command.Parameters.Add("destination_code", NpgsqlDbType.Varchar).Value =
+            (object?)destinationCode ?? DBNull.Value;
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
-            var currentItineraryId = reader.GetInt32(0);
-            if (!itinerariesById.TryGetValue(currentItineraryId, out var itinerary))
-            {
-                itinerary = new ItineraryDetailsResponse
-                {
-                    ItineraryId = currentItineraryId,
-                    Price = reader.GetDecimal(1),
-                    State = reader.GetString(2),
-                    Promotion = MapPromotionResponseOrNull(reader)
-                };
-
-                itinerariesById.Add(currentItineraryId, itinerary);
-            }
-
-            itinerary.Flights.Add(MapItineraryFlightResponse(reader));
+            itineraries.Add(MapItineraryWithPromotionSummaryResponse(reader));
         }
 
-        return itinerariesById.Values.ToList();
+        return itineraries;
+    }
+
+    // Obtiene resumen y promocion activa opcional de un itinerario especifico.
+    public async Task<ItineraryWithPromotionSummaryResponse?> GetByIdAsync(
+        int itineraryId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            WITH itinerary_bounds AS (
+                SELECT
+                    fii.itinerary_id,
+                    MIN(fii.flight_order) AS first_flight_order,
+                    MAX(fii.flight_order) AS last_flight_order,
+                    COUNT(*) AS total_flights
+                FROM tecair.flight_in_itinerary fii
+                GROUP BY fii.itinerary_id
+            )
+            SELECT
+                i.itinerary_id,
+                i.price,
+                i.state,
+                first_flight.airport_departs_from_id AS origin_code,
+                last_flight.airport_arrives_to_id AS destination_code,
+                first_flight.departure_datetime,
+                last_flight.arrival_datetime,
+                bounds.total_flights,
+                p.promotion_code,
+                p.itinerary_id,
+                p.image_url,
+                p.start_date,
+                p.end_date,
+                p.discount_percent,
+                p.promo_price
+            FROM tecair.itinerary i
+            INNER JOIN itinerary_bounds bounds
+                ON bounds.itinerary_id = i.itinerary_id
+            INNER JOIN tecair.flight_in_itinerary first_link
+                ON first_link.itinerary_id = i.itinerary_id
+               AND first_link.flight_order = bounds.first_flight_order
+            INNER JOIN tecair.flight first_flight
+                ON first_flight.flight_id = first_link.flight_id
+            INNER JOIN tecair.flight_in_itinerary last_link
+                ON last_link.itinerary_id = i.itinerary_id
+               AND last_link.flight_order = bounds.last_flight_order
+            INNER JOIN tecair.flight last_flight
+                ON last_flight.flight_id = last_link.flight_id
+            LEFT JOIN tecair.promotion p
+                ON p.itinerary_id = i.itinerary_id
+               AND CURRENT_DATE BETWEEN p.start_date AND p.end_date
+            WHERE i.itinerary_id = @itinerary_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return MapItineraryWithPromotionSummaryResponse(reader);
     }
 
     // Trae datos minimos de vuelos para validar una solicitud de creacion.
@@ -447,43 +530,53 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         }
     }
 
-    private static PromotionResponse? MapPromotionResponseOrNull(NpgsqlDataReader reader)
+    private static ItinerarySummaryResponse MapItinerarySummaryResponse(NpgsqlDataReader reader)
     {
-        if (reader.IsDBNull(3))
+        return new ItinerarySummaryResponse
+        {
+            ItineraryId = reader.GetInt32(0),
+            Price = reader.GetDecimal(1),
+            State = reader.GetString(2),
+            OriginCode = reader.GetString(3),
+            DestinationCode = reader.GetString(4),
+            DepartureDatetime = reader.GetDateTime(5),
+            ArrivalDatetime = reader.GetDateTime(6),
+            TotalFlights = checked((int)reader.GetInt64(7))
+        };
+    }
+
+    private static ItineraryWithPromotionSummaryResponse MapItineraryWithPromotionSummaryResponse(NpgsqlDataReader reader)
+    {
+        return new ItineraryWithPromotionSummaryResponse
+        {
+            ItineraryId = reader.GetInt32(0),
+            Price = reader.GetDecimal(1),
+            State = reader.GetString(2),
+            OriginCode = reader.GetString(3),
+            DestinationCode = reader.GetString(4),
+            DepartureDatetime = reader.GetDateTime(5),
+            ArrivalDatetime = reader.GetDateTime(6),
+            TotalFlights = checked((int)reader.GetInt64(7)),
+            Promotion = MapPromotionResponseOrNull(reader, 8)
+        };
+    }
+
+    private static PromotionResponse? MapPromotionResponseOrNull(NpgsqlDataReader reader, int startIndex)
+    {
+        if (reader.IsDBNull(startIndex))
         {
             return null;
         }
 
         return new PromotionResponse
         {
-            PromotionCode = reader.GetString(3),
-            ItineraryId = reader.GetInt32(4),
-            ImageUrl = reader.IsDBNull(5) ? null : reader.GetString(5),
-            StartDate = reader.GetFieldValue<DateOnly>(6),
-            EndDate = reader.GetFieldValue<DateOnly>(7),
-            DiscountPercent = reader.GetDecimal(8),
-            PromoPrice = reader.GetInt32(9)
-        };
-    }
-
-    private static ItineraryFlightResponse MapItineraryFlightResponse(NpgsqlDataReader reader)
-    {
-        return new ItineraryFlightResponse
-        {
-            ItineraryFlightId = reader.GetInt32(10),
-            FlightOrder = reader.GetInt32(11),
-            FlightId = reader.GetInt32(12),
-            PlanePlate = reader.GetString(13),
-            DepartureAirportName = reader.GetString(14),
-            DepartureCode = reader.GetString(15),
-            DepartureCity = reader.GetString(16),
-            ArrivalAirportName = reader.GetString(17),
-            ArrivalCode = reader.GetString(18),
-            ArrivalCity = reader.GetString(19),
-            DepartureDatetime = reader.GetDateTime(20),
-            ArrivalDatetime = reader.GetDateTime(21),
-            Gate = reader.IsDBNull(22) ? null : reader.GetString(22),
-            State = reader.GetString(23)
+            PromotionCode = reader.GetString(startIndex),
+            ItineraryId = reader.GetInt32(startIndex + 1),
+            ImageUrl = reader.IsDBNull(startIndex + 2) ? null : reader.GetString(startIndex + 2),
+            StartDate = reader.GetFieldValue<DateOnly>(startIndex + 3),
+            EndDate = reader.GetFieldValue<DateOnly>(startIndex + 4),
+            DiscountPercent = reader.GetDecimal(startIndex + 5),
+            PromoPrice = reader.GetInt32(startIndex + 6)
         };
     }
 }
