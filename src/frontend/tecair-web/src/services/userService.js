@@ -1,75 +1,30 @@
 import { apiFetch } from './api.js';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MODO STUB: las funciones simulan la API con un delay artificial.
-// Para conectar al backend real:
-//   1. Confirma que vite.config.js tenga proxy para /users (ya está).
-//   2. Elimina el bloque STUB de cada función y descomenta el bloque REAL.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// POST /users/login  →  200 UserResponse | 401 { message }
-// ⚠ Este endpoint aún no existe en el backend — hay que crearlo.
+// POST /api/auth/login → 200 LoginResponse | 401 { message } | 400 { message }
+// El backend devuelve: { email, fullName, role, isStudent, collegeName, userCarnet, miles, message }
+// El frontend no tiene phoneNum desde login porque LoginResponse no lo expone.
 export async function loginUser(email, password) {
-  // ── REAL ──────────────────────────────────────────────────────────────────
-  // return apiFetch('/users/login', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ email, password }),
-  // });
-
-  // ── STUB ──────────────────────────────────────────────────────────────────
-  await delay(700);
-  if (!password) throw new Error('Credenciales incorrectas.');
-  const isStudent = email.includes('student') || email.includes('tec');
-  return {
-    email,
-    fullName: 'Usuario Demo',
-    phoneNum: '8888-0000',
-    role: 'CLIENT',
-    isStudent,
-    collegeName: isStudent ? 'TEC Costa Rica' : null,
-    userCarnet: isStudent ? 'TEC-2024-001' : null,
-    miles: isStudent ? 150 : null,
-  };
+  return apiFetch('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
 }
 
-// POST /users/{email}/student  →  200 UserResponse | 409 { message }
-// ⚠ Este endpoint aún no existe en el backend — hay que crearlo.
-export async function enrollAsStudent(email, collegeName, userCarnet, currentUser) {
-  // ── REAL ──────────────────────────────────────────────────────────────────
-  // return apiFetch(`/users/${encodeURIComponent(email)}/student`, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ collegeName, userCarnet }),
-  // });
-
-  // ── STUB ──────────────────────────────────────────────────────────────────
-  await delay(800);
-  return { ...currentUser, isStudent: true, collegeName, userCarnet, miles: 0 };
-}
-
-// POST /users  →  201 UserResponse | 400 { message } | 409 { message }
-// ✅ Este endpoint ya existe en el backend.
+// POST /api/users → 201 UserResponse | 400 { message } | 409 { message }
+// Crea el usuario y lo devuelve listo para usar como sesion activa.
 export async function registerUser(data) {
-  // ── REAL ──────────────────────────────────────────────────────────────────
-  // return apiFetch('/users', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify(data),
-  // });
+  return apiFetch('/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
 
-  // ── STUB ──────────────────────────────────────────────────────────────────
-  await delay(900);
-  return {
-    email: data.email,
-    fullName: `${data.name} ${data.lname}`,
-    phoneNum: data.phoneNum,
-    role: 'CLIENT',
-    isStudent: data.isStudent,
-    collegeName: data.isStudent ? data.collegeName : null,
-    userCarnet: data.isStudent ? data.userCarnet : null,
-    miles: data.isStudent ? 0 : null,
-  };
+// POST /users/{email}/student → endpoint todavía no existe en backend.
+// Stub temporal: marca el usuario como estudiante en memoria.
+// TODO: implementar el endpoint real en backend.
+export async function enrollAsStudent(email, collegeName, userCarnet, currentUser) {
+  await new Promise((r) => setTimeout(r, 400));
+  return { ...currentUser, isStudent: true, collegeName, userCarnet, miles: 0 };
 }

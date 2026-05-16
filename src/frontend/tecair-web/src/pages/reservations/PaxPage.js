@@ -1,13 +1,9 @@
-import { useState } from 'react';
-import Nav        from '../../components/Nav.js';
-import Stepper    from '../../components/Stepper.js';
+import { useState, useEffect } from 'react';
+import Nav from '../../components/Nav.js';
+import Stepper from '../../components/Stepper.js';
 import SummarySide from '../../components/SummarySide.js';
 import { createPassenger, mapGenderToCode }        from '../../services/passengerService.js';
 import { createReservation, generatePaymentReference } from '../../services/reservationService.js';
-
-// Fallback al usuario semilla cuando no hay sesion real (loginUser/registerUser
-// estan stubbed). Garantiza que reservation.user_email apunte a un app_user real.
-const FALLBACK_USER_EMAIL = 'ana.rojas@tecair.com';
 
 // Pantalla de datos de pasajeros: formulario con validación para cada viajero
 export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
@@ -21,7 +17,10 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
   );
   const [errs,       setErrs]       = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [apiError,   setApiError]   = useState(null);
+  const [apiError, setApiError] = useState(null);
+  // Cuando el usuario apreta "Confirmar" sin sesion, validamos el form y
+  // abrimos el modal. Este flag dispara el submit real apenas haya sesion.
+  const [awaitingLogin, setAwaitingLogin] = useState(false);
 
   // Actualiza un campo específico de un pasajero
   const update = (i, key, val) => {
@@ -30,9 +29,9 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
     setPaxList(next);
   };
 
-  // Valida todos los campos requeridos antes de continuar y luego crea
-  // pasajeros + reservaciones (una por cada pasajero) contra el backend.
-  const submit = async () => {
+  // Valida campos sin enviar nada al backend. Se reutiliza tanto en el flujo
+  // normal como cuando hay que abrir el modal de login antes de reservar.
+  const validate = () => {
     const e = {};
     paxList.forEach((p, i) => {
       if (!p.firstName)                  e[i + 'firstName'] = true;
@@ -42,8 +41,12 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
       if (!p.gender)                     e[i + 'gender']    = true;
     });
     setErrs(e);
-    if (Object.keys(e).length > 0) return;
+    return Object.keys(e).length === 0;
+  };
 
+  // Crea pasajeros + reservaciones (una por cada pasajero) contra el backend
+  // usando el email del usuario en sesión.
+  const performReservation = async (userEmail) => {
     const itineraryId = state.selectedFlight?.itineraryId;
     if (!itineraryId) {
       setApiError('No hay un itinerario seleccionado. Volve a elegir un vuelo.');
@@ -54,9 +57,6 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
     setApiError(null);
 
     try {
-      // currentUser.email puede no existir en app_user (auth esta stubbed),
-      // por lo que para esta demo siempre cae al usuario semilla real.
-      const userEmail = FALLBACK_USER_EMAIL;
       const reservations = [];
 
       for (let i = 0; i < paxList.length; i++) {
@@ -103,6 +103,28 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
       setSubmitting(false);
     }
   };
+
+  // Handler del botón "Confirmar reservación".
+  // Si no hay sesión activa, validamos primero y abrimos el modal de login;
+  // cuando vuelva con currentUser, el useEffect dispara performReservation.
+  const submit = () => {
+    if (!validate()) return;
+    if (!currentUser?.email) {
+      setApiError(null);
+      setAwaitingLogin(true);
+      onOpenAuth();
+      return;
+    }
+    performReservation(currentUser.email);
+  };
+
+  // Dispara la reserva pendiente apenas el usuario inicia sesión.
+  useEffect(() => {
+    if (awaitingLogin && currentUser?.email && !submitting) {
+      setAwaitingLogin(false);
+      performReservation(currentUser.email);
+    }
+  }, [awaitingLogin, currentUser, submitting]);
 
   return (
     <>
@@ -191,6 +213,18 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
                 </div>
               </div>
             ))}
+
+            {awaitingLogin && !currentUser && (
+              <div className="alert mt-3 d-flex align-items-center justify-content-between gap-2" style={{ background: 'var(--burgundy-soft)', color: 'var(--burgundy)', border: '1px solid var(--burgundy-line)', borderRadius: 12 }}>
+                <span>
+                  <i className="bi bi-person-lock me-2"></i>
+                  Para confirmar tu reservación necesitas una cuenta. Inicia sesión o créala.
+                </span>
+                <button type="button" className="btn btn-burgundy btn-sm" onClick={onOpenAuth}>
+                  Iniciar sesión
+                </button>
+              </div>
+            )}
 
             {apiError && (
               <div className="alert mt-3" style={{ background: '#fde8ee', color: '#9b2335', border: 'none', borderRadius: 12 }}>
