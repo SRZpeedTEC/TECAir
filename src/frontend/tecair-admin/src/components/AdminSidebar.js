@@ -11,9 +11,12 @@ const NAV_ITEMS = [
   { key: 'cierre', label: 'Cierre de Vuelos', icon: 'bi-lock' },
 ];
 
-export default function AdminSidebar({ activePage, onNavigate }) {
+export default function AdminSidebar({ activePage, onNavigate, currentAdmin, onLogout }) {
+  const firstName = currentAdmin?.fullName?.split(' ')[0] ?? '';
+  const initial   = firstName.charAt(0).toUpperCase() || 'A';
+
   return (
-    <aside className="admin-sidebar">
+    <aside className="admin-sidebar" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="admin-sidebar-brand">
         <div className="brand-name">
           Air<span className="accent">TEC</span>
@@ -21,7 +24,12 @@ export default function AdminSidebar({ activePage, onNavigate }) {
         <div className="brand-sub">Vista Aeropuerto</div>
       </div>
 
-      <ul className="admin-nav" role="navigation" aria-label="Menú de administración">
+      <ul
+        className="admin-nav"
+        role="navigation"
+        aria-label="Menú de administración"
+        style={{ flex: 1 }}
+      >
         {NAV_ITEMS.map((item) => (
           <li key={item.key} className="admin-nav-item">
             <button
@@ -35,6 +43,80 @@ export default function AdminSidebar({ activePage, onNavigate }) {
           </li>
         ))}
       </ul>
+
+      {currentAdmin && (
+        <div
+          style={{
+            padding: '14px 16px',
+            borderTop: '1px solid rgba(255,255,255,0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <div
+            aria-hidden="true"
+            style={{
+              width: 36,
+              height: 36,
+              flexShrink: 0,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.18)',
+              color: '#fff',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {initial}
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: 14,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={currentAdmin.fullName}
+            >
+              {currentAdmin.fullName}
+            </div>
+            <div
+              style={{
+                color: 'rgba(255,255,255,0.7)',
+                fontSize: 11,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={currentAdmin.email}
+            >
+              {currentAdmin.email}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            aria-label="Cerrar sesion"
+            title="Cerrar sesion"
+            style={{
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.18)',
+              color: '#fff',
+              borderRadius: 8,
+              padding: '6px 9px',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <i className="bi bi-box-arrow-right"></i>
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
