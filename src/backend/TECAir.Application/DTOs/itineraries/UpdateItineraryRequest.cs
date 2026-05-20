@@ -5,5 +5,6 @@ namespace TECAir.Application.DTOs.Itineraries;
 public class UpdateItineraryRequest
 {
     public decimal Price { get; set; }
+    public string State { get; set; } = "EDITION";
     public List<CreateItineraryFlightRequest> Flights { get; set; } = [];
 }

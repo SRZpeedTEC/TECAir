@@ -55,6 +55,56 @@ export async function updateFlight(flightId, payload) {
   });
 }
 
+// ─────────────────────────────────────────────────────────────
+// PENDIENTES DE BACKEND — Apertura y Cierre de Vuelos
+// ─────────────────────────────────────────────────────────────
+// Los dos endpoints siguientes son los que la UI de Apertura y Cierre
+// de Vuelos necesita. Aún no existen en el backend; mientras tanto la
+// interfaz queda lista y estas llamadas fallarán con 404 — la UI mostrará
+// el mensaje del error tal cual venga.
+//
+// 1) GET /api/flights/search?state=UPCOMING|OPEN&departureCode=XXX&arrivalCode=YYY
+//    Lista vuelos en el estado indicado que salen de departureCode y llegan
+//    a arrivalCode. Toda la regla (filtrado por estado + códigos) vive en
+//    backend para no replicarla en el frontend.
+//    Respuesta esperada: mismo shape que OpenFlightResponse.
+//
+// 2) PATCH /api/flights/{flightId}/state  body: { state: 'OPEN' | 'CLOSED' }
+//    Transición controlada: solo permite UPCOMING→OPEN y OPEN→CLOSED.
+//    Cualquier otra transición debe devolver 409 desde backend.
+
+export async function searchFlightsByRoute({ state, departureCode, arrivalCode } = {}) {
+  if (!state)         throw new Error("state es obligatorio (UPCOMING | OPEN).");
+  if (!departureCode) throw new Error("departureCode es obligatorio.");
+  if (!arrivalCode)   throw new Error("arrivalCode es obligatorio.");
+
+  const params = new URLSearchParams({ state, departureCode, arrivalCode });
+  const data = await apiFetch(`/flights/search?${params}`);
+
+  return data.map((f) => ({
+    flightId:             f.flightId             ?? f.FlightId,
+    planePlate:           f.planePlate           ?? f.PlanePlate,
+    departureAirportName: f.departureAirportName ?? f.DepartureAirportName,
+    departureCode:        f.departureCode        ?? f.DepartureCode,
+    departureCity:        f.departureCity        ?? f.DepartureCity,
+    arrivalAirportName:   f.arrivalAirportName   ?? f.ArrivalAirportName,
+    arrivalCode:          f.arrivalCode          ?? f.ArrivalCode,
+    arrivalCity:          f.arrivalCity          ?? f.ArrivalCity,
+    state:                f.state                ?? f.State,
+    gate:                 f.gate                 ?? f.Gate,
+    departureDatetime:    f.departureDatetime    ?? f.DepartureDatetime,
+    arrivalDatetime:      f.arrivalDatetime      ?? f.ArrivalDatetime,
+  }));
+}
+
+export async function transitionFlightState(flightId, nextState) {
+  return apiFetch(`/flights/${flightId}/state`, {
+    method:  'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ state: nextState }),
+  });
+}
+
 // Elimina un vuelo. Devuelve 204 No Content cuando todo bien.
 // Corresponde a: DELETE /api/flights/{flightId}
 // 409 si el vuelo está usado en algún itinerario (no se permite borrar).

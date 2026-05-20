@@ -66,7 +66,7 @@ public class PromotionsController(IPromotionService promotionService) : Controll
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
         {
-            return Conflict(new { message = "A promotion with that code already exists." });
+            return Conflict(new { message = "A promotion with that code or itinerary already exists." });
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
         {
@@ -104,6 +104,10 @@ public class PromotionsController(IPromotionService promotionService) : Controll
             }
 
             return Ok(result.Promotion);
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return Conflict(new { message = "A promotion with that code or itinerary already exists." });
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.ForeignKeyViolation)
         {

@@ -75,10 +75,12 @@ export default function PromotionListTab() {
       setEditing({
         promotion,
         itinerary: {
-          itineraryId:     detail.itineraryId,
-          price:           detail.price,
-          originCode:      first?.departureCode ?? '—',
-          destinationCode: last?.arrivalCode    ?? '—',
+          itineraryId:       detail.itineraryId,
+          price:             detail.price,
+          originCode:        first?.departureCode ?? '—',
+          destinationCode:   last?.arrivalCode    ?? '—',
+          departureDatetime: first?.departureDatetime ?? null,
+          arrivalDatetime:   last?.arrivalDatetime   ?? null,
         },
       });
     } catch (err) {

@@ -19,6 +19,18 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             cancellationToken);
     }
 
+    public Task<IReadOnlyList<ItineraryDetailsResponse>> GetAllWithPromotionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return itineraryRepository.GetAllWithPromotionsAsync(cancellationToken);
+    }
+
+    public Task<IReadOnlyList<ItineraryDetailsResponse>> GetPublicWithPromotionsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return itineraryRepository.GetPublicWithPromotionsAsync(cancellationToken);
+    }
+
     // Consulta el detalle de un itinerario por id.
     public Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default)
     {
@@ -76,6 +88,7 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         var normalizedRequest = new CreateItineraryRequest
         {
             Price = request.Price,
+            State = NormalizeState(request.State),
             Flights = orderedFlights
                 .Select(flight => new CreateItineraryFlightRequest
                 {
@@ -152,6 +165,7 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         var normalizedRequest = new UpdateItineraryRequest
         {
             Price = request.Price,
+            State = NormalizeState(request.State),
             Flights = orderedFlights
                 .Select(flight => new CreateItineraryFlightRequest
                 {
@@ -193,27 +207,52 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
     // Validaciones que dependen solo del JSON recibido.
     private static string? ValidateCreateItineraryRequest(CreateItineraryRequest request)
     {
-        if (request.Price < 0)
+        return ValidateItineraryRequest(request.Price, request.State, request.Flights);
+    }
+
+    // Mismas reglas de estructura que la creacion, aplicadas al reemplazo completo de vuelos.
+    private static string? ValidateUpdateItineraryRequest(UpdateItineraryRequest request)
+    {
+        return ValidateItineraryRequest(request.Price, request.State, request.Flights);
+    }
+
+    private static string? ValidateItineraryRequest(
+        decimal price,
+        string state,
+        IReadOnlyCollection<CreateItineraryFlightRequest>? flights)
+    {
+        if (price < 0)
         {
             return "Price must be greater than or equal to 0.";
         }
 
-        if (request.Flights is null)
+        if (string.IsNullOrWhiteSpace(state))
+        {
+            return "State is required.";
+        }
+
+        var normalizedState = NormalizeState(state);
+        if (normalizedState is not "EDITION" and not "PUBLIC")
+        {
+            return "State must be EDITION or PUBLIC.";
+        }
+
+        if (flights is null)
         {
             return "Flights list is required.";
         }
 
-        if (request.Flights.Count == 0)
+        if (flights.Count == 0)
         {
             return "Itinerary must contain at least one flight.";
         }
 
-        if (request.Flights.Any(flight => flight.FlightId <= 0))
+        if (flights.Any(flight => flight.FlightId <= 0))
         {
             return "Flight id must be greater than 0.";
         }
 
-        if (request.Flights.Any(flight => flight.FlightOrder <= 0))
+        if (flights.Any(flight => flight.FlightOrder <= 0))
         {
             return "Flight order must be greater than 0.";
         }
@@ -221,35 +260,9 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         return null;
     }
 
-    // Mismas reglas de estructura que la creacion, aplicadas al reemplazo completo de vuelos.
-    private static string? ValidateUpdateItineraryRequest(UpdateItineraryRequest request)
+    private static string NormalizeState(string state)
     {
-        if (request.Price < 0)
-        {
-            return "Price must be greater than or equal to 0.";
-        }
-
-        if (request.Flights is null)
-        {
-            return "Flights list is required.";
-        }
-
-        if (request.Flights.Count == 0)
-        {
-            return "Itinerary must contain at least one flight.";
-        }
-
-        if (request.Flights.Any(flight => flight.FlightId <= 0))
-        {
-            return "Flight id must be greater than 0.";
-        }
-
-        if (request.Flights.Any(flight => flight.FlightOrder <= 0))
-        {
-            return "Flight order must be greater than 0.";
-        }
-
-        return null;
+        return state.Trim().ToUpperInvariant();
     }
 
     // Evita que el mismo vuelo o el mismo orden aparezcan mas de una vez.

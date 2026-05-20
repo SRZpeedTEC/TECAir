@@ -59,29 +59,6 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
         return result is true;
     }
 
-    public async Task<bool> SeatExistsAsync(
-        string planePlate,
-        string seatNumber,
-        CancellationToken cancellationToken = default)
-    {
-        const string sql = """
-            SELECT EXISTS (
-                SELECT 1
-                FROM tecair.seat
-                WHERE
-                    plane_plate = @plane_plate
-                    AND seat_number = @seat_number
-            );
-            """;
-
-        await using var command = dataSource.CreateCommand(sql);
-        command.Parameters.AddWithValue("plane_plate", planePlate);
-        command.Parameters.AddWithValue("seat_number", seatNumber);
-
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        return result is true;
-    }
-
     public async Task<bool> PaymentReferenceExistsAsync(
         string paymentReference,
         CancellationToken cancellationToken = default)
@@ -111,18 +88,14 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
                 user_email,
                 state,
                 payment_reference,
-                passenger_id,
-                plane_plate,
-                seat_number
+                passenger_id
             )
             VALUES (
                 @itinerary_id,
                 @user_email,
                 @state,
                 @payment_reference,
-                @passenger_id,
-                @plane_plate,
-                @seat_number
+                @passenger_id
             )
             RETURNING
                 reservation_id,
@@ -130,9 +103,7 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
                 user_email,
                 passenger_id,
                 state,
-                payment_reference,
-                plane_plate,
-                seat_number;
+                payment_reference;
             """;
 
         await using var command = dataSource.CreateCommand(sql);
@@ -141,10 +112,6 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
         command.Parameters.AddWithValue("state", request.State);
         command.Parameters.AddWithValue("payment_reference", request.PaymentReference);
         command.Parameters.AddWithValue("passenger_id", request.PassengerId);
-        command.Parameters.Add("plane_plate", NpgsqlDbType.Varchar).Value =
-            (object?)request.PlanePlate ?? DBNull.Value;
-        command.Parameters.Add("seat_number", NpgsqlDbType.Varchar).Value =
-            (object?)request.SeatNumber ?? DBNull.Value;
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -169,9 +136,7 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
                 r.passenger_id,
                 CONCAT(p.name, ' ', p.Lname) AS passenger_name,
                 r.state,
-                r.payment_reference,
-                r.plane_plate,
-                r.seat_number
+                r.payment_reference
             FROM tecair.reservation r
             INNER JOIN tecair.passenger p
                 ON p.passport_id = r.passenger_id
@@ -212,16 +177,13 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
                 PassengerId = reader.GetString(3),
                 PassengerName = reader.GetString(4),
                 State = reader.GetString(5),
-                PaymentReference = reader.IsDBNull(6) ? null : reader.GetString(6),
-                PreferredPlanePlate = reader.IsDBNull(7) ? null : reader.GetString(7),
-                PreferredSeatNumber = reader.IsDBNull(8) ? null : reader.GetString(8)
+                PaymentReference = reader.IsDBNull(6) ? null : reader.GetString(6)
             });
         }
 
         return reservations;
     }
 
-    // Los campos plane_plate y seat_number son preferencias, por eso se leen como opcionales.
     private static ReservationResponse MapReservationResponse(NpgsqlDataReader reader)
     {
         return new ReservationResponse
@@ -231,9 +193,7 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
             UserEmail = reader.GetString(2),
             PassengerId = reader.GetString(3),
             State = reader.GetString(4),
-            PaymentReference = reader.GetString(5),
-            PlanePlate = reader.IsDBNull(6) ? null : reader.GetString(6),
-            SeatNumber = reader.IsDBNull(7) ? null : reader.GetString(7)
+            PaymentReference = reader.GetString(5)
         };
     }
 }

@@ -45,19 +45,6 @@ public class ReservationService(IReservationRepository reservationRepository) : 
                 $"Payment reference '{normalizedRequest.PaymentReference}' already exists.");
         }
 
-        // La silla en reservation es solo preferencia del pasajero.
-        // El asiento real de abordaje se asigna despues en check_in.
-        if (normalizedRequest.PlanePlate is not null &&
-            normalizedRequest.SeatNumber is not null &&
-            !await reservationRepository.SeatExistsAsync(
-                normalizedRequest.PlanePlate,
-                normalizedRequest.SeatNumber,
-                cancellationToken))
-        {
-            return CreateReservationServiceResult.NotFound(
-                $"Preferred seat '{normalizedRequest.SeatNumber}' was not found for plane '{normalizedRequest.PlanePlate}'.");
-        }
-
         var reservation = await reservationRepository.CreateAsync(normalizedRequest, cancellationToken);
         return CreateReservationServiceResult.Success(reservation);
     }
@@ -121,13 +108,6 @@ public class ReservationService(IReservationRepository reservationRepository) : 
             return "Payment reference is required.";
         }
 
-        var hasPlanePlate = !string.IsNullOrWhiteSpace(request.PlanePlate);
-        var hasSeatNumber = !string.IsNullOrWhiteSpace(request.SeatNumber);
-        if (hasPlanePlate != hasSeatNumber)
-        {
-            return "Plane_plate and Seat_number must be provided together.";
-        }
-
         return null;
     }
 
@@ -140,13 +120,7 @@ public class ReservationService(IReservationRepository reservationRepository) : 
             UserEmail = request.UserEmail.Trim().ToLowerInvariant(),
             PassengerId = request.PassengerId.Trim(),
             State = request.State.Trim().ToUpperInvariant(),
-            PaymentReference = request.PaymentReference.Trim(),
-            PlanePlate = string.IsNullOrWhiteSpace(request.PlanePlate)
-                ? null
-                : request.PlanePlate.Trim(),
-            SeatNumber = string.IsNullOrWhiteSpace(request.SeatNumber)
-                ? null
-                : request.SeatNumber.Trim().ToUpperInvariant()
+            PaymentReference = request.PaymentReference.Trim()
         };
     }
 }
