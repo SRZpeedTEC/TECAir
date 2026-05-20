@@ -16,13 +16,34 @@ const INITIAL_STATE = {
   passengers:     [],
 };
 
+const SESSION_KEY = 'tecair_user';
+
+function loadStoredUser() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const [page,        setPage]        = useState('home');
   const [state,       setState]       = useState(INITIAL_STATE);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(loadStoredUser);
   const [showAuth,    setShowAuth]    = useState(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, [page]);
+
+  // Sincroniza el almacenamiento con cada cambio de sesion para que la cuenta
+  // sobreviva a recargas y al cierre del browser.
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }, [currentUser]);
 
   const openAuth     = ()     => setShowAuth(true);
   const closeAuth    = ()     => setShowAuth(false);

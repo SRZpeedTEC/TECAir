@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { loginUser, registerUser } from '../services/userService.js';
+import { loginUser, registerUser, translateAuthError } from '../services/userService.js';
+
+// Mismo patron que la DB (ck_app_user_email_format), insensible a mayusculas.
+const EMAIL_REGEX = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+
+// Validacion ligera: pide al menos 7 digitos para evitar inputs claramente vacios.
+// El formato exacto lo decide el backend (la columna es VARCHAR(25) UNIQUE).
+function isValidPhone(phone) {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 7;
+}
 
 // Modal de autenticación con dos pestañas: iniciar sesión y crear cuenta.
 // Props:
@@ -33,12 +43,22 @@ export default function AuthModal({ show, onClose, onSuccess }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!EMAIL_REGEX.test(loginEmail.trim())) {
+      setError('Ingresa un correo electronico valido.');
+      return;
+    }
+    if (!loginPassword) {
+      setError('La contrasena es requerida.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const user = await loginUser(loginEmail, loginPassword);
+      const user = await loginUser(loginEmail.trim().toLowerCase(), loginPassword);
       onSuccess(user);
     } catch (err) {
-      setError(err.message);
+      setError(translateAuthError(err.message));
     } finally {
       setLoading(false);
     }
@@ -47,22 +67,44 @@ export default function AuthModal({ show, onClose, onSuccess }) {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!name.trim() || !lname.trim()) {
+      setError('Ingresa nombre y apellido.');
+      return;
+    }
+    if (!isValidPhone(phone)) {
+      setError('Ingresa un telefono valido (al menos 7 digitos).');
+      return;
+    }
+    if (!EMAIL_REGEX.test(regEmail.trim())) {
+      setError('Ingresa un correo electronico valido.');
+      return;
+    }
+    if (!regPass) {
+      setError('La contrasena es requerida.');
+      return;
+    }
+    if (isStudent && (!college.trim() || !carnet.trim())) {
+      setError('Como estudiante debes ingresar universidad y carnet.');
+      return;
+    }
+
     setLoading(true);
     try {
       const user = await registerUser({
-        email:       regEmail,
+        email:       regEmail.trim().toLowerCase(),
         password:    regPass,
-        name,
-        lname,
-        phoneNum:    phone,
+        name:        name.trim(),
+        lname:       lname.trim(),
+        phoneNum:    phone.trim(),
         role:        'CLIENT',
         isStudent,
-        collegeName: isStudent ? college : null,
-        userCarnet:  isStudent ? carnet  : null,
+        collegeName: isStudent ? college.trim() : null,
+        userCarnet:  isStudent ? carnet.trim()  : null,
       });
       onSuccess(user);
     } catch (err) {
-      setError(err.message);
+      setError(translateAuthError(err.message));
     } finally {
       setLoading(false);
     }

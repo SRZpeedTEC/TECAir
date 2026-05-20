@@ -109,7 +109,11 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
             >
               <i className="bi bi-stars me-2"></i>Más de 80 destinos en 4 continentes
             </div>
-            <h1 className="serif">El cielo es nuestro<br />punto de partida.</h1>
+            <h1 className="serif">
+              {currentUser
+                ? <>Bienvenido,<br />{currentUser.fullName?.split(' ')[0]}.</>
+                : <>El cielo es nuestro<br />punto de partida.</>}
+            </h1>
             <p className="lede mt-3">
               Reserva tu próximo vuelo con AirTEC y descubre tarifas pensadas para
               viajeros que quieren llegar más lejos, con menos.
