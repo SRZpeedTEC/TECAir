@@ -21,6 +21,7 @@ TRUNCATE TABLE
     flight_in_itinerary,
     itinerary,
     flight,
+    airport_connection,
     seat,
     plane,
     airport,
@@ -112,6 +113,97 @@ VALUES
     ('NBO', 'Aeropuerto Internacional Jomo Kenyatta', 'Nairobi', 'Kenia');
 
 -- =========================
+-- Conexiones entre aeropuertos
+-- =========================
+
+-- Estas conexiones guardan la distancia y duracion estimada que se usan como referencia para los vuelos.
+-- Las distancias se calculan con coordenadas aproximadas y cubren todos los pares origen-destino posibles.
+WITH airport_coordinates (code, latitude, longitude) AS (
+    VALUES
+        ('SJO', 9.9939, -84.2088),
+        ('LIR', 10.5933, -85.5444),
+        ('PTY', 9.0714, -79.3835),
+        ('BOG', 4.7016, -74.1469),
+        ('MEX', 19.4363, -99.0721),
+        ('MIA', 25.7959, -80.2870),
+        ('JFK', 40.6413, -73.7781),
+        ('YYZ', 43.6777, -79.6248),
+        ('GRU', -23.4356, -46.4731),
+        ('EZE', -34.8222, -58.5358),
+        ('SCL', -33.3928, -70.7858),
+        ('LIM', -12.0219, -77.1143),
+        ('UIO', -0.1292, -78.3575),
+        ('MVD', -34.8384, -56.0308),
+        ('ASU', -25.2399, -57.5191),
+        ('LPB', -16.5133, -68.1923),
+        ('MAD', 40.4983, -3.5676),
+        ('CDG', 49.0097, 2.5479),
+        ('LHR', 51.4700, -0.4543),
+        ('FCO', 41.8003, 12.2389),
+        ('FRA', 50.0379, 8.5622),
+        ('AMS', 52.3105, 4.7683),
+        ('ZRH', 47.4581, 8.5555),
+        ('LIS', 38.7742, -9.1342),
+        ('IST', 41.2753, 28.7519),
+        ('DXB', 25.2532, 55.3657),
+        ('DOH', 25.2731, 51.6081),
+        ('SIN', 1.3644, 103.9915),
+        ('HND', 35.5494, 139.7798),
+        ('ICN', 37.4602, 126.4407),
+        ('PEK', 40.0799, 116.6031),
+        ('DEL', 28.5562, 77.1000),
+        ('BKK', 13.6900, 100.7501),
+        ('SYD', -33.9399, 151.1753),
+        ('AKL', -37.0082, 174.7850),
+        ('CAI', 30.1219, 31.4056),
+        ('JNB', -26.1337, 28.2420),
+        ('CMN', 33.3675, -7.5898),
+        ('ADD', 8.9778, 38.7993),
+        ('NBO', -1.3192, 36.9278)
+),
+calculated_connections AS (
+    SELECT
+        departure.code AS departure_airport_code,
+        arrival.code AS arrival_airport_code,
+        ROUND(
+            3958.8 * 2 * ASIN(
+                SQRT(
+                    POWER(SIN(RADIANS(arrival.latitude - departure.latitude) / 2), 2)
+                    + COS(RADIANS(departure.latitude))
+                    * COS(RADIANS(arrival.latitude))
+                    * POWER(SIN(RADIANS(arrival.longitude - departure.longitude) / 2), 2)
+                )
+            )
+        )::INTEGER AS distance_miles
+    FROM airport_coordinates departure
+    CROSS JOIN airport_coordinates arrival
+    WHERE departure.code <> arrival.code
+)
+INSERT INTO airport_connection (
+    departure_airport_code,
+    arrival_airport_code,
+    distance_miles,
+    estimated_duration_minutes
+)
+SELECT
+    departure_airport_code,
+    arrival_airport_code,
+    GREATEST(distance_miles, 1),
+    GREATEST(
+        CEIL(
+            distance_miles::NUMERIC / 500.0 * 60
+            + CASE
+                WHEN distance_miles < 300 THEN 30
+                WHEN distance_miles < 1000 THEN 40
+                ELSE 55
+            END
+        )::INTEGER,
+        20
+    )
+FROM calculated_connections
+ORDER BY departure_airport_code, arrival_airport_code;
+
+-- =========================
 -- Aviones y asientos
 -- =========================
 
@@ -179,30 +271,42 @@ INSERT INTO flight (
     state,
     gate,
     departure_datetime,
-    arrival_datetime
+    arrival_datetime,
+    miles
 )
 OVERRIDING SYSTEM VALUE
-VALUES
-    (1, 'TI-TEC01', 'SJO', 'PTY', 'OPEN',   'A1',
-     '2026-06-10 08:00:00', '2026-06-10 09:20:00'),
-
-    (2, 'TI-TEC02', 'PTY', 'BOG', 'OPEN',   'B4',
-     '2026-06-10 11:00:00', '2026-06-10 12:40:00'),
-
-    (3, 'TI-TEC03', 'SJO', 'LIR', 'OPEN',   'A3',
-     '2026-06-11 07:30:00', '2026-06-11 08:15:00'),
-
-    (4, 'TI-TEC01', 'SJO', 'MIA', 'OPEN',   'A5',
-     '2026-06-12 10:00:00', '2026-06-12 14:00:00'),
-
-    (5, 'TI-TEC02', 'MIA', 'MEX', 'OPEN',   'C2',
-     '2026-06-13 09:00:00', '2026-06-13 12:30:00'),
-
-    (6, 'TI-TEC03', 'LIR', 'SJO', 'CLOSED', 'L1',
-     '2026-06-09 18:00:00', '2026-06-09 18:45:00'),
-
-    (7, 'TI-TEC03', 'LIR', 'MEX', 'UPCOMING', 'L2',
-     '2026-06-15 08:00:00', '2026-06-15 11:00:00');
+SELECT
+    seeded_flights.flight_id,
+    seeded_flights.plane_plate,
+    seeded_flights.airport_departs_from_id,
+    seeded_flights.airport_arrives_to_id,
+    seeded_flights.state,
+    seeded_flights.gate,
+    seeded_flights.departure_datetime,
+    seeded_flights.departure_datetime + airport_connection.estimated_duration_minutes * INTERVAL '1 minute',
+    airport_connection.distance_miles
+FROM (
+    VALUES
+        (1, 'TI-TEC01', 'SJO', 'PTY', 'OPEN',   'A1', '2026-06-10 08:00:00'::TIMESTAMP),
+        (2, 'TI-TEC02', 'PTY', 'BOG', 'OPEN',   'B4', '2026-06-10 11:00:00'::TIMESTAMP),
+        (3, 'TI-TEC03', 'SJO', 'LIR', 'OPEN',   'A3', '2026-06-11 07:30:00'::TIMESTAMP),
+        (4, 'TI-TEC01', 'SJO', 'MIA', 'OPEN',   'A5', '2026-06-12 10:00:00'::TIMESTAMP),
+        (5, 'TI-TEC02', 'MIA', 'MEX', 'OPEN',   'C2', '2026-06-13 09:00:00'::TIMESTAMP),
+        (6, 'TI-TEC03', 'LIR', 'SJO', 'CLOSED', 'L1', '2026-06-09 18:00:00'::TIMESTAMP),
+        (7, 'TI-TEC03', 'LIR', 'MEX', 'UPCOMING', 'L2', '2026-06-15 08:00:00'::TIMESTAMP)
+) AS seeded_flights (
+    flight_id,
+    plane_plate,
+    airport_departs_from_id,
+    airport_arrives_to_id,
+    state,
+    gate,
+    departure_datetime
+)
+JOIN airport_connection
+    ON airport_connection.departure_airport_code = seeded_flights.airport_departs_from_id
+    AND airport_connection.arrival_airport_code = seeded_flights.airport_arrives_to_id
+ORDER BY seeded_flights.flight_id;
 -- =========================
 -- Itinerarios o rutas vendibles
 -- =========================
