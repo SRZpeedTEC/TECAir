@@ -74,6 +74,29 @@ public class ReservationService(IReservationRepository reservationRepository) : 
         return SearchReservationsServiceResult.Success(reservations);
     }
 
+    public async Task<SearchReservationsServiceResult> GetByUserEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return SearchReservationsServiceResult.ValidationError("User email is required.");
+        }
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        if (!await reservationRepository.UserExistsAsync(normalizedEmail, cancellationToken))
+        {
+            return SearchReservationsServiceResult.NotFound(
+                $"User '{normalizedEmail}' was not found.");
+        }
+
+        var reservations = await reservationRepository.GetByUserEmailAsync(
+            normalizedEmail,
+            cancellationToken);
+
+        return SearchReservationsServiceResult.Success(reservations);
+    }
+
     // Validaciones que dependen solo del JSON recibido.
     private static string? ValidateCreateReservationRequest(CreateReservationRequest request)
     {

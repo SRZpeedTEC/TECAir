@@ -59,4 +59,35 @@ public class ReservationsController(IReservationService reservationService) : Co
 
         return Ok(result.Reservations);
     }
+
+    // GET /api/reservations/user/{email}
+    // Permite que un usuario consulte las reservaciones asociadas al correo de su cuenta.
+    [HttpGet("user/{email}")]
+    public async Task<ActionResult<IReadOnlyList<ReservationSearchResponse>>> GetByUserEmail(
+        string email,
+        CancellationToken cancellationToken)
+    {
+        var result = await reservationService.GetByUserEmailAsync(email, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.IsNotFound)
+            {
+                return NotFound(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Reservations);
+    }
+
+    // GET /api/reservations/user
+    // Mantiene una respuesta clara cuando no viene el correo en la ruta.
+    [HttpGet("user")]
+    public async Task<ActionResult<IReadOnlyList<ReservationSearchResponse>>> GetByUserEmail(
+        CancellationToken cancellationToken)
+    {
+        var result = await reservationService.GetByUserEmailAsync(string.Empty, cancellationToken);
+        return BadRequest(new { message = result.ErrorMessage });
+    }
 }

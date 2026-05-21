@@ -14,4 +14,8 @@ public interface IReservationService
         string? passengerId,
         string? name,
         CancellationToken cancellationToken = default);
+
+    Task<SearchReservationsServiceResult> GetByUserEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default);
 }
