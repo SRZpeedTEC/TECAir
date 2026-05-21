@@ -26,6 +26,44 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return result is true;
     }
 
+    // airport_connection se consulta solo desde flujos internos de vuelos.
+    // No existe controller ni endpoint publico para administrar esta tabla de referencia.
+    public async Task<AirportConnectionData?> GetAirportConnectionAsync(
+        string departureCode,
+        string arrivalCode,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                departure_airport_code,
+                arrival_airport_code,
+                distance_miles,
+                estimated_duration_minutes
+            FROM tecair.airport_connection
+            WHERE
+                departure_airport_code = @departure_airport_code
+                AND arrival_airport_code = @arrival_airport_code;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("departure_airport_code", departureCode.Trim().ToUpperInvariant());
+        command.Parameters.AddWithValue("arrival_airport_code", arrivalCode.Trim().ToUpperInvariant());
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return new AirportConnectionData
+        {
+            DepartureAirportCode = reader.GetString(0),
+            ArrivalAirportCode = reader.GetString(1),
+            DistanceMiles = reader.GetInt32(2),
+            EstimatedDurationMinutes = reader.GetInt32(3)
+        };
+    }
+
     // Verifica que el avion exista para evitar insertar vuelos con una placa invalida.
     public async Task<bool> PlaneExistsAsync(string planePlate, CancellationToken cancellationToken = default)
     {
@@ -104,6 +142,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
     // Inserta el vuelo y devuelve la fila creada con el formato que usa la API.
     public async Task<FlightResponse> CreateAsync(
         CreateFlightRequest request,
+        DateTime calculatedArrivalDatetime,
+        int calculatedMiles,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -114,7 +154,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                 state,
                 gate,
                 departure_datetime,
-                arrival_datetime
+                arrival_datetime,
+                miles
             )
             VALUES (
                 @plane_plate,
@@ -123,7 +164,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                 @state,
                 @gate,
                 @departure_datetime,
-                @arrival_datetime
+                @arrival_datetime,
+                @miles
             )
             RETURNING
                 flight_id,
@@ -133,7 +175,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                 state,
                 gate,
                 departure_datetime,
-                arrival_datetime;
+                arrival_datetime,
+                miles;
             """;
 
         await using var command = dataSource.CreateCommand(sql);
@@ -143,7 +186,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         command.Parameters.AddWithValue("state", request.State);
         command.Parameters.AddWithValue("gate", (object?)request.Gate ?? DBNull.Value);
         command.Parameters.AddWithValue("departure_datetime", request.DepartureDatetime);
-        command.Parameters.AddWithValue("arrival_datetime", request.ArrivalDatetime);
+        command.Parameters.AddWithValue("arrival_datetime", calculatedArrivalDatetime);
+        command.Parameters.AddWithValue("miles", calculatedMiles);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -172,7 +216,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                 f.state,
                 f.gate,
                 f.departure_datetime,
-                f.arrival_datetime
+                f.arrival_datetime,
+                f.miles
             FROM tecair.flight f
             INNER JOIN tecair.airport departure_airport
                 ON departure_airport.code = f.airport_departs_from_id
@@ -205,7 +250,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                 State = reader.GetString(8),
                 Gate = reader.IsDBNull(9) ? null : reader.GetString(9),
                 DepartureDatetime = reader.GetDateTime(10),
-                ArrivalDatetime = reader.GetDateTime(11)
+                ArrivalDatetime = reader.GetDateTime(11),
+                Miles = reader.GetInt32(12)
             });
         }
 
@@ -312,6 +358,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
     public async Task<FlightResponse> UpdateAsync(
         int flightId,
         UpdateFlightRequest request,
+        DateTime calculatedArrivalDatetime,
+        int calculatedMiles,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -323,7 +371,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                 state = @state,
                 gate = @gate,
                 departure_datetime = @departure_datetime,
-                arrival_datetime = @arrival_datetime
+                arrival_datetime = @arrival_datetime,
+                miles = @miles
             WHERE flight_id = @flight_id
             RETURNING
                 flight_id,
@@ -333,7 +382,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                 state,
                 gate,
                 departure_datetime,
-                arrival_datetime;
+                arrival_datetime,
+                miles;
             """;
 
         await using var command = dataSource.CreateCommand(sql);
@@ -344,7 +394,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         command.Parameters.AddWithValue("state", request.State);
         command.Parameters.AddWithValue("gate", (object?)request.Gate ?? DBNull.Value);
         command.Parameters.AddWithValue("departure_datetime", request.DepartureDatetime);
-        command.Parameters.AddWithValue("arrival_datetime", request.ArrivalDatetime);
+        command.Parameters.AddWithValue("arrival_datetime", calculatedArrivalDatetime);
+        command.Parameters.AddWithValue("miles", calculatedMiles);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         if (!await reader.ReadAsync(cancellationToken))
@@ -380,7 +431,8 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
             State = reader.GetString(4),
             Gate = reader.IsDBNull(5) ? null : reader.GetString(5),
             DepartureDatetime = reader.GetDateTime(6),
-            ArrivalDatetime = reader.GetDateTime(7)
+            ArrivalDatetime = reader.GetDateTime(7),
+            Miles = reader.GetInt32(8)
         };
     }
 }

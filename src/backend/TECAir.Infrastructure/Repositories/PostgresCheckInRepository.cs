@@ -355,6 +355,83 @@ public sealed class PostgresCheckInRepository(NpgsqlDataSource dataSource) : ICh
         return result is true;
     }
 
+    public async Task<string?> GetReservationUserEmailAsync(
+        int reservationId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT user_email
+            FROM tecair.reservation
+            WHERE reservation_id = @reservation_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("reservation_id", reservationId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result as string;
+    }
+
+    public async Task<bool> StudentExistsAsync(
+        string userEmail,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.student
+                WHERE LOWER(user_email) = LOWER(@user_email)
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("user_email", userEmail);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    public async Task<int?> GetFlightMilesByItineraryFlightIdAsync(
+        int itineraryFlightId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT f.miles
+            FROM tecair.flight_in_itinerary fii
+            INNER JOIN tecair.flight f
+                ON f.flight_id = fii.flight_id
+            WHERE fii.itinerary_flight_id = @itinerary_flight_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_flight_id", itineraryFlightId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is int miles ? miles : null;
+    }
+
+    public async Task AddMilesToStudentAsync(
+        string userEmail,
+        int miles,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE tecair.student
+            SET miles = miles + @miles
+            WHERE LOWER(user_email) = LOWER(@user_email);
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("user_email", userEmail);
+        command.Parameters.AddWithValue("miles", miles);
+
+        var affectedRows = await command.ExecuteNonQueryAsync(cancellationToken);
+        if (affectedRows == 0)
+        {
+            throw new InvalidOperationException("Failed to add miles to the student.");
+        }
+    }
+
     private static CheckInResponse MapCheckInResponse(NpgsqlDataReader reader)
     {
         return new CheckInResponse

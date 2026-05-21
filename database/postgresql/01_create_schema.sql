@@ -119,6 +119,40 @@ CREATE TABLE airport (
         CHECK (TRIM(airport_name) <> '' AND TRIM(city) <> '' AND TRIM(country) <> '')
 );
 
+-- Esta tabla representa la relacion recursiva entre aeropuertos.
+-- Guarda la distancia de referencia y la duracion estimada entre un aeropuerto de salida y uno de llegada.
+-- La misma pareja en direccion opuesta puede registrarse por separado si se necesita.
+CREATE TABLE airport_connection (
+    departure_airport_code VARCHAR(20) NOT NULL,
+    arrival_airport_code VARCHAR(20) NOT NULL,
+    distance_miles INTEGER NOT NULL,
+    estimated_duration_minutes INTEGER NOT NULL,
+
+    CONSTRAINT pk_airport_connection
+        PRIMARY KEY (departure_airport_code, arrival_airport_code),
+
+    CONSTRAINT fk_airport_connection_departure
+        FOREIGN KEY (departure_airport_code)
+        REFERENCES airport (code)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_airport_connection_arrival
+        FOREIGN KEY (arrival_airport_code)
+        REFERENCES airport (code)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    CONSTRAINT ck_airport_connection_different_airports
+        CHECK (departure_airport_code <> arrival_airport_code),
+
+    CONSTRAINT ck_airport_connection_distance
+        CHECK (distance_miles >= 0),
+
+    CONSTRAINT ck_airport_connection_duration
+        CHECK (estimated_duration_minutes > 0)
+);
+
 -- Esta tabla guarda los aviones de la aerolinea.
 -- La matricula del avion se usa como identificador unico.
 CREATE TABLE plane (
@@ -163,7 +197,9 @@ CREATE TABLE seat (
 -- =========================
 
 -- Esta tabla guarda vuelos individuales.
--- Un vuelo tiene avion, aeropuerto de salida, aeropuerto de llegada, estado, puerta y horarios.
+-- Un vuelo tiene avion, aeropuerto de salida, aeropuerto de llegada, estado, puerta, horarios y millas.
+-- arrival_datetime se mantiene almacenado porque el backend y las consultas lo usan directamente.
+-- miles guarda las millas aplicadas a este vuelo especifico.
 -- UPCOMING es el estado inicial antes de abrir el vuelo para check-in.
 CREATE TABLE flight (
     flight_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -174,6 +210,7 @@ CREATE TABLE flight (
     gate VARCHAR(10),
     departure_datetime TIMESTAMP NOT NULL,
     arrival_datetime TIMESTAMP NOT NULL,
+    miles INTEGER NOT NULL DEFAULT 0,
 
     -- Esto relaciona flight con plane: cada vuelo usa un avion existente.
     -- No permite borrar un avion si ya esta asociado a vuelos.
@@ -204,6 +241,10 @@ CREATE TABLE flight (
     -- Esto valida que la llegada ocurra despues de la salida.
     CONSTRAINT ck_flight_datetime_order
         CHECK (arrival_datetime > departure_datetime),
+
+    -- Esto evita vuelos con millas negativas.
+    CONSTRAINT ck_flight_miles
+        CHECK (miles >= 0),
 
     -- Esto limita el estado del vuelo a valores controlados por el sistema.
     CONSTRAINT ck_flight_state

@@ -16,4 +16,5 @@ public class OpenFlightResponse
     public string? Gate { get; set; }
     public DateTime DepartureDatetime { get; set; }
     public DateTime ArrivalDatetime { get; set; }
+    public int Miles { get; set; }
 }

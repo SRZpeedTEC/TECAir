@@ -109,7 +109,45 @@ public class CheckInService(ICheckInRepository checkInRepository) : ICheckInServ
         }
 
         var checkIn = await checkInRepository.CreateAsync(normalizedRequest, cancellationToken);
+
+        // student.miles es un saldo acumulado; se suma solo despues de crear el check-in.
+        // Sin transacciones por restriccion del proyecto, los errores inesperados se dejan propagar.
+        await AwardStudentMilesAfterSuccessfulCheckInAsync(
+            normalizedRequest.ReservationId,
+            normalizedRequest.ItineraryFlightId,
+            cancellationToken);
+
         return CreateCheckInServiceResult.Success(checkIn);
+    }
+
+    private async Task AwardStudentMilesAfterSuccessfulCheckInAsync(
+        int reservationId,
+        int itineraryFlightId,
+        CancellationToken cancellationToken)
+    {
+        var userEmail = await checkInRepository.GetReservationUserEmailAsync(reservationId, cancellationToken);
+        if (userEmail is null)
+        {
+            throw new InvalidOperationException("Failed to retrieve the reservation user.");
+        }
+
+        // El check-in solo otorga millas a usuarios con registro en student.
+        if (!await checkInRepository.StudentExistsAsync(userEmail, cancellationToken))
+        {
+            return;
+        }
+
+        var miles = await checkInRepository.GetFlightMilesByItineraryFlightIdAsync(
+            itineraryFlightId,
+            cancellationToken);
+        if (miles is null)
+        {
+            throw new InvalidOperationException("Failed to retrieve the flight miles.");
+        }
+
+        // Se usa flight.miles porque es el valor historico asignado al vuelo,
+        // no se recalcula desde airport_connection durante el check-in.
+        await checkInRepository.AddMilesToStudentAsync(userEmail, miles.Value, cancellationToken);
     }
 
     public async Task<UpdateCheckInServiceResult> UpdateSeatAsync(

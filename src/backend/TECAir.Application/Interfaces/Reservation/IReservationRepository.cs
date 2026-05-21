@@ -19,4 +19,9 @@ public interface IReservationRepository
         string? passengerId,
         string? name,
         CancellationToken cancellationToken = default);
+
+    // Consulta las reservaciones asociadas al correo de cuenta del usuario.
+    Task<IReadOnlyList<ReservationSearchResponse>> GetByUserEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default);
 }

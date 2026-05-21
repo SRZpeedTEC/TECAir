@@ -10,6 +10,7 @@ public class ItinerarySearchResponse
     public string OriginCode { get; set; } = string.Empty;
     public string DestinationCode { get; set; } = string.Empty;
     public int TotalFlights { get; set; }
+    public int TotalMiles { get; set; }
     public DateTime DepartureDatetime { get; set; }
     public DateTime ArrivalDatetime { get; set; }
 }

@@ -42,4 +42,15 @@ public interface ICheckInRepository
         int itineraryFlightId,
         string planePlate,
         CancellationToken cancellationToken = default);
+    Task<string?> GetReservationUserEmailAsync(
+        int reservationId,
+        CancellationToken cancellationToken = default);
+    Task<bool> StudentExistsAsync(string userEmail, CancellationToken cancellationToken = default);
+    Task<int?> GetFlightMilesByItineraryFlightIdAsync(
+        int itineraryFlightId,
+        CancellationToken cancellationToken = default);
+    Task AddMilesToStudentAsync(
+        string userEmail,
+        int miles,
+        CancellationToken cancellationToken = default);
 }

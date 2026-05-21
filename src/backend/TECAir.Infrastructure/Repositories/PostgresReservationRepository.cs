@@ -184,6 +184,49 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
         return reservations;
     }
 
+    public async Task<IReadOnlyList<ReservationSearchResponse>> GetByUserEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                r.reservation_id,
+                r.itinerary_id,
+                r.user_email,
+                r.passenger_id,
+                CONCAT_WS(' ', p.name, p.Lname) AS passenger_name,
+                r.state,
+                r.payment_reference
+            FROM tecair.reservation r
+            LEFT JOIN tecair.passenger p
+                ON p.passport_id = r.passenger_id
+            WHERE LOWER(r.user_email) = LOWER(@user_email)
+            ORDER BY r.reservation_id DESC;
+            """;
+
+        var reservations = new List<ReservationSearchResponse>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("user_email", email);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            reservations.Add(new ReservationSearchResponse
+            {
+                ReservationId = reader.GetInt32(0),
+                ItineraryId = reader.GetInt32(1),
+                UserEmail = reader.GetString(2),
+                PassengerId = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                PassengerName = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                State = reader.GetString(5),
+                PaymentReference = reader.IsDBNull(6) ? null : reader.GetString(6)
+            });
+        }
+
+        return reservations;
+    }
+
     private static ReservationResponse MapReservationResponse(NpgsqlDataReader reader)
     {
         return new ReservationResponse

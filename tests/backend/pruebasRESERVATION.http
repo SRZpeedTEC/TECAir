@@ -92,3 +92,29 @@ Accept: application/json
 # Esperado: 400 Bad Request.
 GET {{baseUrl}}/api/reservations/search
 Accept: application/json
+
+
+### 9. Buscar reservaciones por email de usuario con reservaciones
+# Esperado: 200 OK con las reservaciones asociadas a ana.rojas@tecair.com.
+GET {{baseUrl}}/api/reservations/user/ana.rojas@tecair.com
+Accept: application/json
+
+
+### 10. Buscar reservaciones por email de usuario existente sin reservaciones
+# admin@tecair.com existe, pero no tiene reservaciones en los datos semilla.
+# Esperado: 200 OK con lista vacia.
+GET {{baseUrl}}/api/reservations/user/admin@tecair.com
+Accept: application/json
+
+
+### 11. Buscar reservaciones por email de usuario inexistente
+# El servicio valida el usuario para ser consistente con la creacion de reservaciones.
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/api/reservations/user/noexiste@tecair.com
+Accept: application/json
+
+
+### 12. Buscar reservaciones sin email en la ruta
+# Esperado: 400 Bad Request.
+GET {{baseUrl}}/api/reservations/user
+Accept: application/json

@@ -4,6 +4,7 @@ namespace TECAir.Application.DTOs.Reservations;
 public class SearchReservationsServiceResult
 {
     public bool IsSuccess { get; private init; }
+    public bool IsNotFound { get; private init; }
     public string? ErrorMessage { get; private init; }
     public IReadOnlyList<ReservationSearchResponse> Reservations { get; private init; } =
         Array.Empty<ReservationSearchResponse>();
@@ -22,6 +23,16 @@ public class SearchReservationsServiceResult
         return new SearchReservationsServiceResult
         {
             IsSuccess = false,
+            ErrorMessage = errorMessage
+        };
+    }
+
+    public static SearchReservationsServiceResult NotFound(string errorMessage)
+    {
+        return new SearchReservationsServiceResult
+        {
+            IsSuccess = false,
+            IsNotFound = true,
             ErrorMessage = errorMessage
         };
     }

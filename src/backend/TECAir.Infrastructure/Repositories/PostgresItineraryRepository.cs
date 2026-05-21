@@ -24,6 +24,15 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
                     COUNT(*) AS total_flights
                 FROM tecair.flight_in_itinerary fii
                 GROUP BY fii.itinerary_id
+            ),
+            itinerary_miles AS (
+                SELECT
+                    fii.itinerary_id,
+                    SUM(f.miles) AS total_miles
+                FROM tecair.flight_in_itinerary fii
+                INNER JOIN tecair.flight f
+                    ON f.flight_id = fii.flight_id
+                GROUP BY fii.itinerary_id
             )
             SELECT
                 i.itinerary_id,
@@ -32,6 +41,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
                 departure_airport.code AS origin_code,
                 arrival_airport.code AS destination_code,
                 bounds.total_flights,
+                miles.total_miles,
                 first_flight.departure_datetime,
                 last_flight.arrival_datetime
             FROM tecair.itinerary i
@@ -39,6 +49,8 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
                 ON p.itinerary_id = i.itinerary_id
             INNER JOIN itinerary_bounds bounds
                 ON bounds.itinerary_id = i.itinerary_id
+            INNER JOIN itinerary_miles miles
+                ON miles.itinerary_id = i.itinerary_id
             INNER JOIN tecair.flight_in_itinerary first_link
                 ON first_link.itinerary_id = i.itinerary_id
                AND first_link.flight_order = bounds.first_flight_order
@@ -76,8 +88,9 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
                 OriginCode = reader.GetString(3),
                 DestinationCode = reader.GetString(4),
                 TotalFlights = reader.GetInt64(5) is var totalFlights ? checked((int)totalFlights) : 0,
-                DepartureDatetime = reader.GetDateTime(6),
-                ArrivalDatetime = reader.GetDateTime(7)
+                TotalMiles = reader.GetInt64(6) is var totalMiles ? checked((int)totalMiles) : 0,
+                DepartureDatetime = reader.GetDateTime(7),
+                ArrivalDatetime = reader.GetDateTime(8)
             });
         }
 
@@ -135,6 +148,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
                 arrival_airport.city,
                 f.departure_datetime,
                 f.arrival_datetime,
+                f.miles,
                 f.gate,
                 f.state
             FROM tecair.itinerary i
@@ -482,8 +496,9 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             ArrivalCity = reader.GetString(19),
             DepartureDatetime = reader.GetDateTime(20),
             ArrivalDatetime = reader.GetDateTime(21),
-            Gate = reader.IsDBNull(22) ? null : reader.GetString(22),
-            State = reader.GetString(23)
+            Miles = reader.GetInt32(22),
+            Gate = reader.IsDBNull(23) ? null : reader.GetString(23),
+            State = reader.GetString(24)
         };
     }
 }
