@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loginUser, registerUser } from '../services/userService.js';
 
 // Modal de autenticación con dos pestañas: iniciar sesión y crear cuenta.
@@ -25,6 +25,19 @@ export default function AuthModal({ show, onClose, onSuccess }) {
 
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
+
+  // Cada vez que el modal se cierra resetamos todos los campos para que la proxima
+  // apertura aparezca en blanco (sin filtrar lo que el usuario tipeo antes).
+  useEffect(() => {
+    if (show) return;
+    setTab('login');
+    setLoginEmail(''); setLoginPassword('');
+    setName(''); setLname(''); setPhone('');
+    setRegEmail(''); setRegPass('');
+    setIsStudent(false); setCollege(''); setCarnet('');
+    setLoading(false);
+    setError('');
+  }, [show]);
 
   if (!show) return null;
 

@@ -1,5 +1,14 @@
 import { apiFetch } from './api.js';
 
+// Lista las reservaciones asociadas al correo del usuario.
+// Corresponde a: GET /api/reservations/user/{email}
+// Devuelve ReservationSearchResponse[]:
+//   { reservationId, itineraryId, userEmail, passengerId, passengerName, state, paymentReference }
+// Notar que NO trae detalle de itinerario ni vuelos; eso se obtiene aparte por itineraryId.
+export async function getReservationsByEmail(email) {
+  return apiFetch(`/reservations/user/${encodeURIComponent(email)}`);
+}
+
 // Crea una reservacion pagada.
 // Corresponde a: POST /api/reservations
 //
