@@ -1,0 +1,140 @@
+@baseUrl = http://localhost:5000
+
+### 1. Health check de la API
+# Esperado: 200 OK.
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Ver millas iniciales del usuario estudiante
+# ana.rojas@tecair.com es estudiante en los datos semilla.
+# Guardar mentalmente miles; despues del check-in deben aumentar segun flight.miles.
+GET {{baseUrl}}/api/users/ana.rojas@tecair.com
+Accept: application/json
+
+
+### 3. Crear reservacion para usuario estudiante
+# @name crearReservaEstudiante
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "CR-A1234567",
+  "state": "PAID",
+  "paymentReference": "PAY-CHECKIN-STUDENT-{{$guid}}"
+}
+
+
+### 4. Check-in exitoso para reservacion de usuario estudiante
+# @name crearCheckInEstudiante
+# Esperado: 201 Created.
+# Debe sumar a student.miles las millas historicas de flight.miles para itinerary_flight_id = 1.
+POST {{baseUrl}}/api/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": {{crearReservaEstudiante.response.body.$.reservationId}},
+  "itineraryFlightId": 1,
+  "planePlate": "TI-TEC01",
+  "seatNumber": "10C"
+}
+
+
+### 5. Verificar aumento de millas del estudiante
+# Esperado: 200 OK con miles incrementadas.
+# La suma usa flight.miles, no airport_connection, porque flight.miles conserva el valor historico del vuelo.
+GET {{baseUrl}}/api/users/ana.rojas@tecair.com
+Accept: application/json
+
+
+### 6. Intentar check-in duplicado para la misma reservacion y vuelo
+# Esperado: 409 Conflict.
+# La validacion existente evita duplicados y por eso no debe sumar millas otra vez.
+POST {{baseUrl}}/api/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": {{crearReservaEstudiante.response.body.$.reservationId}},
+  "itineraryFlightId": 1,
+  "planePlate": "TI-TEC01",
+  "seatNumber": "10D"
+}
+
+
+### 7. Confirmar que el duplicado no otorgo millas otra vez
+# Esperado: 200 OK con las mismas miles vistas en la prueba 5.
+GET {{baseUrl}}/api/users/ana.rojas@tecair.com
+Accept: application/json
+
+
+### 8. Crear reservacion para usuario no estudiante
+# @name crearReservaNoEstudiante
+# carlos.mora@tecair.com no tiene registro en student.
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 2,
+  "userEmail": "carlos.mora@tecair.com",
+  "passengerId": "CR-C7654321",
+  "state": "PAID",
+  "paymentReference": "PAY-CHECKIN-NONSTUDENT-{{$guid}}"
+}
+
+
+### 9. Check-in exitoso para usuario no estudiante
+# Esperado: 201 Created.
+# El check-in debe completarse normalmente, pero no hay millas porque el usuario no existe en student.
+POST {{baseUrl}}/api/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": {{crearReservaNoEstudiante.response.body.$.reservationId}},
+  "itineraryFlightId": 2,
+  "planePlate": "TI-TEC01",
+  "seatNumber": "10E"
+}
+
+
+### 10. Verificar usuario no estudiante
+# Esperado: 200 OK con isStudent = false y miles = null.
+GET {{baseUrl}}/api/users/carlos.mora@tecair.com
+Accept: application/json
+
+
+### 11. Check-in con itinerary_flight_id invalido
+# Esperado: 404 Not Found con el mensaje actual de validacion de itinerary flight.
+POST {{baseUrl}}/api/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": {{crearReservaNoEstudiante.response.body.$.reservationId}},
+  "itineraryFlightId": 9999,
+  "planePlate": "TI-TEC01",
+  "seatNumber": "10F"
+}
+
+
+### 12. Check-in con asiento ocupado
+# itinerary_flight_id = 4 ya tiene TI-TEC03/1A en los datos semilla.
+# Esperado: 409 Conflict si la validacion de asiento ocupado se mantiene activa.
+POST {{baseUrl}}/api/check-ins
+Content-Type: application/json
+Accept: application/json
+
+{
+  "reservationId": 2,
+  "itineraryFlightId": 4,
+  "planePlate": "TI-TEC03",
+  "seatNumber": "1A"
+}
