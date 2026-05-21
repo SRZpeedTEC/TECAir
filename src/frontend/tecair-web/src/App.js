@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { syncAll } from './sqlite/sync.js';
 import HomePage from './pages/HomePage.js';
 import ResultsPage from './pages/reservations/ResultsPage.js';
 import PaxPage from './pages/reservations/PaxPage.js';
@@ -22,6 +23,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
 
+  useEffect(() => { syncAll().catch(console.warn); }, []);
   useEffect(() => { window.scrollTo(0, 0); }, [page]);
 
   const openAuth = () => setShowAuth(true);

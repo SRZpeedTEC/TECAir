@@ -1,4 +1,5 @@
 import { apiFetch } from './api.js';
+import { getAllPromotionsFromDb, getItineraryByIdFromDb } from '../sqlite/queries.js';
 
 // Normaliza una promoción del backend.
 // Backend: { promotionCode, itineraryId, imageUrl, startDate, endDate, discountPercent, promoPrice }
@@ -17,15 +18,28 @@ function normalizePromotion(p) {
 // Lista todas las promociones activas en el sistema.
 // Corresponde a: GET /api/promotions
 export async function getAllPromotions() {
-  const data = await apiFetch('/promotions');
-  return data.map(normalizePromotion);
+  try {
+    const data = await apiFetch('/promotions');
+    return data.map(normalizePromotion);
+  } catch {
+    console.log('[SQLite] usando caché offline para promociones');
+    return getAllPromotionsFromDb();
+  }
 }
 
 // Devuelve el detalle del itinerario asociado a la promoción para enriquecer la
 // tarjeta con origen, destino y nombres de ciudades.
 // Corresponde a: GET /api/itineraries/{id}
 export async function getItineraryById(id) {
-  const data = await apiFetch(`/itineraries/${id}`);
+  let data;
+  try {
+    data = await apiFetch(`/itineraries/${id}`);
+  } catch {
+    console.log('[SQLite] usando caché offline para itinerario', id);
+    const cached = await getItineraryByIdFromDb(id);
+    if (!cached) return null;
+    return cached;
+  }
   const flights = (data.flights ?? data.Flights ?? []).map((f) => ({
     flightOrder:    f.flightOrder    ?? f.FlightOrder,
     departureCode:  f.departureCode  ?? f.DepartureCode,

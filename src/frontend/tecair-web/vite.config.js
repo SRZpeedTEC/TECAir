@@ -6,12 +6,14 @@ export default defineConfig({
   plugins: [
     react({ include: /\.(js|jsx)$/ }),
   ],
+  base: './',
   esbuild: {
     loader: 'jsx',
     include: /src\/.*\.js$/,
     exclude: [],
   },
   optimizeDeps: {
+    exclude: ['sql.js'],
     esbuildOptions: {
       loader: { '.js': 'jsx' },
     },

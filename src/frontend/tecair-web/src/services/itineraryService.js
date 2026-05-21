@@ -1,5 +1,6 @@
 import { apiFetch } from './api.js';
 import { fmtTime, calcDuration } from '../utils/format.js';
+import { getAllItinerariesFromDb } from '../sqlite/queries.js';
 
 // Convierte "YYYY-MM-DD" a Date local sin desfase horario.
 function parseISODateLocal(iso) {
@@ -36,8 +37,7 @@ function pickActivePromotion(promo) {
 // el cruce de promociones que antes se hacía con un segundo fetch desaparece.
 // El filtrado por origen/destino se hace en cliente porque el endpoint no
 // acepta parámetros de ruta.
-export async function searchItineraries(originCode, destinationCode) {
-  const data = await apiFetch('/itineraries/public/with-promotions');
+function enrichItineraries(data, originCode, destinationCode) {
 
   // Cada itinerario trae sus vuelos ordenados por flight_order.
   // El origen/destino del itinerario es el primer y último vuelo.
@@ -100,4 +100,15 @@ export async function searchItineraries(originCode, destinationCode) {
       tag,
     };
   });
+}
+
+export async function searchItineraries(originCode, destinationCode) {
+  let data;
+  try {
+    data = await apiFetch('/itineraries/public/with-promotions');
+  } catch {
+    console.log('[SQLite] usando caché offline para itinerarios');
+    data = await getAllItinerariesFromDb();
+  }
+  return enrichItineraries(data, originCode, destinationCode);
 }

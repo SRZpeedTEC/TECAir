@@ -5,16 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "cp node_modules/sql.js/dist/sql-wasm.wasm public/ && vite build",
     "preview": "vite preview",
-    "build:android": "VITE_API_BASE_URL=http://10.0.2.2:5050/api vite build && npx cap sync android"
+    "build:android": "cp node_modules/sql.js/dist/sql-wasm.wasm public/ && VITE_API_BASE_URL=http://10.0.2.2:5050/api vite build && npx cap sync android"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
     "@capacitor/core": "^8.3.1",
     "bootstrap": "^5.3.8",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "sql.js": "^1.14.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.3.1",
