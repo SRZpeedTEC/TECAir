@@ -39,6 +39,7 @@ export async function searchItineraries(originCode, destinationCode) {
   return data.map((it) => ({
     itineraryId: it.itineraryId ?? it.ItineraryId,
     price: Number(it.price ?? it.Price),
+    state: it.state ?? it.State,
     originCode: it.originCode ?? it.OriginCode,
     destinationCode: it.destinationCode ?? it.DestinationCode,
     totalFlights: it.totalFlights ?? it.TotalFlights,
@@ -93,7 +94,7 @@ export async function searchPublicItinerariesWithPromotions(originCode, destinat
 
 // ── Detalle por id ──
 // Corresponde a: GET /api/itineraries/{id}
-// Respuesta: ItineraryDetailsResponse → { itineraryId, price, flights: [...] }
+// Respuesta: ItineraryDetailsResponse → { itineraryId, price, state, flights: [...] }
 // Cada vuelo: { flightOrder, flightId, departureAirportName, departureCode,
 //   departureCity, arrivalAirportName, arrivalCode, arrivalCity,
 //   departureDatetime, arrivalDatetime, gate, state }
@@ -102,6 +103,7 @@ export async function getItineraryById(id) {
   return {
     itineraryId: data.itineraryId ?? data.ItineraryId,
     price: Number(data.price ?? data.Price),
+    state: data.state ?? data.State,
     flights: (data.flights ?? data.Flights ?? []).map((f) => ({
       itineraryFlightId: f.itineraryFlightId ?? f.ItineraryFlightId,
       flightOrder: f.flightOrder ?? f.FlightOrder,

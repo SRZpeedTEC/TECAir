@@ -87,7 +87,7 @@ export default function ItineraryListTab() {
   // ─── Editar ───
   const openEdit = async (itinerary) => {
     setToast(null);
-    setEditing({ id: itinerary.itineraryId, price: itinerary.price, legs: [] });
+    setEditing({ id: itinerary.itineraryId, price: itinerary.price, state: itinerary.state, legs: [] });
     setLoadingDetail(true);
     setDetailError(null);
     try {
@@ -95,7 +95,7 @@ export default function ItineraryListTab() {
       const legs = [...detail.flights]
         .sort((a, b) => a.flightOrder - b.flightOrder)
         .map(detailFlightToLeg);
-      setEditing({ id: detail.itineraryId, price: detail.price, legs });
+      setEditing({ id: detail.itineraryId, price: detail.price, state: detail.state, legs });
     } catch (err) {
       setDetailError(err.message);
     } finally {
@@ -214,6 +214,7 @@ export default function ItineraryListTab() {
                   <th>Llegada</th>
                   <th>Tramos</th>
                   <th>Precio</th>
+                  <th>Estado</th>
                   <th className="text-end">Acciones</th>
                 </tr>
               </thead>
@@ -231,6 +232,17 @@ export default function ItineraryListTab() {
                       </span>
                     </td>
                     <td className="mono">{fmtPriceCRC(it.price)}</td>
+                    <td>
+                      <span
+                        className="it-badge"
+                        style={it.state === 'PUBLIC'
+                          ? { background: '#e8f5ee', color: '#2d7a4f' }
+                          : { background: '#fdf2e6', color: '#9b6d23' }}
+                        title={it.state === 'PUBLIC' ? 'Visible para clientes' : 'Borrador (no visible para clientes)'}
+                      >
+                        {it.state === 'PUBLIC' ? 'Publicado' : 'Borrador'}
+                      </span>
+                    </td>
                     <td className="text-end">
                       <button
                         type="button"
@@ -281,6 +293,7 @@ export default function ItineraryListTab() {
           <ItineraryBuilder
             mode="edit"
             initialPrice={editing.price}
+            initialState={editing.state}
             initialLegs={editing.legs}
             onSubmit={handleEditSubmit}
             onCancel={() => setEditing(null)}

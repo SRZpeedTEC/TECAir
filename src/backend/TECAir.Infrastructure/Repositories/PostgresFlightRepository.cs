@@ -262,6 +262,125 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return flights;
     }
 
+    // Busca vuelos por estado y ruta completa (origen y destino). El estado y
+    // los codigos llegan ya normalizados a mayusculas desde el service.
+    public async Task<IReadOnlyList<OpenFlightResponse>> SearchByRouteAndStateAsync(
+        string state,
+        string departureCode,
+        string arrivalCode,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                f.flight_id,
+                f.plane_plate,
+                departure_airport.airport_name,
+                departure_airport.code,
+                departure_airport.city,
+                arrival_airport.airport_name,
+                arrival_airport.code,
+                arrival_airport.city,
+                f.state,
+                f.gate,
+                f.departure_datetime,
+                f.arrival_datetime,
+                f.miles
+            FROM tecair.flight f
+            INNER JOIN tecair.airport departure_airport
+                ON departure_airport.code = f.airport_departs_from_id
+            INNER JOIN tecair.airport arrival_airport
+                ON arrival_airport.code = f.airport_arrives_to_id
+            WHERE
+                f.state = @state
+                AND LOWER(departure_airport.code) = LOWER(@departure_code)
+                AND LOWER(arrival_airport.code) = LOWER(@arrival_code)
+            ORDER BY f.departure_datetime ASC, f.flight_id ASC;
+            """;
+
+        var flights = new List<OpenFlightResponse>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("state", state);
+        command.Parameters.AddWithValue("departure_code", departureCode);
+        command.Parameters.AddWithValue("arrival_code", arrivalCode);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            flights.Add(new OpenFlightResponse
+            {
+                FlightId = reader.GetInt32(0),
+                PlanePlate = reader.GetString(1),
+                DepartureAirportName = reader.GetString(2),
+                DepartureCode = reader.GetString(3),
+                DepartureCity = reader.GetString(4),
+                ArrivalAirportName = reader.GetString(5),
+                ArrivalCode = reader.GetString(6),
+                ArrivalCity = reader.GetString(7),
+                State = reader.GetString(8),
+                Gate = reader.IsDBNull(9) ? null : reader.GetString(9),
+                DepartureDatetime = reader.GetDateTime(10),
+                ArrivalDatetime = reader.GetDateTime(11),
+                Miles = reader.GetInt32(12)
+            });
+        }
+
+        return flights;
+    }
+
+    // Devuelve el estado de un vuelo sin traer todas sus columnas, para que el
+    // service decida si la transicion solicitada es valida.
+    public async Task<string?> GetStateAsync(int flightId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT state
+            FROM tecair.flight
+            WHERE flight_id = @flight_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result as string;
+    }
+
+    // Actualiza solo el estado y devuelve la fila resultante para que el service
+    // pueda incluir el vuelo completo en la respuesta de la transicion.
+    public async Task<FlightResponse> UpdateStateAsync(
+        int flightId,
+        string state,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE tecair.flight
+            SET state = @state
+            WHERE flight_id = @flight_id
+            RETURNING
+                flight_id,
+                plane_plate,
+                airport_departs_from_id,
+                airport_arrives_to_id,
+                state,
+                gate,
+                departure_datetime,
+                arrival_datetime,
+                miles;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+        command.Parameters.AddWithValue("state", state);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            throw new InvalidOperationException("Failed to update the flight state.");
+        }
+
+        return MapFlightResponse(reader);
+    }
+
     public async Task<bool> FlightExistsAsync(int flightId, CancellationToken cancellationToken = default)
     {
         const string sql = """

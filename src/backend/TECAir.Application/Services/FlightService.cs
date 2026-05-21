@@ -97,6 +97,66 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             cancellationToken);
     }
 
+    // Busca vuelos por estado y ruta completa. La validacion de parametros vacios
+    // se hace en el controller; aqui solo normalizamos antes de consultar la base.
+    public Task<IReadOnlyList<OpenFlightResponse>> SearchByRouteAndStateAsync(
+        string state,
+        string departureCode,
+        string arrivalCode,
+        CancellationToken cancellationToken = default)
+    {
+        return flightRepository.SearchByRouteAndStateAsync(
+            state.Trim().ToUpperInvariant(),
+            departureCode.Trim().ToUpperInvariant(),
+            arrivalCode.Trim().ToUpperInvariant(),
+            cancellationToken);
+    }
+
+    // Aplica un cambio de estado validando que sea una transicion permitida.
+    // El flujo solo expone UPCOMING -> OPEN (apertura) y OPEN -> CLOSED (cierre).
+    public async Task<TransitionFlightStateServiceResult> TransitionStateAsync(
+        int flightId,
+        UpdateFlightStateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (flightId <= 0)
+        {
+            return TransitionFlightStateServiceResult.ValidationError("Flight id must be greater than 0.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.State))
+        {
+            return TransitionFlightStateServiceResult.ValidationError("State is required.");
+        }
+
+        var targetState = request.State.Trim().ToUpperInvariant();
+        if (targetState is not "OPEN" and not "CLOSED")
+        {
+            return TransitionFlightStateServiceResult.ValidationError("State must be OPEN or CLOSED.");
+        }
+
+        var currentState = await flightRepository.GetStateAsync(flightId, cancellationToken);
+        if (currentState is null)
+        {
+            return TransitionFlightStateServiceResult.NotFound($"Flight '{flightId}' was not found.");
+        }
+
+        // Reglas del flujo: cualquier otra combinacion se rechaza como conflicto
+        // para que el admin no pueda saltarse el ciclo desde la API.
+        var transitionAllowed =
+            (currentState == "UPCOMING" && targetState == "OPEN") ||
+            (currentState == "OPEN" && targetState == "CLOSED");
+
+        if (!transitionAllowed)
+        {
+            return TransitionFlightStateServiceResult.Conflict(
+                $"Transition from '{currentState}' to '{targetState}' is not allowed.");
+        }
+
+        var flight = await flightRepository.UpdateStateAsync(flightId, targetState, cancellationToken);
+        return TransitionFlightStateServiceResult.Success(flight);
+    }
+
     // Actualiza un vuelo existente sin permitir que el body cambie el flight_id.
     public async Task<UpdateFlightServiceResult> UpdateAsync(
         int flightId,

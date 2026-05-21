@@ -346,3 +346,120 @@ Accept: application/json
 # Esperado: 409 Conflict.
 DELETE {{baseUrl}}/api/flights/1
 Accept: application/json
+
+
+### 24. Buscar vuelos por ruta y estado (Apertura)
+# Esperado: 200 OK con vuelos UPCOMING que salen de SJO y llegan a MIA.
+GET {{baseUrl}}/api/flights/search?state=UPCOMING&departureCode=SJO&arrivalCode=MIA
+Accept: application/json
+
+
+### 25. Buscar vuelos por ruta y estado (Cierre)
+# Esperado: 200 OK con vuelos OPEN que salen de SJO y llegan a MIA.
+GET {{baseUrl}}/api/flights/search?state=OPEN&departureCode=SJO&arrivalCode=MIA
+Accept: application/json
+
+
+### 26. Buscar vuelos sin state
+# Esperado: 400 Bad Request con:
+# "Query parameter 'state' is required."
+GET {{baseUrl}}/api/flights/search?departureCode=SJO&arrivalCode=MIA
+Accept: application/json
+
+
+### 27. Buscar vuelos sin departureCode
+# Esperado: 400 Bad Request con:
+# "Query parameter 'departureCode' is required."
+GET {{baseUrl}}/api/flights/search?state=UPCOMING&arrivalCode=MIA
+Accept: application/json
+
+
+### 28. Buscar vuelos sin arrivalCode
+# Esperado: 400 Bad Request con:
+# "Query parameter 'arrivalCode' is required."
+GET {{baseUrl}}/api/flights/search?state=UPCOMING&departureCode=SJO
+Accept: application/json
+
+
+### 29. Buscar vuelos con state invalido
+# Esperado: 400 Bad Request con:
+# "Query parameter 'state' must be UPCOMING or OPEN."
+GET {{baseUrl}}/api/flights/search?state=CLOSED&departureCode=SJO&arrivalCode=MIA
+Accept: application/json
+
+
+### 30. Buscar vuelos con origen igual al destino
+# Esperado: 400 Bad Request con:
+# "Departure and arrival airports must be different."
+GET {{baseUrl}}/api/flights/search?state=UPCOMING&departureCode=SJO&arrivalCode=SJO
+Accept: application/json
+
+
+### 31. Transicion de estado UPCOMING -> OPEN (apertura)
+# Esperado: 200 OK con el vuelo en estado OPEN.
+# Requiere que el vuelo este actualmente en UPCOMING.
+PATCH {{baseUrl}}/api/flights/2/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "OPEN"
+}
+
+
+### 32. Transicion de estado OPEN -> CLOSED (cierre)
+# Esperado: 200 OK con el vuelo en estado CLOSED.
+# Requiere que el vuelo este actualmente en OPEN.
+PATCH {{baseUrl}}/api/flights/2/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "CLOSED"
+}
+
+
+### 33. Transicion invalida (UPCOMING -> CLOSED)
+# Esperado: 409 Conflict con:
+# "Transition from 'UPCOMING' to 'CLOSED' is not allowed."
+PATCH {{baseUrl}}/api/flights/4/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "CLOSED"
+}
+
+
+### 34. Transicion invalida (estado destino no permitido)
+# Esperado: 400 Bad Request con:
+# "State must be OPEN or CLOSED."
+PATCH {{baseUrl}}/api/flights/4/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "UPCOMING"
+}
+
+
+### 35. Transicion sin state en body
+# Esperado: 400 Bad Request con:
+# "State is required."
+PATCH {{baseUrl}}/api/flights/4/state
+Content-Type: application/json
+Accept: application/json
+
+{
+}
+
+
+### 36. Transicion sobre vuelo inexistente
+# Esperado: 404 Not Found.
+PATCH {{baseUrl}}/api/flights/9999/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "OPEN"
+}
