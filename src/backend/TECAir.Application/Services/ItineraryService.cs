@@ -296,14 +296,16 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         return null;
     }
 
-    // Valida que todos los vuelos esten abiertos y formen una ruta conectada.
+    // Valida que todos los vuelos esten en estado UPCOMING (los itinerarios se
+    // construyen sobre vuelos aun no publicados; al publicar el itinerario los
+    // vuelos transicionan a OPEN) y formen una ruta conectada.
     private static string? ValidateFlightSequence(IReadOnlyList<ItineraryFlightValidationData> orderedFlights)
     {
         foreach (var flight in orderedFlights)
         {
-            if (flight.State != "OPEN")
+            if (flight.State != "UPCOMING")
             {
-                return $"Flight '{flight.FlightId}' must have state OPEN.";
+                return $"Flight '{flight.FlightId}' must have state UPCOMING.";
             }
 
             if (flight.ArrivalDatetime <= flight.DepartureDatetime)
