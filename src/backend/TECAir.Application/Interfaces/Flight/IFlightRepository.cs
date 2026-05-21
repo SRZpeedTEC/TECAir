@@ -8,12 +8,6 @@ public interface IFlightRepository
     // Verifica si existe un aeropuerto por codigo.
     Task<bool> AirportExistsAsync(string airportCode, CancellationToken cancellationToken = default);
 
-    // Consulta interna de airport_connection para calcular llegada y millas de vuelos.
-    Task<AirportConnectionData?> GetAirportConnectionAsync(
-        string departureCode,
-        string arrivalCode,
-        CancellationToken cancellationToken = default);
-
     // Verifica si existe un avion por placa.
     Task<bool> PlaneExistsAsync(string planePlate, CancellationToken cancellationToken = default);
 
