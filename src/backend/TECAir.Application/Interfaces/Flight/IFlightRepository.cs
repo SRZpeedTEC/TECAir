@@ -8,6 +8,12 @@ public interface IFlightRepository
     // Verifica si existe un aeropuerto por codigo.
     Task<bool> AirportExistsAsync(string airportCode, CancellationToken cancellationToken = default);
 
+    // Consulta interna de airport_connection para calcular llegada y millas de vuelos.
+    Task<AirportConnectionData?> GetAirportConnectionAsync(
+        string departureCode,
+        string arrivalCode,
+        CancellationToken cancellationToken = default);
+
     // Verifica si existe un avion por placa.
     Task<bool> PlaneExistsAsync(string planePlate, CancellationToken cancellationToken = default);
 
@@ -26,7 +32,11 @@ public interface IFlightRepository
         CancellationToken cancellationToken = default);
 
     // Inserta un vuelo y devuelve la informacion creada.
-    Task<FlightResponse> CreateAsync(CreateFlightRequest request, CancellationToken cancellationToken = default);
+    Task<FlightResponse> CreateAsync(
+        CreateFlightRequest request,
+        DateTime calculatedArrivalDatetime,
+        int calculatedMiles,
+        CancellationToken cancellationToken = default);
 
     // Lista vuelos abiertos para construir itinerarios desde un aeropuerto.
     Task<IReadOnlyList<OpenFlightResponse>> GetOpenByDepartureAirportAsync(
@@ -59,6 +69,8 @@ public interface IFlightRepository
     Task<FlightResponse> UpdateAsync(
         int flightId,
         UpdateFlightRequest request,
+        DateTime calculatedArrivalDatetime,
+        int calculatedMiles,
         CancellationToken cancellationToken = default);
 
     // Borra un vuelo existente.

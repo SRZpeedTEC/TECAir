@@ -16,6 +16,7 @@ public class ItineraryFlightResponse
     public string ArrivalCity { get; set; } = string.Empty;
     public DateTime DepartureDatetime { get; set; }
     public DateTime ArrivalDatetime { get; set; }
+    public int Miles { get; set; }
     public string? Gate { get; set; }
     public string State { get; set; } = string.Empty;
 }

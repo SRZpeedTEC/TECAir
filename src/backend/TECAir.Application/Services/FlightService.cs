@@ -39,10 +39,26 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
                 $"Arrival airport '{normalizedRequest.AirportArrivesToId}' was not found.");
         }
 
+        var airportConnection = await flightRepository.GetAirportConnectionAsync(
+            normalizedRequest.AirportDepartsFromId,
+            normalizedRequest.AirportArrivesToId,
+            cancellationToken);
+        if (airportConnection is null)
+        {
+            return CreateFlightServiceResult.NotFound(
+                $"There is no configured airport connection for {normalizedRequest.AirportDepartsFromId} to {normalizedRequest.AirportArrivesToId}.");
+        }
+
+        // airport_connection es una tabla interna de referencia: los endpoints de vuelos
+        // calculan la llegada y las millas sin exponer CRUD publico para esa tabla.
+        var calculatedArrivalDatetime = normalizedRequest.DepartureDatetime
+            .AddMinutes(airportConnection.EstimatedDurationMinutes);
+        var calculatedMiles = airportConnection.DistanceMiles;
+
         if (await flightRepository.PlaneHasOverlappingFlightAsync(
             normalizedRequest.PlanePlate,
             normalizedRequest.DepartureDatetime,
-            normalizedRequest.ArrivalDatetime,
+            calculatedArrivalDatetime,
             cancellationToken))
         {
             return CreateFlightServiceResult.Conflict(
@@ -61,7 +77,11 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
                 "The selected gate is already assigned to another flight at the same departure time.");
         }
 
-        var flight = await flightRepository.CreateAsync(normalizedRequest, cancellationToken);
+        var flight = await flightRepository.CreateAsync(
+            normalizedRequest,
+            calculatedArrivalDatetime,
+            calculatedMiles,
+            cancellationToken);
         return CreateFlightServiceResult.Success(flight);
     }
 
@@ -116,11 +136,27 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
                 $"Arrival airport '{normalizedRequest.AirportArrivesToId}' was not found.");
         }
 
+        var airportConnection = await flightRepository.GetAirportConnectionAsync(
+            normalizedRequest.AirportDepartsFromId,
+            normalizedRequest.AirportArrivesToId,
+            cancellationToken);
+        if (airportConnection is null)
+        {
+            return UpdateFlightServiceResult.NotFound(
+                $"There is no configured airport connection for {normalizedRequest.AirportDepartsFromId} to {normalizedRequest.AirportArrivesToId}.");
+        }
+
+        // flight.miles guarda el valor historico aplicado al vuelo en el momento
+        // de crearlo o actualizarlo, aunque la referencia cambie despues.
+        var calculatedArrivalDatetime = normalizedRequest.DepartureDatetime
+            .AddMinutes(airportConnection.EstimatedDurationMinutes);
+        var calculatedMiles = airportConnection.DistanceMiles;
+
         if (await flightRepository.PlaneHasOverlappingFlightExceptAsync(
             flightId,
             normalizedRequest.PlanePlate,
             normalizedRequest.DepartureDatetime,
-            normalizedRequest.ArrivalDatetime,
+            calculatedArrivalDatetime,
             cancellationToken))
         {
             return UpdateFlightServiceResult.Conflict(
@@ -139,7 +175,12 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
                 "The selected gate is already assigned to another flight at the same departure time.");
         }
 
-        var flight = await flightRepository.UpdateAsync(flightId, normalizedRequest, cancellationToken);
+        var flight = await flightRepository.UpdateAsync(
+            flightId,
+            normalizedRequest,
+            calculatedArrivalDatetime,
+            calculatedMiles,
+            cancellationToken);
         return UpdateFlightServiceResult.Success(flight);
     }
 
@@ -175,7 +216,6 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             request.State,
             request.Gate,
             request.DepartureDatetime,
-            request.ArrivalDatetime,
             allowEmptyState: true);
     }
 
@@ -188,7 +228,6 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             request.State,
             request.Gate,
             request.DepartureDatetime,
-            request.ArrivalDatetime,
             allowEmptyState: false);
     }
 
@@ -199,7 +238,6 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
         string stateValue,
         string? gate,
         DateTime departureDatetime,
-        DateTime arrivalDatetime,
         bool allowEmptyState)
     {
         if (string.IsNullOrWhiteSpace(planePlate))
@@ -227,21 +265,11 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             return "Departure datetime is required.";
         }
 
-        if (arrivalDatetime == default)
-        {
-            return "Arrival datetime is required.";
-        }
-
         var departureAirport = departureAirportId.Trim().ToUpperInvariant();
         var arrivalAirport = arrivalAirportId.Trim().ToUpperInvariant();
         if (departureAirport == arrivalAirport)
         {
             return "Departure and arrival airports must be different.";
-        }
-
-        if (arrivalDatetime <= departureDatetime)
-        {
-            return "Arrival datetime must be after departure datetime.";
         }
 
         var state = stateValue.Trim().ToUpperInvariant();
@@ -270,8 +298,7 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
                 ? "UPCOMING"
                 : request.State.Trim().ToUpperInvariant(),
             Gate = request.Gate?.Trim(),
-            DepartureDatetime = request.DepartureDatetime,
-            ArrivalDatetime = request.ArrivalDatetime
+            DepartureDatetime = request.DepartureDatetime
         };
     }
 
@@ -284,8 +311,7 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
             AirportArrivesToId = request.AirportArrivesToId.Trim().ToUpperInvariant(),
             State = request.State.Trim().ToUpperInvariant(),
             Gate = request.Gate?.Trim(),
-            DepartureDatetime = request.DepartureDatetime,
-            ArrivalDatetime = request.ArrivalDatetime
+            DepartureDatetime = request.DepartureDatetime
         };
     }
 }
