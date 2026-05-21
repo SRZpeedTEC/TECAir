@@ -14,4 +14,16 @@ public class AirportService(IAirportRepository airportRepository) : IAirportServ
     {
         return airportRepository.SearchAsync(term.Trim(), cancellationToken);
     }
+
+    // Normaliza los codigos antes de consultar la tabla de referencia.
+    public Task<AirportConnectionResponse?> GetConnectionAsync(
+        string departureCode,
+        string arrivalCode,
+        CancellationToken cancellationToken = default)
+    {
+        return airportRepository.GetConnectionAsync(
+            departureCode.Trim().ToUpperInvariant(),
+            arrivalCode.Trim().ToUpperInvariant(),
+            cancellationToken);
+    }
 }

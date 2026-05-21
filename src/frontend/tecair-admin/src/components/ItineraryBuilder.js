@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 
 import AirportTypeahead             from './AirportTypeahead.js';
-import { listOpenFlightsByDeparture } from '../services/flightService.js';
+import { listFlightsByDepartureAndState } from '../services/flightService.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -30,7 +30,7 @@ const MAX_CONNECTION_MS = 24 * 60 * 60 * 1000;
 // Props:
 //   mode           — 'create' | 'edit'
 //   initialPrice   — number (default 0). Para edit, el precio actual.
-//   initialLegs    — array de "flight" (mismo shape del service /flights/open) precargado para edit.
+//   initialLegs    — array de "flight" (mismo shape del service /flights/by-departure) precargado para edit.
 //   onSubmit       — async (payload) → void. payload = { price, flights: [{ flightId, flightOrder }] }
 //   onCancel       — opcional. En modo create resetea; en edit cierra modal.
 //   successMessage — string mostrado como banner verde.
@@ -87,7 +87,9 @@ export default function ItineraryBuilder({
     setFlightsError(null);
     setAvailableFlights([]);
     try {
-      const data = await listOpenFlightsByDeparture(code);
+      // Los itinerarios se construyen con vuelos UPCOMING: cuando el itinerario
+      // se publica, los vuelos pasan a OPEN.
+      const data = await listFlightsByDepartureAndState(code, 'UPCOMING');
       setAvailableFlights(data);
     } catch (err) {
       setFlightsError(err.message);
@@ -311,8 +313,8 @@ export default function ItineraryBuilder({
                     </h5>
                     <p className="ib-picker-sub">
                       {pickerMode === 'next'
-                        ? 'Solo vuelos OPEN que salen después de la llegada anterior y dentro de las próximas 24 horas.'
-                        : 'Solo vuelos en estado OPEN.'}
+                        ? 'Solo vuelos UPCOMING que salen después de la llegada anterior y dentro de las próximas 24 horas.'
+                        : 'Solo vuelos en estado UPCOMING.'}
                     </p>
                   </div>
                   <button
@@ -344,7 +346,7 @@ export default function ItineraryBuilder({
                     <p className="m-0">
                       {pickerMode === 'next'
                         ? `No hay conexiones válidas desde ${cursorCode} dentro de las próximas 24 horas.`
-                        : `No hay vuelos OPEN saliendo de ${cursorCode}.`}
+                        : `No hay vuelos UPCOMING saliendo de ${cursorCode}.`}
                     </p>
                   </div>
                 )}

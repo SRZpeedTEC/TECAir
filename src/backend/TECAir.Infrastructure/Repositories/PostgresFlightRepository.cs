@@ -26,8 +26,9 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return result is true;
     }
 
-    // airport_connection se consulta solo desde flujos internos de vuelos.
-    // No existe controller ni endpoint publico para administrar esta tabla de referencia.
+    // airport_connection se consulta aqui desde los flujos internos de vuelos
+    // (calculo de llegada y millas al crear o actualizar). Para lectura publica
+    // existe GET /api/airports/connection que devuelve los mismos datos.
     public async Task<AirportConnectionData?> GetAirportConnectionAsync(
         string departureCode,
         string arrivalCode,
@@ -198,9 +199,11 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return MapFlightResponse(reader);
     }
 
-    // Lista vuelos OPEN de un aeropuerto de salida para que puedan usarse en itinerarios.
-    public async Task<IReadOnlyList<OpenFlightResponse>> GetOpenByDepartureAirportAsync(
+    // Lista vuelos en un estado dado para un aeropuerto de salida. El estado y
+    // el codigo de aeropuerto llegan ya normalizados desde el service.
+    public async Task<IReadOnlyList<OpenFlightResponse>> GetByDepartureAirportAndStateAsync(
         string departureCode,
+        string state,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -224,7 +227,7 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
             INNER JOIN tecair.airport arrival_airport
                 ON arrival_airport.code = f.airport_arrives_to_id
             WHERE
-                f.state = 'OPEN'
+                f.state = @state
                 AND LOWER(departure_airport.code) = LOWER(@departure_code)
             ORDER BY f.departure_datetime ASC, f.flight_id ASC;
             """;
@@ -233,6 +236,7 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
 
         await using var command = dataSource.CreateCommand(sql);
         command.Parameters.AddWithValue("departure_code", departureCode);
+        command.Parameters.AddWithValue("state", state);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))

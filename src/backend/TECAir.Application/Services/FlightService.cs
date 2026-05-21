@@ -85,13 +85,15 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
         return CreateFlightServiceResult.Success(flight);
     }
 
-    public Task<IReadOnlyList<OpenFlightResponse>> GetOpenByDepartureAirportAsync(
+    public Task<IReadOnlyList<OpenFlightResponse>> GetByDepartureAirportAndStateAsync(
         string departureCode,
+        string state,
         CancellationToken cancellationToken = default)
     {
-        // El codigo se normaliza para comparar de forma consistente con la base.
-        return flightRepository.GetOpenByDepartureAirportAsync(
+        // El codigo y el estado se normalizan para comparar de forma consistente con la base.
+        return flightRepository.GetByDepartureAirportAndStateAsync(
             departureCode.Trim().ToUpperInvariant(),
+            state.Trim().ToUpperInvariant(),
             cancellationToken);
     }
 

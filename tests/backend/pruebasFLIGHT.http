@@ -27,7 +27,27 @@ Accept: application/json
 ### 3. Consultar vuelos OPEN por aeropuerto de salida
 # Esperado: 200 OK con vuelos OPEN saliendo de SJO.
 # Los vuelos deben incluir arrivalDatetime y miles calculados/almacenados.
-GET {{baseUrl}}/api/flights/open?departureCode=SJO
+GET {{baseUrl}}/api/flights/by-departure?departureCode=SJO&state=OPEN
+Accept: application/json
+
+
+### 3b. Consultar vuelos UPCOMING por aeropuerto de salida (para itinerarios)
+# Esperado: 200 OK con vuelos UPCOMING saliendo de SJO.
+GET {{baseUrl}}/api/flights/by-departure?departureCode=SJO&state=UPCOMING
+Accept: application/json
+
+
+### 3c. Consultar vuelos con state invalido
+# Esperado: 400 Bad Request con:
+# "Query parameter 'state' must be UPCOMING or OPEN."
+GET {{baseUrl}}/api/flights/by-departure?departureCode=SJO&state=CLOSED
+Accept: application/json
+
+
+### 3d. Consultar vuelos sin state
+# Esperado: 400 Bad Request con:
+# "Query parameter 'state' is required."
+GET {{baseUrl}}/api/flights/by-departure?departureCode=SJO
 Accept: application/json
 
 

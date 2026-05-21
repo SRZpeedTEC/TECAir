@@ -37,11 +37,14 @@ public class FlightsController(IFlightService flightService) : ControllerBase
         return Created($"/api/flights/{result.Flight!.FlightId}", result.Flight);
     }
 
-    // GET /api/flights/open/?departureCode=XXX
-    // Consulta vuelos disponibles por aeropuerto de salida usando query string.
-    [HttpGet("open")]
-    public async Task<ActionResult<IReadOnlyList<OpenFlightResponse>>> GetOpenByDepartureAirport(
+    // GET /api/flights/by-departure?departureCode=XXX&state=YYY
+    // Consulta vuelos por aeropuerto de salida filtrados por estado.
+    // state acepta UPCOMING (vuelos para armar itinerarios) u OPEN (vuelos
+    // ya publicados que pueden listarse o editarse). CLOSED no se expone aqui.
+    [HttpGet("by-departure")]
+    public async Task<ActionResult<IReadOnlyList<OpenFlightResponse>>> GetByDepartureAirportAndState(
         [FromQuery] string? departureCode,
+        [FromQuery] string? state,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(departureCode))
@@ -49,7 +52,21 @@ public class FlightsController(IFlightService flightService) : ControllerBase
             return BadRequest(new { message = "Query parameter 'departureCode' is required." });
         }
 
-        var flights = await flightService.GetOpenByDepartureAirportAsync(departureCode, cancellationToken);
+        if (string.IsNullOrWhiteSpace(state))
+        {
+            return BadRequest(new { message = "Query parameter 'state' is required." });
+        }
+
+        var normalizedState = state.Trim().ToUpperInvariant();
+        if (normalizedState is not "UPCOMING" and not "OPEN")
+        {
+            return BadRequest(new { message = "Query parameter 'state' must be UPCOMING or OPEN." });
+        }
+
+        var flights = await flightService.GetByDepartureAirportAndStateAsync(
+            departureCode,
+            normalizedState,
+            cancellationToken);
         return Ok(flights);
     }
 

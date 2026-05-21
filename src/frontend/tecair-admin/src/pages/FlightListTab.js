@@ -5,7 +5,7 @@ import FlightForm       from '../components/FlightForm.js';
 import Modal            from '../components/Modal.js';
 import ConfirmDialog    from '../components/ConfirmDialog.js';
 import {
-  listOpenFlightsByDeparture,
+  listFlightsByDepartureAndState,
   updateFlight,
   deleteFlight,
 } from '../services/flightService.js';
@@ -30,10 +30,10 @@ function fmtDateTime(value) {
 }
 
 // Construye el shape que espera FlightForm en modo edit a partir de un vuelo
-// devuelto por GET /api/flights/open.
+// devuelto por GET /api/flights/by-departure. La llegada no se incluye: el backend la
+// recalcula al guardar y FlightForm muestra el nuevo valor como preview.
 function flightToFormValues(flight) {
   const dep = splitDateTime(flight.departureDatetime);
-  const arr = splitDateTime(flight.arrivalDatetime);
   return {
     departsFrom: {
       code:    flight.departureCode,
@@ -52,8 +52,6 @@ function flightToFormValues(flight) {
     state:         flight.state ?? 'UPCOMING',
     departureDate: dep.date,
     departureTime: dep.time,
-    arrivalDate:   arr.date,
-    arrivalTime:   arr.time,
   };
 }
 
@@ -80,7 +78,7 @@ export default function FlightListTab() {
     setLoadError(null);
     setTouched(true);
     try {
-      const data = await listOpenFlightsByDeparture(code);
+      const data = await listFlightsByDepartureAndState(code, 'OPEN');
       setFlights(data);
     } catch (err) {
       setLoadError(err.message);
@@ -150,9 +148,9 @@ export default function FlightListTab() {
       <div className="admin-alert admin-alert-info mb-3" role="status">
         <i className="bi bi-info-circle-fill"></i>
         <span>
-          Esta consulta usa <code>GET /api/flights/open</code>: solo se muestran vuelos en estado{' '}
-          <strong>OPEN</strong> filtrados por aeropuerto de salida. Cuando backend agregue{' '}
-          <code>GET /api/flights</code> esta vista listará todos los vuelos.
+          Esta consulta usa <code>GET /api/flights/by-departure?state=OPEN</code>: solo se muestran
+          vuelos en estado <strong>OPEN</strong> filtrados por aeropuerto de salida. Cuando backend
+          agregue <code>GET /api/flights</code> esta vista listará todos los vuelos.
         </span>
       </div>
 

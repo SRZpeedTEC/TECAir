@@ -10,9 +10,10 @@ public interface IFlightService
         CreateFlightRequest request,
         CancellationToken cancellationToken = default);
 
-    // Consulta vuelos abiertos por aeropuerto de salida.
-    Task<IReadOnlyList<OpenFlightResponse>> GetOpenByDepartureAirportAsync(
+    // Consulta vuelos por aeropuerto de salida filtrados por estado.
+    Task<IReadOnlyList<OpenFlightResponse>> GetByDepartureAirportAndStateAsync(
         string departureCode,
+        string state,
         CancellationToken cancellationToken = default);
 
     // Actualiza los campos editables de un vuelo existente.

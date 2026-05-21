@@ -14,19 +14,18 @@ export async function createFlight(payload) {
   });
 }
 
-// Lista vuelos OPEN filtrados por aeropuerto de salida.
-// Corresponde a: GET /api/flights/open?departureCode=XXX
-// NOTA: backend aún no expone un GET /api/flights que liste TODOS los vuelos
-// (cualquier estado, opcionalmente con filtros). Mientras existe ese endpoint
-// usamos este como fallback — ver doc en FLIGHT_MANAGEMENT.md.
+// Lista vuelos filtrados por aeropuerto de salida y estado.
+// Corresponde a: GET /api/flights/by-departure?departureCode=XXX&state=YYY
+// state admite 'UPCOMING' (para construir itinerarios) u 'OPEN' (para listados
+// administrativos de vuelos publicados).
 //
 // Respuesta normalizada a camelCase:
 //   { flightId, planePlate, departureAirportName, departureCode, departureCity,
 //     arrivalAirportName, arrivalCode, arrivalCity, state, gate,
 //     departureDatetime, arrivalDatetime }
-export async function listOpenFlightsByDeparture(departureCode) {
-  const params = new URLSearchParams({ departureCode });
-  const data = await apiFetch(`/flights/open?${params}`);
+export async function listFlightsByDepartureAndState(departureCode, state) {
+  const params = new URLSearchParams({ departureCode, state });
+  const data = await apiFetch(`/flights/by-departure?${params}`);
 
   return data.map((f) => ({
     flightId:             f.flightId             ?? f.FlightId,

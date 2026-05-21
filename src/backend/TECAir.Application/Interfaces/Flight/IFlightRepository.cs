@@ -38,9 +38,11 @@ public interface IFlightRepository
         int calculatedMiles,
         CancellationToken cancellationToken = default);
 
-    // Lista vuelos abiertos para construir itinerarios desde un aeropuerto.
-    Task<IReadOnlyList<OpenFlightResponse>> GetOpenByDepartureAirportAsync(
+    // Lista vuelos en un estado dado para un aeropuerto de salida. Lo usan los
+    // flujos de itinerarios (UPCOMING) y los de listados administrativos (OPEN).
+    Task<IReadOnlyList<OpenFlightResponse>> GetByDepartureAirportAndStateAsync(
         string departureCode,
+        string state,
         CancellationToken cancellationToken = default);
 
     // Verifica que exista el vuelo antes de actualizarlo o borrarlo.
