@@ -10,9 +10,24 @@ public interface IFlightService
         CreateFlightRequest request,
         CancellationToken cancellationToken = default);
 
-    // Consulta vuelos abiertos por aeropuerto de salida.
-    Task<IReadOnlyList<OpenFlightResponse>> GetOpenByDepartureAirportAsync(
+    // Consulta vuelos por aeropuerto de salida filtrados por estado.
+    Task<IReadOnlyList<OpenFlightResponse>> GetByDepartureAirportAndStateAsync(
         string departureCode,
+        string state,
+        CancellationToken cancellationToken = default);
+
+    // Consulta vuelos por estado y ruta completa (origen y destino).
+    Task<IReadOnlyList<OpenFlightResponse>> SearchByRouteAndStateAsync(
+        string state,
+        string departureCode,
+        string arrivalCode,
+        CancellationToken cancellationToken = default);
+
+    // Aplica una transicion de estado controlada sobre un vuelo existente.
+    // Reglas validas: UPCOMING -> OPEN (apertura) y OPEN -> CLOSED (cierre).
+    Task<TransitionFlightStateServiceResult> TransitionStateAsync(
+        int flightId,
+        UpdateFlightStateRequest request,
         CancellationToken cancellationToken = default);
 
     // Actualiza los campos editables de un vuelo existente.

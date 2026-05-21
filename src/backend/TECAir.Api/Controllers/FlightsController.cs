@@ -37,11 +37,14 @@ public class FlightsController(IFlightService flightService) : ControllerBase
         return Created($"/api/flights/{result.Flight!.FlightId}", result.Flight);
     }
 
-    // GET /api/flights/open/?departureCode=XXX
-    // Consulta vuelos disponibles por aeropuerto de salida usando query string.
-    [HttpGet("open")]
-    public async Task<ActionResult<IReadOnlyList<OpenFlightResponse>>> GetOpenByDepartureAirport(
+    // GET /api/flights/by-departure?departureCode=XXX&state=YYY
+    // Consulta vuelos por aeropuerto de salida filtrados por estado.
+    // state acepta UPCOMING (vuelos para armar itinerarios) u OPEN (vuelos
+    // ya publicados que pueden listarse o editarse). CLOSED no se expone aqui.
+    [HttpGet("by-departure")]
+    public async Task<ActionResult<IReadOnlyList<OpenFlightResponse>>> GetByDepartureAirportAndState(
         [FromQuery] string? departureCode,
+        [FromQuery] string? state,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(departureCode))
@@ -49,7 +52,65 @@ public class FlightsController(IFlightService flightService) : ControllerBase
             return BadRequest(new { message = "Query parameter 'departureCode' is required." });
         }
 
-        var flights = await flightService.GetOpenByDepartureAirportAsync(departureCode, cancellationToken);
+        if (string.IsNullOrWhiteSpace(state))
+        {
+            return BadRequest(new { message = "Query parameter 'state' is required." });
+        }
+
+        var normalizedState = state.Trim().ToUpperInvariant();
+        if (normalizedState is not "UPCOMING" and not "OPEN")
+        {
+            return BadRequest(new { message = "Query parameter 'state' must be UPCOMING or OPEN." });
+        }
+
+        var flights = await flightService.GetByDepartureAirportAndStateAsync(
+            departureCode,
+            normalizedState,
+            cancellationToken);
+        return Ok(flights);
+    }
+
+    // GET /api/flights/search?state=YYY&departureCode=XXX&arrivalCode=ZZZ
+    // Lista vuelos de una ruta especifica (origen+destino) en un estado dado.
+    // Lo usan las pantallas de Apertura (state=UPCOMING) y Cierre (state=OPEN).
+    [HttpGet("search")]
+    public async Task<ActionResult<IReadOnlyList<OpenFlightResponse>>> SearchByRouteAndState(
+        [FromQuery] string? state,
+        [FromQuery] string? departureCode,
+        [FromQuery] string? arrivalCode,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(state))
+        {
+            return BadRequest(new { message = "Query parameter 'state' is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(departureCode))
+        {
+            return BadRequest(new { message = "Query parameter 'departureCode' is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(arrivalCode))
+        {
+            return BadRequest(new { message = "Query parameter 'arrivalCode' is required." });
+        }
+
+        var normalizedState = state.Trim().ToUpperInvariant();
+        if (normalizedState is not "UPCOMING" and not "OPEN")
+        {
+            return BadRequest(new { message = "Query parameter 'state' must be UPCOMING or OPEN." });
+        }
+
+        if (departureCode.Trim().Equals(arrivalCode.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Departure and arrival airports must be different." });
+        }
+
+        var flights = await flightService.SearchByRouteAndStateAsync(
+            normalizedState,
+            departureCode,
+            arrivalCode,
+            cancellationToken);
         return Ok(flights);
     }
 
@@ -62,6 +123,36 @@ public class FlightsController(IFlightService flightService) : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await flightService.UpdateAsync(flightId, request, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.IsNotFound)
+            {
+                return NotFound(new { message = result.ErrorMessage });
+            }
+
+            if (result.IsConflict)
+            {
+                return Conflict(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Flight);
+    }
+
+    // PATCH /api/flights/{flightId}/state
+    // Aplica una transicion de estado controlada. Reglas validas:
+    //   UPCOMING -> OPEN (apertura de vuelo)
+    //   OPEN     -> CLOSED (cierre de vuelo)
+    // Cualquier otra transicion devuelve 409 Conflict.
+    [HttpPatch("{flightId:int}/state")]
+    public async Task<ActionResult<FlightResponse>> TransitionState(
+        int flightId,
+        UpdateFlightStateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await flightService.TransitionStateAsync(flightId, request, cancellationToken);
         if (!result.IsSuccess)
         {
             if (result.IsNotFound)

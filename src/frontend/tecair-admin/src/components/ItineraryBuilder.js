@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 
 import AirportTypeahead             from './AirportTypeahead.js';
-import { listOpenFlightsByDeparture } from '../services/flightService.js';
+import { listFlightsByDepartureAndState } from '../services/flightService.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -30,13 +30,15 @@ const MAX_CONNECTION_MS = 24 * 60 * 60 * 1000;
 // Props:
 //   mode           — 'create' | 'edit'
 //   initialPrice   — number (default 0). Para edit, el precio actual.
-//   initialLegs    — array de "flight" (mismo shape del service /flights/open) precargado para edit.
-//   onSubmit       — async (payload) → void. payload = { price, flights: [{ flightId, flightOrder }] }
+//   initialState   — 'PUBLIC' | 'EDITION'. Default 'PUBLIC' en create, el estado actual en edit.
+//   initialLegs    — array de "flight" (mismo shape del service /flights/by-departure) precargado para edit.
+//   onSubmit       — async (payload) → void. payload = { price, state, flights: [{ flightId, flightOrder }] }
 //   onCancel       — opcional. En modo create resetea; en edit cierra modal.
 //   successMessage — string mostrado como banner verde.
 export default function ItineraryBuilder({
   mode           = 'create',
   initialPrice   = 0,
+  initialState   = 'PUBLIC',
   initialLegs    = [],
   onSubmit,
   onCancel,
@@ -45,6 +47,9 @@ export default function ItineraryBuilder({
   const [originAirport, setOriginAirport] = useState(null);
   const [legs,          setLegs]          = useState(initialLegs);
   const [price,         setPrice]         = useState(initialPrice ? String(initialPrice) : '');
+  // PUBLIC = visible para el cliente en /itineraries/public/with-promotions.
+  // EDITION = borrador interno; queda guardado pero no aparece en la vista cliente.
+  const [itineraryState, setItineraryState] = useState(initialState);
 
   // Panel de selección activo: 'first' | 'next' | null
   // 'first' aparece tras elegir originAirport y antes del primer leg.
@@ -87,7 +92,9 @@ export default function ItineraryBuilder({
     setFlightsError(null);
     setAvailableFlights([]);
     try {
-      const data = await listOpenFlightsByDeparture(code);
+      // Los itinerarios se construyen con vuelos UPCOMING: cuando el itinerario
+      // se publica, los vuelos pasan a OPEN.
+      const data = await listFlightsByDepartureAndState(code, 'UPCOMING');
       setAvailableFlights(data);
     } catch (err) {
       setFlightsError(err.message);
@@ -162,6 +169,7 @@ export default function ItineraryBuilder({
     try {
       const payload = {
         price: priceNum,
+        state: itineraryState,
         flights: legs.map((f, i) => ({
           flightId:    f.flightId,
           flightOrder: i + 1,
@@ -173,6 +181,7 @@ export default function ItineraryBuilder({
         // Reset suave: dejamos el origen para que pueda crear otro itinerario similar
         setLegs([]);
         setPrice('');
+        setItineraryState('PUBLIC');
         setPickerMode(null);
       }
     } catch (err) {
@@ -311,8 +320,8 @@ export default function ItineraryBuilder({
                     </h5>
                     <p className="ib-picker-sub">
                       {pickerMode === 'next'
-                        ? 'Solo vuelos OPEN que salen después de la llegada anterior y dentro de las próximas 24 horas.'
-                        : 'Solo vuelos en estado OPEN.'}
+                        ? 'Solo vuelos UPCOMING que salen después de la llegada anterior y dentro de las próximas 24 horas.'
+                        : 'Solo vuelos en estado UPCOMING.'}
                     </p>
                   </div>
                   <button
@@ -344,7 +353,7 @@ export default function ItineraryBuilder({
                     <p className="m-0">
                       {pickerMode === 'next'
                         ? `No hay conexiones válidas desde ${cursorCode} dentro de las próximas 24 horas.`
-                        : `No hay vuelos OPEN saliendo de ${cursorCode}.`}
+                        : `No hay vuelos UPCOMING saliendo de ${cursorCode}.`}
                     </p>
                   </div>
                 )}
@@ -431,6 +440,45 @@ export default function ItineraryBuilder({
                 </div>
               </div>
             </div>
+
+            <fieldset className="mt-4">
+              <legend className="form-label mb-2" style={{ fontSize: '0.9rem' }}>
+                Visibilidad al guardar
+              </legend>
+              <div className="d-flex flex-column gap-2">
+                <label className="form-check d-flex align-items-start gap-2 m-0" style={{ cursor: 'pointer' }}>
+                  <input
+                    className="form-check-input mt-1"
+                    type="radio"
+                    name="itinerary-state"
+                    checked={itineraryState === 'PUBLIC'}
+                    onChange={() => setItineraryState('PUBLIC')}
+                  />
+                  <span>
+                    <strong>Publicar</strong>
+                    <div className="text-muted-small">
+                      El itinerario queda visible para los clientes en la búsqueda de vuelos.
+                    </div>
+                  </span>
+                </label>
+                <label className="form-check d-flex align-items-start gap-2 m-0" style={{ cursor: 'pointer' }}>
+                  <input
+                    className="form-check-input mt-1"
+                    type="radio"
+                    name="itinerary-state"
+                    checked={itineraryState === 'EDITION'}
+                    onChange={() => setItineraryState('EDITION')}
+                  />
+                  <span>
+                    <strong>Guardar como borrador</strong>
+                    <div className="text-muted-small">
+                      Se guarda en el sistema pero no aparece todavía en la vista del cliente.
+                      Útil si querés ajustarlo antes de publicarlo.
+                    </div>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
 
             {submitError && (
               <div className="admin-alert admin-alert-error mt-3" role="alert">

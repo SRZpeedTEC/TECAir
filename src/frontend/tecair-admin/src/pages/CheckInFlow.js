@@ -396,7 +396,8 @@ function FlightStep({ reservation, itinerary, existingCheckIns, onBack, onSelect
 
       <h6 className="serif mb-2">Vuelos del itinerario</h6>
       <p className="text-muted-small mb-3">
-        Solo los vuelos en estado <strong>OPEN</strong> permiten check-in. Si el pasajero
+        Solo los vuelos en estado <strong>OPEN</strong> permiten check-in. Para los demás
+        (UPCOMING o CLOSED) el botón aparece bloqueado con el motivo. Si el pasajero
         ya fue chequeado en un tramo, se muestra el asiento asignado.
       </p>
 
@@ -417,7 +418,9 @@ function FlightStep({ reservation, itinerary, existingCheckIns, onBack, onSelect
           </thead>
           <tbody>
             {itinerary.flights.map((f) => {
-              const isOpen        = (f.state || '').toUpperCase() === 'OPEN';
+              const flightState   = (f.state || '').toUpperCase();
+              const isOpen        = flightState === 'OPEN';
+              const isUpcoming    = flightState === 'UPCOMING';
               const existing      = existingCheckIns?.get(f.itineraryFlightId);
               const alreadyChecked = !!existing;
               return (
@@ -448,15 +451,29 @@ function FlightStep({ reservation, itinerary, existingCheckIns, onBack, onSelect
                       >
                         Ver pase <i className="bi bi-eye ms-1"></i>
                       </button>
-                    ) : (
+                    ) : isOpen ? (
                       <button
                         type="button"
                         className="btn-burgundy"
-                        disabled={!isOpen}
                         onClick={() => onSelect(f)}
-                        title={isOpen ? 'Hacer check-in en este vuelo' : 'Vuelo cerrado'}
+                        title="Hacer check-in en este vuelo"
                       >
                         Check-in <i className="bi bi-arrow-right ms-1"></i>
+                      </button>
+                    ) : (
+                      // No es OPEN: dejamos el boton visible pero bloqueado, con
+                      // un icono e indicio claro de por que no se puede pulsar.
+                      <button
+                        type="button"
+                        className="btn-locked"
+                        disabled
+                        aria-disabled="true"
+                        title={isUpcoming
+                          ? 'El vuelo aún no abre para check-in'
+                          : 'El vuelo ya cerró y no acepta check-in'}
+                      >
+                        <i className={isUpcoming ? 'bi bi-clock' : 'bi bi-lock-fill'}></i>
+                        {isUpcoming ? 'Aún no abierto' : 'Cerrado'}
                       </button>
                     )}
                   </td>

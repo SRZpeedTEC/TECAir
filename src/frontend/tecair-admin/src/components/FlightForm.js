@@ -3,14 +3,19 @@ import { useState, useEffect } from 'react';
 import AirportTypeahead from './AirportTypeahead.js';
 import DatePicker       from './DatePicker.js';
 import { searchPlanes } from '../services/planeService.js';
+import { getAirportConnection } from '../services/airportService.js';
 
 // Form de vuelo reutilizable para crear (sin valor inicial) y editar (con `initialValues`).
 //
+// La hora de llegada, la duracion y las millas ya no se piden al usuario: el
+// backend las calcula a partir de la tabla airport_connection. El form muestra
+// los valores calculados como preview consultando GET /api/airports/connection.
+//
 // `initialValues` shape (todos opcionales):
 //   { departsFrom, arrivesTo, planePlate, gate, state,
-//     departureDate, departureTime, arrivalDate, arrivalTime }
+//     departureDate, departureTime }
 //
-// `onSubmit(payload)` recibe el payload listo para la API (datetimes en ISO).
+// `onSubmit(payload)` recibe el payload listo para la API (datetime en ISO).
 // El padre se encarga de hacer la llamada (create/update) y de cerrar/limpiar.
 //
 // Props:
@@ -28,14 +33,33 @@ const EMPTY_FORM = {
   state:         'UPCOMING',
   departureDate: '',
   departureTime: '',
-  arrivalDate:   '',
-  arrivalTime:   '',
 };
 
 function combineDateTime(dateStr, timeStr) {
   if (!dateStr || !timeStr) return null;
   const d = new Date(`${dateStr}T${timeStr}:00`);
   return isNaN(d.getTime()) ? null : d;
+}
+
+function formatDuration(minutes) {
+  if (!Number.isFinite(minutes) || minutes <= 0) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+function formatArrival(date) {
+  if (!date) return '—';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = MESES[date.getMonth()];
+  const yy = date.getFullYear();
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mi = String(date.getMinutes()).padStart(2, '0');
+  return `${dd} ${mm} ${yy}, ${hh}:${mi}`;
 }
 
 export default function FlightForm({
@@ -53,6 +77,14 @@ export default function FlightForm({
   const [planesLoading, setPlanesLoading] = useState(true);
   const [planesError,   setPlanesError]   = useState(null);
 
+  // Conexion entre origen y destino (distancia + duracion). Se consulta cada
+  // vez que cambia el par de aeropuertos. El backend la usa para calcular la
+  // llegada al guardar; aqui la mostramos como preview para que el admin
+  // confirme antes de hacer submit.
+  const [connection,        setConnection]        = useState(null);
+  const [connectionLoading, setConnectionLoading] = useState(false);
+  const [connectionError,   setConnectionError]   = useState(null);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -67,6 +99,38 @@ export default function FlightForm({
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Consulta la conexion cada vez que origen o destino cambian.
+  useEffect(() => {
+    const fromCode = form.departsFrom?.code;
+    const toCode   = form.arrivesTo?.code;
+
+    // Sin par completo no consultamos: el preview queda en su estado vacio.
+    if (!fromCode || !toCode || fromCode === toCode) {
+      setConnection(null);
+      setConnectionError(null);
+      setConnectionLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setConnectionLoading(true);
+    setConnectionError(null);
+    (async () => {
+      try {
+        const data = await getAirportConnection(fromCode, toCode);
+        if (!cancelled) setConnection(data);
+      } catch (err) {
+        if (!cancelled) {
+          setConnection(null);
+          setConnectionError(err.message);
+        }
+      } finally {
+        if (!cancelled) setConnectionLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [form.departsFrom?.code, form.arrivesTo?.code]);
 
   const updateField = (key, val) => {
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -83,24 +147,15 @@ export default function FlightForm({
   const validate = () => {
     const errs = {};
 
-    if (!form.departsFrom)        errs.departsFrom   = 'Selecciona un aeropuerto origen.';
-    if (!form.arrivesTo)          errs.arrivesTo     = 'Selecciona un aeropuerto destino.';
-    if (!form.planePlate)         errs.planePlate    = 'Selecciona un avión.';
-    if (!form.gate.trim())        errs.gate          = 'Indica la puerta de embarque.';
-    if (!form.departureDate)      errs.departureDate = 'Indica la fecha de salida.';
-    if (!form.departureTime)      errs.departureTime = 'Indica la hora de salida.';
-    if (!form.arrivalDate)        errs.arrivalDate   = 'Indica la fecha de llegada.';
-    if (!form.arrivalTime)        errs.arrivalTime   = 'Indica la hora de llegada.';
+    if (!form.departsFrom)   errs.departsFrom   = 'Selecciona un aeropuerto origen.';
+    if (!form.arrivesTo)     errs.arrivesTo     = 'Selecciona un aeropuerto destino.';
+    if (!form.planePlate)    errs.planePlate    = 'Selecciona un avión.';
+    if (!form.gate.trim())   errs.gate          = 'Indica la puerta de embarque.';
+    if (!form.departureDate) errs.departureDate = 'Indica la fecha de salida.';
+    if (!form.departureTime) errs.departureTime = 'Indica la hora de salida.';
 
     if (form.departsFrom && form.arrivesTo && form.departsFrom.code === form.arrivesTo.code) {
       errs.arrivesTo = 'Origen y destino deben ser distintos.';
-    }
-
-    const dep = combineDateTime(form.departureDate, form.departureTime);
-    const arr = combineDateTime(form.arrivalDate,   form.arrivalTime);
-    if (dep && arr && arr <= dep) {
-      errs.arrivalDate = 'La llegada debe ser posterior a la salida.';
-      errs.arrivalTime = ' ';
     }
 
     return errs;
@@ -122,8 +177,9 @@ export default function FlightForm({
         airportArrivesToId:   form.arrivesTo.code.toUpperCase(),
         state:                form.state || 'UPCOMING',
         gate:                 form.gate.trim(),
+        // La llegada y las millas las calcula el backend a partir de airport_connection;
+        // por eso el payload solo lleva la fecha y hora de salida.
         departureDatetime:    combineDateTime(form.departureDate, form.departureTime).toISOString(),
-        arrivalDatetime:      combineDateTime(form.arrivalDate,   form.arrivalTime).toISOString(),
       };
       await onSubmit(payload);
 
@@ -147,6 +203,12 @@ export default function FlightForm({
   };
 
   const submitLabel = mode === 'edit' ? 'Guardar cambios' : 'Crear vuelo';
+
+  // Llegada calculada solo cuando tenemos conexion + fecha + hora.
+  const departureDate = combineDateTime(form.departureDate, form.departureTime);
+  const calculatedArrival = (connection && departureDate)
+    ? new Date(departureDate.getTime() + connection.estimatedDurationMinutes * 60_000)
+    : null;
 
   return (
     <form onSubmit={handleSubmit} noValidate>
@@ -243,36 +305,21 @@ export default function FlightForm({
             value={form.departureTime}
             onChange={(e) => updateField('departureTime', e.target.value)}
           />
-          {fieldErrors.departureTime && fieldErrors.departureTime.trim() && (
+          {fieldErrors.departureTime && (
             <div className="invalid-feedback">{fieldErrors.departureTime}</div>
           )}
         </div>
 
-        <div className="col-md-8">
-          <DatePicker
-            id="flight-arrival-date"
-            label="Fecha de llegada *"
-            value={form.arrivalDate}
-            onChange={(v) => updateField('arrivalDate', v)}
-            invalid={!!fieldErrors.arrivalDate}
+        <div className="col-12">
+          <ConnectionPreview
+            from={form.departsFrom}
+            to={form.arrivesTo}
+            connection={connection}
+            loading={connectionLoading}
+            error={connectionError}
+            calculatedArrival={calculatedArrival}
+            hasDeparture={!!departureDate}
           />
-          {fieldErrors.arrivalDate && (
-            <div className="invalid-feedback d-block">{fieldErrors.arrivalDate}</div>
-          )}
-        </div>
-
-        <div className="col-md-4">
-          <label htmlFor="flight-arrival-time" className="form-label">Hora de llegada *</label>
-          <input
-            id="flight-arrival-time"
-            type="time"
-            className={'form-control' + (fieldErrors.arrivalTime ? ' is-invalid' : '')}
-            value={form.arrivalTime}
-            onChange={(e) => updateField('arrivalTime', e.target.value)}
-          />
-          {fieldErrors.arrivalTime && fieldErrors.arrivalTime.trim() && (
-            <div className="invalid-feedback">{fieldErrors.arrivalTime}</div>
-          )}
         </div>
 
         {mode === 'edit' && (
@@ -319,5 +366,92 @@ export default function FlightForm({
         </button>
       </div>
     </form>
+  );
+}
+
+// Tarjeta de preview que comunica al usuario lo que el backend va a calcular.
+// Cubre cuatro estados: faltan datos, cargando ruta, ruta no configurada, ruta ok.
+function ConnectionPreview({ from, to, connection, loading, error, calculatedArrival, hasDeparture }) {
+  const baseStyle = {
+    background: 'var(--burgundy-soft, #f7eef2)',
+    border: '1px solid var(--burgundy-line, #e6d5dd)',
+    borderRadius: 12,
+    padding: '14px 18px',
+  };
+
+  if (!from || !to) {
+    return (
+      <div style={baseStyle} className="d-flex align-items-center gap-2">
+        <i className="bi bi-info-circle text-muted-small"></i>
+        <span className="text-muted-small">
+          Selecciona origen y destino para ver la duración y la llegada calculada.
+        </span>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={baseStyle} className="d-flex align-items-center gap-2">
+        <span className="spinner-border spinner-border-sm"></span>
+        <span className="text-muted-small">Buscando ruta entre {from.code} y {to.code}…</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    // Distinguimos entre "ruta no existe" (mensaje claro al admin) y cualquier
+    // otro error (mostramos el mensaje crudo para no esconder el problema real,
+    // como un backend desactualizado o caido).
+    const isMissingRoute = /no configured airport connection/i.test(error)
+      || /no hay ruta/i.test(error);
+    return (
+      <div className="admin-alert admin-alert-error m-0" role="alert">
+        <i className="bi bi-exclamation-circle-fill"></i>
+        <span>
+          {isMissingRoute ? (
+            <>
+              No hay ruta configurada entre <strong>{from.code}</strong> y <strong>{to.code}</strong>.
+              El vuelo no podrá crearse hasta que la conexión exista en el sistema.
+            </>
+          ) : (
+            <>No se pudo consultar la ruta {from.code} → {to.code}: {error}</>
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  if (!connection) return null;
+
+  return (
+    <div style={baseStyle}>
+      <div className="d-flex align-items-center gap-2 mb-2">
+        <i className="bi bi-calculator text-burgundy"></i>
+        <strong>Llegada calculada por el sistema</strong>
+      </div>
+      <div className="row g-3">
+        <PreviewField label="Duración estimada" value={formatDuration(connection.estimatedDurationMinutes)} />
+        <PreviewField label="Distancia" value={`${connection.distanceMiles.toLocaleString('es-CR')} millas`} />
+        <PreviewField
+          label="Llegada calculada"
+          value={hasDeparture ? formatArrival(calculatedArrival) : 'Ingresa fecha y hora de salida'}
+          muted={!hasDeparture}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PreviewField({ label, value, muted }) {
+  return (
+    <div className="col-md-4">
+      <div className="text-muted-small text-uppercase" style={{ fontSize: 11, letterSpacing: '0.05em' }}>
+        {label}
+      </div>
+      <div className="mono" style={{ fontSize: '1rem', color: muted ? 'var(--muted)' : 'var(--ink)' }}>
+        {value}
+      </div>
+    </div>
   );
 }

@@ -1,0 +1,64 @@
+@baseUrl = http://localhost:5000
+
+### 1. Health check
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Buscar aeropuertos por termino
+# Esperado: 200 OK con hasta 10 resultados.
+# El termino busca por nombre, ciudad, pais o codigo IATA usando coincidencia parcial.
+GET {{baseUrl}}/api/airports/search?term=san
+Accept: application/json
+
+
+### 3. Buscar aeropuertos sin termino
+# Esperado: 400 Bad Request con:
+# "Query parameter 'term' is required."
+GET {{baseUrl}}/api/airports/search?term=
+Accept: application/json
+
+
+### 4. Consultar conexion entre dos aeropuertos
+# Esperado: 200 OK con distanceMiles y estimatedDurationMinutes.
+# La respuesta la usa el frontend para mostrar la llegada calculada antes de crear el vuelo.
+# Requiere que el par SJO/MIA exista en airport_connection (sembrado por defecto).
+GET {{baseUrl}}/api/airports/connection?from=SJO&to=MIA
+Accept: application/json
+
+
+### 5. Consultar conexion en minusculas
+# Esperado: 200 OK.
+# El servicio normaliza los codigos a mayusculas antes de consultar.
+GET {{baseUrl}}/api/airports/connection?from=sjo&to=mia
+Accept: application/json
+
+
+### 6. Consultar conexion sin parametro from
+# Esperado: 400 Bad Request con:
+# "Query parameter 'from' is required."
+GET {{baseUrl}}/api/airports/connection?to=MIA
+Accept: application/json
+
+
+### 7. Consultar conexion sin parametro to
+# Esperado: 400 Bad Request con:
+# "Query parameter 'to' is required."
+GET {{baseUrl}}/api/airports/connection?from=SJO
+Accept: application/json
+
+
+### 8. Consultar conexion con aeropuertos iguales
+# Esperado: 400 Bad Request con:
+# "Departure and arrival airports must be different."
+GET {{baseUrl}}/api/airports/connection?from=SJO&to=SJO
+Accept: application/json
+
+
+### 9. Consultar conexion inexistente
+# Esperado: 404 Not Found con:
+# "There is no configured airport connection for SJO to ZZZ."
+# Nota: con los datos semilla todos los pares existentes tienen conexion.
+# Para ejecutar este caso, ZZZ no debe existir en airport_connection.
+GET {{baseUrl}}/api/airports/connection?from=SJO&to=ZZZ
+Accept: application/json

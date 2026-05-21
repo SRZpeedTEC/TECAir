@@ -14,19 +14,18 @@ export async function createFlight(payload) {
   });
 }
 
-// Lista vuelos OPEN filtrados por aeropuerto de salida.
-// Corresponde a: GET /api/flights/open?departureCode=XXX
-// NOTA: backend aún no expone un GET /api/flights que liste TODOS los vuelos
-// (cualquier estado, opcionalmente con filtros). Mientras existe ese endpoint
-// usamos este como fallback — ver doc en FLIGHT_MANAGEMENT.md.
+// Lista vuelos filtrados por aeropuerto de salida y estado.
+// Corresponde a: GET /api/flights/by-departure?departureCode=XXX&state=YYY
+// state admite 'UPCOMING' (para construir itinerarios) u 'OPEN' (para listados
+// administrativos de vuelos publicados).
 //
 // Respuesta normalizada a camelCase:
 //   { flightId, planePlate, departureAirportName, departureCode, departureCity,
 //     arrivalAirportName, arrivalCode, arrivalCity, state, gate,
 //     departureDatetime, arrivalDatetime }
-export async function listOpenFlightsByDeparture(departureCode) {
-  const params = new URLSearchParams({ departureCode });
-  const data = await apiFetch(`/flights/open?${params}`);
+export async function listFlightsByDepartureAndState(departureCode, state) {
+  const params = new URLSearchParams({ departureCode, state });
+  const data = await apiFetch(`/flights/by-departure?${params}`);
 
   return data.map((f) => ({
     flightId:             f.flightId             ?? f.FlightId,
@@ -55,23 +54,15 @@ export async function updateFlight(flightId, payload) {
   });
 }
 
-// ─────────────────────────────────────────────────────────────
-// PENDIENTES DE BACKEND — Apertura y Cierre de Vuelos
-// ─────────────────────────────────────────────────────────────
-// Los dos endpoints siguientes son los que la UI de Apertura y Cierre
-// de Vuelos necesita. Aún no existen en el backend; mientras tanto la
-// interfaz queda lista y estas llamadas fallarán con 404 — la UI mostrará
-// el mensaje del error tal cual venga.
+// ─── Apertura y Cierre de Vuelos ───
+// Endpoints usados por las pantallas FlightTransitionPanel.
 //
 // 1) GET /api/flights/search?state=UPCOMING|OPEN&departureCode=XXX&arrivalCode=YYY
-//    Lista vuelos en el estado indicado que salen de departureCode y llegan
-//    a arrivalCode. Toda la regla (filtrado por estado + códigos) vive en
-//    backend para no replicarla en el frontend.
-//    Respuesta esperada: mismo shape que OpenFlightResponse.
+//    Lista vuelos en el estado indicado que salen de departureCode y llegan a arrivalCode.
 //
 // 2) PATCH /api/flights/{flightId}/state  body: { state: 'OPEN' | 'CLOSED' }
 //    Transición controlada: solo permite UPCOMING→OPEN y OPEN→CLOSED.
-//    Cualquier otra transición debe devolver 409 desde backend.
+//    Cualquier otra transición devuelve 409 desde backend.
 
 export async function searchFlightsByRoute({ state, departureCode, arrivalCode } = {}) {
   if (!state)         throw new Error("state es obligatorio (UPCOMING | OPEN).");

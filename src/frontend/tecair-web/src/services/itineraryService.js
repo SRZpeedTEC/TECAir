@@ -11,7 +11,9 @@ function parseISODateLocal(iso) {
 
 // Si la promoción está vigente hoy, devuelve un objeto normalizado.
 // Si no hay promo o quedó fuera de vigencia, devuelve null.
-function pickActivePromotion(promo) {
+// Exportado para que las pantallas que consumen el mismo endpoint
+// (buscador y home) compartan el criterio de vigencia.
+export function pickActivePromotion(promo) {
   if (!promo) return null;
   const start = parseISODateLocal(promo.startDate ?? promo.StartDate);
   const end   = parseISODateLocal(promo.endDate   ?? promo.EndDate);
@@ -29,6 +31,20 @@ function pickActivePromotion(promo) {
   };
 }
 
+// Devuelve el detalle completo de un itinerario, incluyendo sus vuelos ordenados.
+// Corresponde a: GET /api/itineraries/{id}
+export async function getItineraryById(id) {
+  return apiFetch(`/itineraries/${id}`);
+}
+
+// Devuelve todos los itinerarios publicos junto con su promocion (cuando exista).
+// Corresponde a: GET /api/itineraries/public/with-promotions
+// Esta es la unica fuente que deben usar las pantallas publicas para listar
+// vuelos y promociones, asi se mantienen consistentes.
+export async function getPublicItinerariesWithPromotions() {
+  return apiFetch('/itineraries/public/with-promotions');
+}
+
 // Busca itinerarios públicos disponibles entre dos aeropuertos.
 //
 // Backend único usado: GET /api/itineraries/public/with-promotions
@@ -37,7 +53,7 @@ function pickActivePromotion(promo) {
 // El filtrado por origen/destino se hace en cliente porque el endpoint no
 // acepta parámetros de ruta.
 export async function searchItineraries(originCode, destinationCode) {
-  const data = await apiFetch('/itineraries/public/with-promotions');
+  const data = await getPublicItinerariesWithPromotions();
 
   // Cada itinerario trae sus vuelos ordenados por flight_order.
   // El origen/destino del itinerario es el primer y último vuelo.

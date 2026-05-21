@@ -49,4 +49,42 @@ public sealed class PostgresAirportRepository(NpgsqlDataSource dataSource) : IAi
 
         return airports;
     }
+
+    // Devuelve la fila de airport_connection para un par origen/destino, o null
+    // si no esta configurada. Los codigos llegan ya normalizados desde el service.
+    public async Task<AirportConnectionResponse?> GetConnectionAsync(
+        string departureCode,
+        string arrivalCode,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                departure_airport_code,
+                arrival_airport_code,
+                distance_miles,
+                estimated_duration_minutes
+            FROM tecair.airport_connection
+            WHERE
+                departure_airport_code = @departure_airport_code
+                AND arrival_airport_code = @arrival_airport_code;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("departure_airport_code", departureCode);
+        command.Parameters.AddWithValue("arrival_airport_code", arrivalCode);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return new AirportConnectionResponse
+        {
+            DepartureAirportCode = reader.GetString(0),
+            ArrivalAirportCode = reader.GetString(1),
+            DistanceMiles = reader.GetInt32(2),
+            EstimatedDurationMinutes = reader.GetInt32(3)
+        };
+    }
 }

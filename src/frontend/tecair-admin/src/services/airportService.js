@@ -15,3 +15,21 @@ export async function searchAirports(term) {
     country: a.country ?? a.Country,
   }));
 }
+
+// Devuelve la conexion configurada entre dos aeropuertos: distancia y duracion.
+// Corresponde a: GET /api/airports/connection?from=XXX&to=YYY
+//   200 → { departureAirportCode, arrivalAirportCode, distanceMiles, estimatedDurationMinutes }
+//   400 → parametros faltantes o iguales
+//   404 → no hay conexion configurada para ese par
+// El form de vuelos usa este endpoint para mostrar la llegada calculada
+// antes de crear/editar (el backend hace el mismo lookup al guardar).
+export async function getAirportConnection(fromCode, toCode) {
+  const params = new URLSearchParams({ from: fromCode, to: toCode });
+  const data = await apiFetch(`/airports/connection?${params}`);
+  return {
+    departureAirportCode:     data.departureAirportCode     ?? data.DepartureAirportCode,
+    arrivalAirportCode:       data.arrivalAirportCode       ?? data.ArrivalAirportCode,
+    distanceMiles:            data.distanceMiles            ?? data.DistanceMiles,
+    estimatedDurationMinutes: data.estimatedDurationMinutes ?? data.EstimatedDurationMinutes,
+  };
+}
