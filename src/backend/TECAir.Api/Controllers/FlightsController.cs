@@ -11,6 +11,31 @@ namespace TECAir.Api.Controllers;
 [Route("api/flights")]
 public class FlightsController(IFlightService flightService) : ControllerBase
 {
+    // GET /api/flights
+    // Lista todos los vuelos registrados.
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<FlightResponse>>> GetAll(CancellationToken cancellationToken)
+    {
+        var flights = await flightService.GetAllAsync(cancellationToken);
+        return Ok(flights);
+    }
+
+    // GET /api/flights/{flightId}
+    // Consulta un vuelo puntual por id.
+    [HttpGet("{flightId:int}")]
+    public async Task<ActionResult<FlightResponse>> GetById(
+        int flightId,
+        CancellationToken cancellationToken)
+    {
+        var flight = await flightService.GetByIdAsync(flightId, cancellationToken);
+        if (flight is null)
+        {
+            return NotFound(new { message = $"Flight '{flightId}' was not found." });
+        }
+
+        return Ok(flight);
+    }
+
     // POST /api/flights
     // Recibe el DTO del body y delega la creacion al servicio de aplicacion.
     [HttpPost]

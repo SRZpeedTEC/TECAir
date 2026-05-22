@@ -8,6 +8,66 @@ namespace TECAir.Infrastructure.Repositories;
 // Mantiene el SQL fuera de controllers y servicios, usando siempre parametros.
 public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFlightRepository
 {
+    // Lista vuelos en orden de salida para pantallas y pruebas generales.
+    public async Task<IReadOnlyList<FlightResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                flight_id,
+                plane_plate,
+                airport_departs_from_id,
+                airport_arrives_to_id,
+                state,
+                gate,
+                departure_datetime,
+                arrival_datetime,
+                miles
+            FROM tecair.flight
+            ORDER BY departure_datetime ASC, flight_id ASC;
+            """;
+
+        var flights = new List<FlightResponse>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            flights.Add(MapFlightResponse(reader));
+        }
+
+        return flights;
+    }
+
+    // Devuelve un vuelo puntual para consultas por id y reglas de apertura.
+    public async Task<FlightResponse?> GetByIdAsync(int flightId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT
+                flight_id,
+                plane_plate,
+                airport_departs_from_id,
+                airport_arrives_to_id,
+                state,
+                gate,
+                departure_datetime,
+                arrival_datetime,
+                miles
+            FROM tecair.flight
+            WHERE flight_id = @flight_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return MapFlightResponse(reader);
+    }
+
     // Verifica que el aeropuerto exista antes de crear vuelos que lo referencien.
     public async Task<bool> AirportExistsAsync(string airportCode, CancellationToken cancellationToken = default)
     {
@@ -89,6 +149,35 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                     airport_departs_from_id = @airport_departs_from_id
                     AND LOWER(gate) = LOWER(@gate)
                     AND departure_datetime = @departure_datetime
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("airport_departs_from_id", airportDepartsFromId);
+        command.Parameters.AddWithValue("gate", gate);
+        command.Parameters.AddWithValue("departure_datetime", departureDatetime);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Detecta la regla de margen de puerta: la misma puerta no puede tener
+    // otra salida en el mismo aeropuerto durante la hora previa.
+    public async Task<bool> GateHasDepartureWithinPreviousHourAsync(
+        string airportDepartsFromId,
+        string gate,
+        DateTime departureDatetime,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.flight
+                WHERE
+                    airport_departs_from_id = @airport_departs_from_id
+                    AND LOWER(gate) = LOWER(@gate)
+                    AND departure_datetime >= @departure_datetime - INTERVAL '1 hour'
+                    AND departure_datetime < @departure_datetime
             );
             """;
 
@@ -406,6 +495,38 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                     AND airport_departs_from_id = @airport_departs_from_id
                     AND LOWER(gate) = LOWER(@gate)
                     AND departure_datetime = @departure_datetime
+            );
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("excluded_flight_id", excludedFlightId);
+        command.Parameters.AddWithValue("airport_departs_from_id", airportDepartsFromId);
+        command.Parameters.AddWithValue("gate", gate);
+        command.Parameters.AddWithValue("departure_datetime", departureDatetime);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is true;
+    }
+
+    // Variante para actualizacion: valida margen de puerta sin chocar con el
+    // mismo vuelo editado.
+    public async Task<bool> GateHasDepartureWithinPreviousHourExceptAsync(
+        int excludedFlightId,
+        string airportDepartsFromId,
+        string gate,
+        DateTime departureDatetime,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT EXISTS (
+                SELECT 1
+                FROM tecair.flight
+                WHERE
+                    flight_id <> @excluded_flight_id
+                    AND airport_departs_from_id = @airport_departs_from_id
+                    AND LOWER(gate) = LOWER(@gate)
+                    AND departure_datetime >= @departure_datetime - INTERVAL '1 hour'
+                    AND departure_datetime < @departure_datetime
             );
             """;
 

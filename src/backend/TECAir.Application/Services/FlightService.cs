@@ -10,6 +10,23 @@ public class FlightService(
     IFlightRepository flightRepository,
     IAirportRepository airportRepository) : IFlightService
 {
+    public Task<IReadOnlyList<FlightResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return flightRepository.GetAllAsync(cancellationToken);
+    }
+
+    public async Task<FlightResponse?> GetByIdAsync(
+        int flightId,
+        CancellationToken cancellationToken = default)
+    {
+        if (flightId <= 0)
+        {
+            return null;
+        }
+
+        return await flightRepository.GetByIdAsync(flightId, cancellationToken);
+    }
+
     // Crea un vuelo validando primero datos propios del request, referencias
     // existentes y conflictos de agenda de avion o puerta.
     public async Task<CreateFlightServiceResult> CreateAsync(
@@ -77,6 +94,16 @@ public class FlightService(
                 "The selected gate is already assigned to another flight at the same departure time.");
         }
 
+        var gateMarginError = await ValidateGatePreviousHourMarginAsync(
+            normalizedRequest.AirportDepartsFromId,
+            normalizedRequest.Gate,
+            normalizedRequest.DepartureDatetime,
+            cancellationToken);
+        if (gateMarginError is not null)
+        {
+            return CreateFlightServiceResult.Conflict(gateMarginError);
+        }
+
         var flight = await flightRepository.CreateAsync(
             normalizedRequest,
             calculatedArrivalDatetime,
@@ -135,11 +162,13 @@ public class FlightService(
             return TransitionFlightStateServiceResult.ValidationError("State must be OPEN or CLOSED.");
         }
 
-        var currentState = await flightRepository.GetStateAsync(flightId, cancellationToken);
-        if (currentState is null)
+        var existingFlight = await flightRepository.GetByIdAsync(flightId, cancellationToken);
+        if (existingFlight is null)
         {
             return TransitionFlightStateServiceResult.NotFound($"Flight '{flightId}' was not found.");
         }
+
+        var currentState = existingFlight.State;
 
         // Reglas del flujo: cualquier otra combinacion se rechaza como conflicto
         // para que el admin no pueda saltarse el ciclo desde la API.
@@ -151,6 +180,15 @@ public class FlightService(
         {
             return TransitionFlightStateServiceResult.Conflict(
                 $"Transition from '{currentState}' to '{targetState}' is not allowed.");
+        }
+
+        if (targetState == "OPEN")
+        {
+            var openingDateError = ValidateOpeningDate(existingFlight.DepartureDatetime);
+            if (openingDateError is not null)
+            {
+                return TransitionFlightStateServiceResult.ValidationError(openingDateError);
+            }
         }
 
         var flight = await flightRepository.UpdateStateAsync(flightId, targetState, cancellationToken);
@@ -235,6 +273,17 @@ public class FlightService(
         {
             return UpdateFlightServiceResult.Conflict(
                 "The selected gate is already assigned to another flight at the same departure time.");
+        }
+
+        var gateMarginError = await ValidateGatePreviousHourMarginExceptAsync(
+            flightId,
+            normalizedRequest.AirportDepartsFromId,
+            normalizedRequest.Gate,
+            normalizedRequest.DepartureDatetime,
+            cancellationToken);
+        if (gateMarginError is not null)
+        {
+            return UpdateFlightServiceResult.Conflict(gateMarginError);
         }
 
         var flight = await flightRepository.UpdateAsync(
@@ -343,6 +392,72 @@ public class FlightService(
         if (gate is not null && string.IsNullOrWhiteSpace(gate))
         {
             return "Gate cannot be empty.";
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidateGatePreviousHourMarginAsync(
+        string airportDepartsFromId,
+        string? gate,
+        DateTime departureDatetime,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(gate))
+        {
+            return null;
+        }
+
+        if (await flightRepository.GateHasDepartureWithinPreviousHourAsync(
+            airportDepartsFromId,
+            gate,
+            departureDatetime,
+            cancellationToken))
+        {
+            return "The selected gate has another flight scheduled within 1 hour before this departure.";
+        }
+
+        return null;
+    }
+
+    private async Task<string?> ValidateGatePreviousHourMarginExceptAsync(
+        int excludedFlightId,
+        string airportDepartsFromId,
+        string? gate,
+        DateTime departureDatetime,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(gate))
+        {
+            return null;
+        }
+
+        if (await flightRepository.GateHasDepartureWithinPreviousHourExceptAsync(
+            excludedFlightId,
+            airportDepartsFromId,
+            gate,
+            departureDatetime,
+            cancellationToken))
+        {
+            return "The selected gate has another flight scheduled within 1 hour before this departure.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateOpeningDate(DateTime departureDatetime)
+    {
+        var today = DateTime.Today;
+        var departureDate = departureDatetime.Date;
+
+        if (today < departureDate)
+        {
+            return "A flight cannot be opened before its departure date.";
+        }
+
+        if (today > departureDate)
+        {
+            return "A flight can only be opened on the same calendar day as its departure date.";
         }
 
         return null;
