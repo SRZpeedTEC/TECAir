@@ -10,6 +10,8 @@ import {
   feeForBagAt,
   totalFee,
 } from '../services/baggageService.js';
+import ConfirmDialog       from '../components/ConfirmDialog.jsx';
+import { printBaggageReceipt } from '../utils/baggageReceipt.js';
 
 // Flujo de control de equipajes con dos pasos:
 //   1. find  → buscar reservacion y elegir un check-in ya existente
@@ -354,6 +356,11 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
   const [saveError, setSaveError] = useState(null);
   const [justAdded, setJustAdded] = useState(null); // bagNumber recien creado, para animar
 
+  // Confirmación de eliminación de maleta (reemplaza a window.confirm).
+  const [pendingDelete,  setPendingDelete]  = useState(null); // bag object | null
+  const [deletingBusy,   setDeletingBusy]   = useState(false);
+  const [deleteError,    setDeleteError]    = useState(null);
+
   const refresh = async () => {
     setLoading(true);
     setError(null);
@@ -380,7 +387,13 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
   const overweight = weight > WARN_WEIGHT;
   const tooHeavy   = weight > MAX_WEIGHT;
 
-  const canSubmit = !saving && !tooHeavy && weight > 0 && color.trim().length > 0;
+  // Bloqueo de edición cuando el vuelo asociado ya fue cerrado.
+  // Por ahora es validación de frontend; el backend debería rechazar también
+  // POST/DELETE /baggages cuando el vuelo está en estado CLOSED.
+  const flightState = (flightInfo?.state || '').toUpperCase();
+  const isFlightClosed = flightState === 'CLOSED';
+
+  const canSubmit = !saving && !tooHeavy && weight > 0 && color.trim().length > 0 && !isFlightClosed;
 
   const addBag = async () => {
     if (!canSubmit) return;
@@ -403,14 +416,36 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
     }
   };
 
-  const removeBag = async (bagNumber) => {
-    if (!window.confirm('¿Eliminar esta maleta del registro?')) return;
+  const requestRemoveBag = (bag) => {
+    if (isFlightClosed) return;
+    setDeleteError(null);
+    setPendingDelete(bag);
+  };
+
+  const cancelRemoveBag = () => {
+    if (deletingBusy) return;
+    setPendingDelete(null);
+    setDeleteError(null);
+  };
+
+  const confirmRemoveBag = async () => {
+    if (!pendingDelete) return;
+    setDeletingBusy(true);
+    setDeleteError(null);
     try {
-      await deleteBaggage(bagNumber);
-      setBags((prev) => prev.filter((b) => b.bagNumber !== bagNumber));
+      await deleteBaggage(pendingDelete.bagNumber);
+      setBags((prev) => prev.filter((b) => b.bagNumber !== pendingDelete.bagNumber));
+      setPendingDelete(null);
     } catch (err) {
-      setSaveError(err.message || 'No se pudo eliminar la maleta.');
+      setDeleteError(err.message || 'No se pudo eliminar la maleta.');
+    } finally {
+      setDeletingBusy(false);
     }
+  };
+
+  const generateReceipt = () => {
+    if (bags.length === 0) return;
+    printBaggageReceipt({ reservation, checkIn, flightInfo, bags });
   };
 
   return (
@@ -429,6 +464,14 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
                   {flightInfo.departureCode} → {flightInfo.arrivalCode}
                 </span>{' '}
                 · <span className="mono">{fmtDateTime(flightInfo.departureDatetime)}</span>
+                {flightInfo.state && (
+                  <>
+                    {' '}·{' '}
+                    <span className={'it-badge ' + (isFlightClosed ? 'it-badge-muted' : '')}>
+                      {flightInfo.state}
+                    </span>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -442,6 +485,17 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
         <div className="admin-alert admin-alert-error mb-3" role="alert">
           <i className="bi bi-exclamation-circle-fill"></i>
           <span>{error}</span>
+        </div>
+      )}
+
+      {isFlightClosed && (
+        <div className="admin-alert admin-alert-warning mb-3" role="status">
+          <i className="bi bi-lock-fill"></i>
+          <span>
+            Este vuelo ya está <strong>CERRADO</strong>. No se pueden agregar ni eliminar
+            maletas para este check-in; el registro queda como histórico. Aún puedes generar
+            la factura del cobro realizado.
+          </span>
         </div>
       )}
 
@@ -459,6 +513,7 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
               Indica peso y color. El peso máximo permitido es {MAX_WEIGHT} kg.
             </p>
 
+            <fieldset disabled={isFlightClosed} style={isFlightClosed ? { opacity: 0.55 } : undefined}>
             <div className="mb-3">
               <label className="form-label small text-muted d-flex justify-content-between">
                 <span>Peso</span>
@@ -497,6 +552,7 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
                 maxLength={40}
               />
             </div>
+            </fieldset>
 
             <FeePreview
               nextBagIndex={nextBagIndex}
@@ -517,12 +573,17 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
               className="btn-burgundy w-100 mt-3"
               disabled={!canSubmit}
               onClick={addBag}
+              title={isFlightClosed
+                ? 'No se pueden registrar maletas: el vuelo está cerrado.'
+                : undefined}
             >
-              {saving
-                ? <><span className="spinner-border spinner-border-sm me-2"></span>Registrando maleta…</>
-                : <><i className="bi bi-plus-lg me-2"></i>Registrar maleta #{nextBagIndex}
-                    {nextBagFee > 0 ? <span className="ms-2 opacity-75">(+${nextBagFee})</span> : <span className="ms-2 opacity-75">(gratis)</span>}
-                  </>}
+              {isFlightClosed
+                ? <><i className="bi bi-lock-fill me-2"></i>Vuelo cerrado — registro bloqueado</>
+                : saving
+                  ? <><span className="spinner-border spinner-border-sm me-2"></span>Registrando maleta…</>
+                  : <><i className="bi bi-plus-lg me-2"></i>Registrar maleta #{nextBagIndex}
+                      {nextBagFee > 0 ? <span className="ms-2 opacity-75">(+${nextBagFee})</span> : <span className="ms-2 opacity-75">(gratis)</span>}
+                    </>}
             </button>
           </div>
 
@@ -549,7 +610,8 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
                     position={i + 1}
                     fee={feeForBagAt(i + 1)}
                     isNew={justAdded === b.bagNumber}
-                    onDelete={() => removeBag(b.bagNumber)}
+                    onDelete={() => requestRemoveBag(b)}
+                    deleteDisabled={isFlightClosed}
                   />
                 ))}
               </ul>
@@ -572,9 +634,48 @@ function BagsStep({ reservation, checkIn, flightInfo, onBack }) {
                 })}
               </div>
             </div>
+
+            <button
+              type="button"
+              className="btn-burgundy w-100 mt-3"
+              onClick={generateReceipt}
+              disabled={bags.length === 0}
+              title={bags.length === 0
+                ? 'Registra al menos una maleta para generar la factura.'
+                : 'Generar factura de equipaje'}
+            >
+              <i className="bi bi-receipt me-2"></i>
+              Generar factura de equipaje
+            </button>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onCancel={cancelRemoveBag}
+        onConfirm={confirmRemoveBag}
+        title="Eliminar maleta"
+        destructive
+        loading={deletingBusy}
+        error={deleteError}
+        confirmLabel="Eliminar maleta"
+        message={
+          pendingDelete && (
+            <>
+              <p className="m-0">
+                Vas a eliminar la maleta <strong>#{pendingDelete.bagNumber}</strong>{' '}
+                (<span className="mono">{pendingDelete.weight.toFixed(1)} kg</span> ·{' '}
+                {pendingDelete.color}) del registro de este check-in.
+              </p>
+              <p className="m-0 mt-2 text-muted-small">
+                Las tarifas de las demás maletas se recalcularán automáticamente.
+                Esta acción no puede deshacerse.
+              </p>
+            </>
+          )
+        }
+      />
     </div>
   );
 }
@@ -599,7 +700,7 @@ function FeePreview({ nextBagIndex, nextBagFee, totalSoFar, totalAfter }) {
   );
 }
 
-function BagListItem({ bag, position, fee, isNew, onDelete }) {
+function BagListItem({ bag, position, fee, isNew, onDelete, deleteDisabled = false }) {
   return (
     <li className={'bag-list-item' + (isNew ? ' just-added' : '')}>
       <div className="bag-list-icon">
@@ -622,10 +723,11 @@ function BagListItem({ bag, position, fee, isNew, onDelete }) {
           type="button"
           className="btn-icon-danger"
           onClick={onDelete}
-          title="Eliminar maleta"
+          disabled={deleteDisabled}
+          title={deleteDisabled ? 'Vuelo cerrado: no se puede eliminar' : 'Eliminar maleta'}
           aria-label="Eliminar maleta"
         >
-          <i className="bi bi-trash"></i>
+          <i className={'bi ' + (deleteDisabled ? 'bi-lock-fill' : 'bi-trash')}></i>
         </button>
       </div>
     </li>
