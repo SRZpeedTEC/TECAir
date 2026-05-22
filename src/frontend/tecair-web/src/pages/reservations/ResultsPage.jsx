@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Nav                   from '../../components/Nav.js';
+import Nav                   from '../../components/Nav.jsx';
 import { searchItineraries } from '../../services/itineraryService.js';
 import { fmtCRC, fmtDateShort } from '../../utils/format.js';
 

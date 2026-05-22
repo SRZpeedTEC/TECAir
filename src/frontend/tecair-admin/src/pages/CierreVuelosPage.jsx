@@ -1,4 +1,4 @@
-import FlightTransitionPanel from '../components/FlightTransitionPanel.js';
+import FlightTransitionPanel from '../components/FlightTransitionPanel.jsx';
 
 // Cierre de Vuelos: lista vuelos OPEN próximos a salir y permite pasarlos a CLOSED.
 // Toda la lógica (qué vuelos listar y qué transiciones son válidas) vive en backend.

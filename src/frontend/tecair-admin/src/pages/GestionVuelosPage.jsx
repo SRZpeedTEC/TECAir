@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-import FlightForm     from '../components/FlightForm.js';
-import FlightListTab  from './FlightListTab.js';
+import FlightForm     from '../components/FlightForm.jsx';
+import FlightListTab  from './FlightListTab.jsx';
 import { createFlight } from '../services/flightService.js';
 
 // Página contenedora de Gestión de Vuelos.

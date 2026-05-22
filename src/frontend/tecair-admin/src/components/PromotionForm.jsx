@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import DatePicker from './DatePicker.js';
+import DatePicker from './DatePicker.jsx';
 
 const MESES_ABBR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Nav from '../components/Nav.js';
+import Nav from '../components/Nav.jsx';
 import { enrollAsStudent } from '../services/userService.js';
 
 // Página del programa de lealtad estudiantil.

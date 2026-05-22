@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import HomePage from './pages/HomePage.js';
-import ResultsPage from './pages/reservations/ResultsPage.js';
-import PaxPage from './pages/reservations/PaxPage.js';
-import ConfirmPage from './pages/reservations/ConfirmPage.js';
-import MisViajesPage from './pages/reservations/MisViajesPage.js';
-import StudentProgramPage from './pages/StudentProgramPage.js';
-import AuthModal from './components/AuthModal.js';
+import HomePage from './pages/HomePage.jsx';
+import ResultsPage from './pages/reservations/ResultsPage.jsx';
+import PaxPage from './pages/reservations/PaxPage.jsx';
+import ConfirmPage from './pages/reservations/ConfirmPage.jsx';
+import MisViajesPage from './pages/reservations/MisViajesPage.jsx';
+import StudentProgramPage from './pages/StudentProgramPage.jsx';
+import AuthModal from './components/AuthModal.jsx';
 
 const INITIAL_STATE = {
   from: null,

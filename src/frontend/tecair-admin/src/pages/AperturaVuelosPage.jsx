@@ -1,4 +1,4 @@
-import FlightTransitionPanel from '../components/FlightTransitionPanel.js';
+import FlightTransitionPanel from '../components/FlightTransitionPanel.jsx';
 
 // Apertura de Vuelos: lista vuelos UPCOMING próximos a salir y permite pasarlos a OPEN.
 // Toda la lógica (qué vuelos listar y qué transiciones son válidas) vive en backend.

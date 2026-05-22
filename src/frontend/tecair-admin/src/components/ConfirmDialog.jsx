@@ -1,4 +1,4 @@
-import Modal from './Modal.js';
+import Modal from './Modal.jsx';
 
 // Diálogo de confirmación binario (Cancelar / Confirmar). Útil para acciones destructivas.
 // Props:

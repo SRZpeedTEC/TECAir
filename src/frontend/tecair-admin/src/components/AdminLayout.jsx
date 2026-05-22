@@ -1,4 +1,4 @@
-import AdminSidebar from './AdminSidebar.js';
+import AdminSidebar from './AdminSidebar.jsx';
 
 // Wrapper que compone el shell completo: sidebar a la izquierda + área de contenido a la derecha.
 // Recibe el ítem activo, el callback de navegación, el ícono y título de la sección actual,

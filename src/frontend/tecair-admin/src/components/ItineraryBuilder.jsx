@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 
-import AirportTypeahead             from './AirportTypeahead.js';
+import AirportTypeahead             from './AirportTypeahead.jsx';
 import { listFlightsByDepartureAndState } from '../services/flightService.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');

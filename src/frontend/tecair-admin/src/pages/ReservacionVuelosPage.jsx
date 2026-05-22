@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import AirportTypeahead from '../components/AirportTypeahead.js';
-import DatePicker from '../components/DatePicker.js';
+import AirportTypeahead from '../components/AirportTypeahead.jsx';
+import DatePicker from '../components/DatePicker.jsx';
 import { searchPublicItinerariesWithPromotions } from '../services/itineraryService.js';
 import { createPassenger, mapGenderToCode } from '../services/passengerService.js';
 import { createReservation, generatePaymentReference } from '../services/reservationService.js';

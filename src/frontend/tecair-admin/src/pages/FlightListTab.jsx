@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
-import AirportTypeahead from '../components/AirportTypeahead.js';
-import FlightForm       from '../components/FlightForm.js';
-import Modal            from '../components/Modal.js';
-import ConfirmDialog    from '../components/ConfirmDialog.js';
+import AirportTypeahead from '../components/AirportTypeahead.jsx';
+import FlightForm       from '../components/FlightForm.jsx';
+import Modal            from '../components/Modal.jsx';
+import ConfirmDialog    from '../components/ConfirmDialog.jsx';
 import {
   listFlightsByDepartureAndState,
   updateFlight,

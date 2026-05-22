@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-import SeatIcon                from '../components/SeatIcon.js';
+import SeatIcon                from '../components/SeatIcon.jsx';
 import { searchReservations } from '../services/reservationService.js';
 import { getItineraryById }   from '../services/itineraryService.js';
 import { getAvailableSeats }  from '../services/seatService.js';

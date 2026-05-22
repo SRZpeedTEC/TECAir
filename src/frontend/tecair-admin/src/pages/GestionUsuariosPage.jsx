@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import ConfirmDialog from '../components/ConfirmDialog.js';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import {
   getUserByEmail,
   createUser,

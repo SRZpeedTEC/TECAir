@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-import PromotionListTab   from './PromotionListTab.js';
-import PromotionCreateTab from './PromotionCreateTab.js';
+import PromotionListTab   from './PromotionListTab.jsx';
+import PromotionCreateTab from './PromotionCreateTab.jsx';
 
 // Contenedor de Gestión de Promociones. Dos pestañas:
 //   • Consultar  → lista promociones existentes, editar y eliminar.

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
-import AirportTypeahead from './AirportTypeahead.js';
-import DatePicker       from './DatePicker.js';
+import AirportTypeahead from './AirportTypeahead.jsx';
+import DatePicker       from './DatePicker.jsx';
 import { searchPlanes } from '../services/planeService.js';
 import { getAirportConnection } from '../services/airportService.js';
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import Nav from '../../components/Nav.js';
-import Stepper from '../../components/Stepper.js';
-import SummarySide from '../../components/SummarySide.js';
+import Nav from '../../components/Nav.jsx';
+import Stepper from '../../components/Stepper.jsx';
+import SummarySide from '../../components/SummarySide.jsx';
 import { createPassenger, mapGenderToCode } from '../../services/passengerService.js';
 import { createReservation, generatePaymentReference } from '../../services/reservationService.js';
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import Nav     from '../../components/Nav.js';
-import Stepper from '../../components/Stepper.js';
-import SeatIcon from '../../components/SeatIcon.js';
+import Nav     from '../../components/Nav.jsx';
+import Stepper from '../../components/Stepper.jsx';
+import SeatIcon from '../../components/SeatIcon.jsx';
 
 // Configuración del avión: 30 filas × 6 asientos (disposición 3-3)
 const ROWS    = 30;

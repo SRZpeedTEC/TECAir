@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import Nav from '../../components/Nav.js';
-import TicketCard from '../../components/TicketCard.js';
+import Nav from '../../components/Nav.jsx';
+import TicketCard from '../../components/TicketCard.jsx';
 import { getReservationsByEmail } from '../../services/reservationService.js';
 import { getItineraryById } from '../../services/itineraryService.js';
 import { fmtTime, calcDuration } from '../../utils/format.js';

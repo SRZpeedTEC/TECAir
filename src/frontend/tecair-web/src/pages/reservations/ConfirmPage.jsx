@@ -1,4 +1,4 @@
-import Nav       from '../../components/Nav.js';
+import Nav       from '../../components/Nav.jsx';
 import { fmtCRC } from '../../utils/format.js';
 
 // Pantalla de confirmación final de la reserva

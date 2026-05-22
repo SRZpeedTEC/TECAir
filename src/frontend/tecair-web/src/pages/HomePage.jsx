@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import Nav             from '../components/Nav.js';
-import AirportField    from '../components/AirportField.js';
-import DateField       from '../components/DateField.js';
-import PaxField        from '../components/PaxField.js';
-import PromotionModal  from '../components/PromotionModal.js';
+import Nav             from '../components/Nav.jsx';
+import AirportField    from '../components/AirportField.jsx';
+import DateField       from '../components/DateField.jsx';
+import PaxField        from '../components/PaxField.jsx';
+import PromotionModal  from '../components/PromotionModal.jsx';
 import PROMOS          from '../data/promos.js';
 import AIRPORTS        from '../data/airports.js';
 import { fmtCRC }      from '../utils/format.js';

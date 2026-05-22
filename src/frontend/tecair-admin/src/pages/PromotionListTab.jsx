@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
-import Modal              from '../components/Modal.js';
-import ConfirmDialog      from '../components/ConfirmDialog.js';
-import PromotionForm      from '../components/PromotionForm.js';
+import Modal              from '../components/Modal.jsx';
+import ConfirmDialog      from '../components/ConfirmDialog.jsx';
+import PromotionForm      from '../components/PromotionForm.jsx';
 import {
   getAllPromotions,
   updatePromotion,

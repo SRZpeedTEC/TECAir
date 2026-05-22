@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
-import AirportTypeahead   from '../components/AirportTypeahead.js';
-import Modal              from '../components/Modal.js';
-import PromotionForm      from '../components/PromotionForm.js';
+import AirportTypeahead   from '../components/AirportTypeahead.jsx';
+import Modal              from '../components/Modal.jsx';
+import PromotionForm      from '../components/PromotionForm.jsx';
 import { searchItineraries } from '../services/itineraryService.js';
 import { createPromotion, getAllPromotions } from '../services/promotionService.js';
 

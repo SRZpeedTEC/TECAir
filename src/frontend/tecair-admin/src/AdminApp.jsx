@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 
-import AdminLayout from './components/AdminLayout.js';
+import AdminLayout from './components/AdminLayout.jsx';
 
-import AdminLoginPage from './pages/AdminLoginPage.js';
-import GestionUsuariosPage from './pages/GestionUsuariosPage.js';
-import ReservacionVuelosPage from './pages/ReservacionVuelosPage.js';
-import ChequeoPasajerosPage from './pages/ChequeoPasajerosPage.js';
-import GestionVuelosPage from './pages/GestionVuelosPage.js';
-import GestionItinerariosPage from './pages/GestionItinerariosPage.js';
-import GestionPromocionesPage from './pages/GestionPromocionesPage.js';
-import AperturaVuelosPage from './pages/AperturaVuelosPage.js';
-import CierreVuelosPage from './pages/CierreVuelosPage.js';
+import AdminLoginPage from './pages/AdminLoginPage.jsx';
+import GestionUsuariosPage from './pages/GestionUsuariosPage.jsx';
+import ReservacionVuelosPage from './pages/ReservacionVuelosPage.jsx';
+import ChequeoPasajerosPage from './pages/ChequeoPasajerosPage.jsx';
+import GestionVuelosPage from './pages/GestionVuelosPage.jsx';
+import GestionItinerariosPage from './pages/GestionItinerariosPage.jsx';
+import GestionPromocionesPage from './pages/GestionPromocionesPage.jsx';
+import AperturaVuelosPage from './pages/AperturaVuelosPage.jsx';
+import CierreVuelosPage from './pages/CierreVuelosPage.jsx';
 
 // Mapa de configuración de cada sección: título, ícono y componente de página.
 // Agregar aquí una nueva entrada es suficiente para extender la navegación.

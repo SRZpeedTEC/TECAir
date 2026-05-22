@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
-import AirportTypeahead   from '../components/AirportTypeahead.js';
-import Modal              from '../components/Modal.js';
-import ConfirmDialog      from '../components/ConfirmDialog.js';
-import ItineraryBuilder   from '../components/ItineraryBuilder.js';
+import AirportTypeahead   from '../components/AirportTypeahead.jsx';
+import Modal              from '../components/Modal.jsx';
+import ConfirmDialog      from '../components/ConfirmDialog.jsx';
+import ItineraryBuilder   from '../components/ItineraryBuilder.jsx';
 import {
   searchItineraries,
   getItineraryById,

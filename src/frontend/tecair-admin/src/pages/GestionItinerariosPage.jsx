@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-import ItineraryBuilder    from '../components/ItineraryBuilder.js';
-import ItineraryListTab    from './ItineraryListTab.js';
+import ItineraryBuilder    from '../components/ItineraryBuilder.jsx';
+import ItineraryListTab    from './ItineraryListTab.jsx';
 import { createItinerary } from '../services/itineraryService.js';
 
 // Contenedor de Gestión de Itinerarios. Dos pestañas:

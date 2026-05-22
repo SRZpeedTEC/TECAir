@@ -1,4 +1,4 @@
-import Barcode from './Barcode.js';
+import Barcode from './Barcode.jsx';
 import { STATUS_LABELS } from '../data/trips.js';
 
 // Tarjeta de embarque con diseño de tiquete físico: cabecera, ruta, stub con asiento y código de barras

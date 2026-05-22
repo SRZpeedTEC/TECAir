@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-import AirportTypeahead from './AirportTypeahead.js';
-import ConfirmDialog    from './ConfirmDialog.js';
+import AirportTypeahead from './AirportTypeahead.jsx';
+import ConfirmDialog    from './ConfirmDialog.jsx';
 import {
   searchFlightsByRoute,
   transitionFlightState,

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import CheckInFlow from './CheckInFlow.js';
-import BaggageFlow from './BaggageFlow.js';
+import CheckInFlow from './CheckInFlow.jsx';
+import BaggageFlow from './BaggageFlow.jsx';
 
 // Sub-secciones del proceso de check-in.
 // Control de Equipajes vive aquí porque solo aplica durante el check-in.
