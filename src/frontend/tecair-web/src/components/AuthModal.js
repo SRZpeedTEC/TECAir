@@ -161,12 +161,13 @@ export default function AuthModal({ show, onClose, onSuccess }) {
 
           {/* ── Formulario: Iniciar sesión ── */}
           {tab === 'login' && (
-            <form onSubmit={handleLogin}>
+            <form onSubmit={handleLogin} autoComplete="off">
               <FieldLabel>Correo electrónico</FieldLabel>
               <input
                 type="email" className="form-control mb-3" style={{ borderRadius: '10px' }}
                 placeholder="correo@ejemplo.com"
                 value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)}
+                autoComplete="off"
                 required
               />
 
@@ -175,6 +176,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
                 type="password" className="form-control mb-4" style={{ borderRadius: '10px' }}
                 placeholder="••••••••"
                 value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
+                autoComplete="new-password"
                 required
               />
 
@@ -197,7 +199,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
 
           {/* ── Formulario: Crear cuenta ── */}
           {tab === 'register' && (
-            <form onSubmit={handleRegister}>
+            <form onSubmit={handleRegister} autoComplete="off">
               <div className="row g-2 mb-3">
                 <div className="col-6">
                   <FieldLabel>Nombre</FieldLabel>
@@ -205,6 +207,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
                     type="text" className="form-control" style={{ borderRadius: '10px' }}
                     placeholder="Santiago"
                     value={name} onChange={(e) => setName(e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -214,6 +217,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
                     type="text" className="form-control" style={{ borderRadius: '10px' }}
                     placeholder="Robles"
                     value={lname} onChange={(e) => setLname(e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -224,6 +228,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
                 type="tel" className="form-control mb-3" style={{ borderRadius: '10px' }}
                 placeholder="8888-0000"
                 value={phone} onChange={(e) => setPhone(e.target.value)}
+                autoComplete="off"
                 required
               />
 
@@ -232,6 +237,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
                 type="email" className="form-control mb-3" style={{ borderRadius: '10px' }}
                 placeholder="correo@ejemplo.com"
                 value={regEmail} onChange={(e) => setRegEmail(e.target.value)}
+                autoComplete="off"
                 required
               />
 
@@ -240,6 +246,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
                 type="password" className="form-control mb-3" style={{ borderRadius: '10px' }}
                 placeholder="••••••••"
                 value={regPass} onChange={(e) => setRegPass(e.target.value)}
+                autoComplete="new-password"
                 required
               />
 

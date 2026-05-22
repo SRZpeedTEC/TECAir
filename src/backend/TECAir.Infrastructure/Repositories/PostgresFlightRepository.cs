@@ -26,45 +26,6 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return result is true;
     }
 
-    // airport_connection se consulta aqui desde los flujos internos de vuelos
-    // (calculo de llegada y millas al crear o actualizar). Para lectura publica
-    // existe GET /api/airports/connection que devuelve los mismos datos.
-    public async Task<AirportConnectionData?> GetAirportConnectionAsync(
-        string departureCode,
-        string arrivalCode,
-        CancellationToken cancellationToken = default)
-    {
-        const string sql = """
-            SELECT
-                departure_airport_code,
-                arrival_airport_code,
-                distance_miles,
-                estimated_duration_minutes
-            FROM tecair.airport_connection
-            WHERE
-                departure_airport_code = @departure_airport_code
-                AND arrival_airport_code = @arrival_airport_code;
-            """;
-
-        await using var command = dataSource.CreateCommand(sql);
-        command.Parameters.AddWithValue("departure_airport_code", departureCode.Trim().ToUpperInvariant());
-        command.Parameters.AddWithValue("arrival_airport_code", arrivalCode.Trim().ToUpperInvariant());
-
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        if (!await reader.ReadAsync(cancellationToken))
-        {
-            return null;
-        }
-
-        return new AirportConnectionData
-        {
-            DepartureAirportCode = reader.GetString(0),
-            ArrivalAirportCode = reader.GetString(1),
-            DistanceMiles = reader.GetInt32(2),
-            EstimatedDurationMinutes = reader.GetInt32(3)
-        };
-    }
-
     // Verifica que el avion exista para evitar insertar vuelos con una placa invalida.
     public async Task<bool> PlaneExistsAsync(string planePlate, CancellationToken cancellationToken = default)
     {

@@ -6,7 +6,9 @@ namespace TECAir.Application.Services;
 // El servicio concentra las reglas del caso de uso de vuelos.
 // No conoce HTTP ni SQL: valida la solicitud y pide al repositorio los datos
 // necesarios para tomar decisiones de negocio.
-public class FlightService(IFlightRepository flightRepository) : IFlightService
+public class FlightService(
+    IFlightRepository flightRepository,
+    IAirportRepository airportRepository) : IFlightService
 {
     // Crea un vuelo validando primero datos propios del request, referencias
     // existentes y conflictos de agenda de avion o puerta.
@@ -39,7 +41,7 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
                 $"Arrival airport '{normalizedRequest.AirportArrivesToId}' was not found.");
         }
 
-        var airportConnection = await flightRepository.GetAirportConnectionAsync(
+        var airportConnection = await airportRepository.GetConnectionAsync(
             normalizedRequest.AirportDepartsFromId,
             normalizedRequest.AirportArrivesToId,
             cancellationToken);
@@ -49,8 +51,6 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
                 $"There is no configured airport connection for {normalizedRequest.AirportDepartsFromId} to {normalizedRequest.AirportArrivesToId}.");
         }
 
-        // airport_connection es una tabla interna de referencia: los endpoints de vuelos
-        // calculan la llegada y las millas sin exponer CRUD publico para esa tabla.
         var calculatedArrivalDatetime = normalizedRequest.DepartureDatetime
             .AddMinutes(airportConnection.EstimatedDurationMinutes);
         var calculatedMiles = airportConnection.DistanceMiles;
@@ -198,7 +198,7 @@ public class FlightService(IFlightRepository flightRepository) : IFlightService
                 $"Arrival airport '{normalizedRequest.AirportArrivesToId}' was not found.");
         }
 
-        var airportConnection = await flightRepository.GetAirportConnectionAsync(
+        var airportConnection = await airportRepository.GetConnectionAsync(
             normalizedRequest.AirportDepartsFromId,
             normalizedRequest.AirportArrivesToId,
             cancellationToken);

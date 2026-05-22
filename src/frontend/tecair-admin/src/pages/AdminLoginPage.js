@@ -78,7 +78,7 @@ export default function AdminLoginPage({ onLogin }) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} noValidate autoComplete="off">
           <div className="mb-3">
             <label htmlFor="admin-login-email" className="form-label">
               Correo electronico
@@ -90,7 +90,7 @@ export default function AdminLoginPage({ onLogin }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@tecair.com"
-              autoComplete="username"
+              autoComplete="off"
               autoFocus
               required
             />
@@ -107,7 +107,7 @@ export default function AdminLoginPage({ onLogin }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              autoComplete="current-password"
+              autoComplete="new-password"
               required
             />
           </div>
