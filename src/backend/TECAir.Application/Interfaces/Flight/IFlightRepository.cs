@@ -5,6 +5,12 @@ namespace TECAir.Application.Interfaces;
 // Contrato que aisla a la aplicacion de los detalles SQL de vuelos.
 public interface IFlightRepository
 {
+    // Lista todos los vuelos con los campos principales de flight.
+    Task<IReadOnlyList<FlightResponse>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    // Devuelve un vuelo por id o null si no existe.
+    Task<FlightResponse?> GetByIdAsync(int flightId, CancellationToken cancellationToken = default);
+
     // Verifica si existe un aeropuerto por codigo.
     Task<bool> AirportExistsAsync(string airportCode, CancellationToken cancellationToken = default);
 
@@ -20,6 +26,13 @@ public interface IFlightRepository
 
     // Detecta si una puerta ya esta ocupada en la misma salida.
     Task<bool> GateHasDepartureConflictAsync(
+        string airportDepartsFromId,
+        string gate,
+        DateTime departureDatetime,
+        CancellationToken cancellationToken = default);
+
+    // Detecta si la puerta tuvo otra salida dentro de la hora previa.
+    Task<bool> GateHasDepartureWithinPreviousHourAsync(
         string airportDepartsFromId,
         string gate,
         DateTime departureDatetime,
@@ -70,6 +83,14 @@ public interface IFlightRepository
 
     // Detecta conflicto de puerta al actualizar, ignorando el vuelo actual.
     Task<bool> GateHasDepartureConflictExceptAsync(
+        int excludedFlightId,
+        string airportDepartsFromId,
+        string gate,
+        DateTime departureDatetime,
+        CancellationToken cancellationToken = default);
+
+    // Detecta margen de puerta al actualizar, ignorando el vuelo actual.
+    Task<bool> GateHasDepartureWithinPreviousHourExceptAsync(
         int excludedFlightId,
         string airportDepartsFromId,
         string gate,

@@ -1,8 +1,9 @@
 -- TECAir - Script de poblacion inicial
 -- PostgreSQL
 --
--- Este script inserta datos de prueba suficientes para probar:
--- busqueda de vuelos, reservaciones, promociones, check-in y maletas.
+-- Este script inserta datos base mínimos para una instalación casi final:
+-- usuario administrador, aeropuertos/conexiones, aviones/asientos,
+-- vuelos, itinerarios y promociones.
 --
 -- Requisito previo:
 -- Ejecutar primero 01_create_schema.sql.
@@ -31,44 +32,19 @@ TRUNCATE TABLE
 RESTART IDENTITY CASCADE;
 
 -- =========================
--- Usuarios y estudiantes
+-- Usuarios
 -- =========================
 
--- Estos usuarios permiten probar clientes normales, estudiantes, funcionarios y administradores.
--- Todos usan la contrasena de prueba "123456", almacenada como BCrypt para no sembrar passwords planos.
-INSERT INTO app_user (email, password_hash, name,  last_name, phone_number, role)
+-- Usuario administrador inicial.
+-- Password de prueba: "123456" usando BCrypt.
+INSERT INTO app_user (email, password_hash, name, last_name, phone_number, role)
 VALUES
-    ('ana.rojas@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Ana', 'Rojas', '8888-1001', 'CLIENT'),
-    ('carlos.mora@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Carlos', 'Mora', '8888-1002', 'CLIENT'),
-    ('sofia.salas@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Sofia', 'Salas', '8888-1003', 'CLIENT'),
-    ('marco.aeropuerto@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Marco', 'Vargas', '8888-2001', 'CLIENT'),
     ('admin@tecair.com', '$2a$11$YV5Wr3pS.UI7h5ODf2oFWupoKbZIXTKHEMWLvjBJSgMSzaRCvzFfO', 'Laura', 'Admin', '8888-3001', 'ADMIN');
-
--- Estos registros identifican cuales usuarios son estudiantes y acumulan millas.
-INSERT INTO student (user_email, user_carnet, college_name, miles)
-VALUES
-    ('ana.rojas@tecair.com', '2026123456', 'Instituto Tecnologico de Costa Rica', 2500),
-    ('sofia.salas@tecair.com', '2026987654', 'Universidad de Costa Rica', 1200);
-
--- =========================
--- Pasajeros
--- =========================
-
--- Estos pasajeros permiten separar quien compra de quien viaja.
--- En algunos casos el pasajero es el mismo usuario; en otros, el usuario reserva para otra persona.
-INSERT INTO passenger (passport_id, birthday, gender, name, Lname)
-VALUES
-    ('CR-A1234567', '2001-04-18', 'FEMALE', 'Ana', 'Rojas'),
-    ('CR-C7654321', '1998-09-27', 'MALE', 'Carlos', 'Mora'),
-    ('CR-S1122334', '2003-01-12', 'FEMALE', 'Sofia', 'Salas'),
-    ('CR-M4455667', '1995-07-03', 'MALE', 'Marco', 'Vargas'),
-    ('PA-L9988776', '1988-11-22', 'OTHER', 'Lucia', 'Pereira');
 
 -- =========================
 -- Aeropuertos
 -- =========================
 
--- Estos aeropuertos permiten probar busquedas por origen y destino en varios paises.
 INSERT INTO airport (code, airport_name, city, country)
 VALUES
     ('SJO', 'Aeropuerto Internacional Juan Santamaria', 'San Jose', 'Costa Rica'),
@@ -262,7 +238,7 @@ ORDER BY p.plate, seat_rows.row_number, letters.seat_letter;
 -- Vuelos
 -- =========================
 
--- Estos vuelos permiten probar rutas directas y rutas con escala.
+-- Muestra pequeña de vuelos para probar rutas directas y rutas con escala.
 INSERT INTO flight (
     flight_id,
     plane_plate,
@@ -287,13 +263,10 @@ SELECT
     airport_connection.distance_miles
 FROM (
     VALUES
-        (1, 'TI-TEC01', 'SJO', 'PTY', 'OPEN',   'A1', '2026-06-10 08:00:00'::TIMESTAMP),
-        (2, 'TI-TEC02', 'PTY', 'BOG', 'OPEN',   'B4', '2026-06-10 11:00:00'::TIMESTAMP),
-        (3, 'TI-TEC03', 'SJO', 'LIR', 'OPEN',   'A3', '2026-06-11 07:30:00'::TIMESTAMP),
-        (4, 'TI-TEC01', 'SJO', 'MIA', 'OPEN',   'A5', '2026-06-12 10:00:00'::TIMESTAMP),
-        (5, 'TI-TEC02', 'MIA', 'MEX', 'OPEN',   'C2', '2026-06-13 09:00:00'::TIMESTAMP),
-        (6, 'TI-TEC03', 'LIR', 'SJO', 'CLOSED', 'L1', '2026-06-09 18:00:00'::TIMESTAMP),
-        (7, 'TI-TEC03', 'LIR', 'MEX', 'UPCOMING', 'L2', '2026-06-15 08:00:00'::TIMESTAMP)
+        (1, 'TI-TEC01', 'SJO', 'PTY', 'OPEN',     'A1', '2026-06-10 08:00:00'::TIMESTAMP),
+        (2, 'TI-TEC02', 'PTY', 'BOG', 'OPEN',     'B4', '2026-06-10 11:00:00'::TIMESTAMP),
+        (3, 'TI-TEC03', 'BOG', 'MEX', 'UPCOMING', 'C2', '2026-06-10 15:00:00'::TIMESTAMP),
+        (4, 'TI-TEC04', 'SJO', 'MIA', 'OPEN',     'A5', '2026-06-12 10:00:00'::TIMESTAMP)
 ) AS seeded_flights (
     flight_id,
     plane_plate,
@@ -307,22 +280,24 @@ JOIN airport_connection
     ON airport_connection.departure_airport_code = seeded_flights.airport_departs_from_id
     AND airport_connection.arrival_airport_code = seeded_flights.airport_arrives_to_id
 ORDER BY seeded_flights.flight_id;
+
 -- =========================
 -- Itinerarios o rutas vendibles
 -- =========================
 
--- Estos itinerarios representan las rutas que el cliente puede reservar.
--- Un itinerario directo tiene un vuelo; un itinerario con escala tiene varios vuelos.
+-- Cuatro itinerarios base:
+-- 1 directo SJO -> PTY
+-- 2 con escala SJO -> PTY -> BOG
+-- 3 directo SJO -> MIA
+-- 4 con escala PTY -> BOG -> MEX
 INSERT INTO itinerary (itinerary_id, price, state) OVERRIDING SYSTEM VALUE
 VALUES
     (1, 180000.00, 'EDITION'),
     (2, 420000.00, 'EDITION'),
-    (3, 95000.00, 'EDITION'),
-    (4, 350000.00, 'EDITION'),
-    (5, 510000.00, 'EDITION');
+    (3, 350000.00, 'EDITION'),
+    (4, 510000.00, 'EDITION');
 
--- Esto relaciona cada itinerario con sus vuelos.
--- flight_order indica el orden de los vuelos dentro de la ruta.
+-- Relaciona cada itinerario con sus vuelos.
 INSERT INTO flight_in_itinerary (
     itinerary_flight_id,
     itinerary_id,
@@ -334,16 +309,15 @@ VALUES
     (1, 1, 1, 1),
     (2, 2, 1, 1),
     (3, 2, 2, 2),
-    (4, 3, 3, 1),
-    (5, 4, 4, 1),
-    (6, 5, 4, 1),
-    (7, 5, 5, 2);
+    (4, 3, 4, 1),
+    (5, 4, 2, 1),
+    (6, 4, 3, 2);
 
 -- =========================
 -- Promociones
 -- =========================
 
--- Estas promociones permiten probar descuentos activos, futuros y vencidos.
+-- Dos promociones base para probar itinerarios con descuento.
 INSERT INTO promotion (
     promotion_code,
     itinerary_id,
@@ -354,79 +328,12 @@ INSERT INTO promotion (
     promo_price
 )
 VALUES
-    ('PROMO-PANAMA-15', 1, 'https://example.com/promos/panama.jpg', '2026-05-01', '2026-06-30', 15.00, 153),
-    ('PROMO-LIBERIA-20', 3, 'https://example.com/promos/liberia.jpg', '2026-05-01', '2026-05-31', 20.00, 76),
-    ('PROMO-MIAMI-10', 4, 'https://example.com/promos/miami.jpg', '2026-06-01', '2026-07-31', 10.00, 315),
-    ('PROMO-BOGOTA-EXP', 2, NULL, '2026-03-01', '2026-04-30', 25.00, 315);
+    ('PROMO-BOGOTA-15', 2, 'https://example.com/promos/bogota.jpg', '2026-05-01', '2026-06-30', 15.00, 357000),
+    ('PROMO-MIAMI-10', 3, 'https://example.com/promos/miami.jpg', '2026-06-01', '2026-07-31', 10.00, 315000);
 
 -- =========================
--- Reservaciones
+-- Secuencias
 -- =========================
-
--- Estas reservaciones permiten probar pagos realizados y check-in.
-INSERT INTO reservation (
-    reservation_id,
-    itinerary_id,
-    user_email,
-    state,
-    payment_reference,
-    passenger_id
-)
-OVERRIDING SYSTEM VALUE
-VALUES
-    (1, 1, 'ana.rojas@tecair.com', 'PAID',    'PAY-TECAIR-0001', 'CR-A1234567'),
-    (2, 3, 'carlos.mora@tecair.com', 'CHECKED', 'PAY-TECAIR-0002', 'CR-C7654321'),
-    (3, 4, 'sofia.salas@tecair.com', 'CHECKED', 'PAY-TECAIR-0003', 'CR-S1122334'),
-    (4, 2, 'ana.rojas@tecair.com', 'PAID',    'PAY-TECAIR-0004', 'PA-L9988776'),
-    (5, 5, 'carlos.mora@tecair.com', 'CHECKED', 'PAY-TECAIR-0005', 'CR-M4455667');
-
--- =========================
--- Check-in
--- =========================
-
--- Estos check-ins asignan asientos a pasajeros ya reservados.
--- Sirven para probar pase de abordar, asiento, vuelo y puerta.
-INSERT INTO check_in (
-    reservation_id,
-    itinerary_flight_id,
-    plane_plate,
-    seat_number
-)
-VALUES
-    (2, 4, 'TI-TEC03', '1A'),
-    (3, 5, 'TI-TEC01', '1A'),
-    (5, 6, 'TI-TEC01', '1B'),
-    (5, 7, 'TI-TEC02', '2A');
-
--- =========================
--- Maletas
--- =========================
-
--- Estas maletas permiten probar diferentes cobros:
--- CHK-0001 tiene 1 maleta: adicional esperado 0.
--- CHK-0002 tiene 2 maletas: adicional esperado 50.
--- CHK-0003 tiene 3 maletas: adicional esperado 125.
--- CHK-0004 tiene 5 maletas: adicional esperado 275.
-INSERT INTO baggage (
-    confirmation_number,
-    weight,
-    color
-)
-VALUES
-    (1, 18.50, 'Negro'),
-
-    (2, 20.00, 'Azul'),
-    (2, 17.25, 'Rojo'),
-
-    (3, 19.10, 'Gris'),
-    (3, 21.00, 'Negro'),
-    (3, 16.75, 'Verde'),
-
-    (4, 18.20, 'Negro'),
-    (4, 22.00, 'Azul'),
-    (4, 15.40, 'Rojo'),
-    (4, 19.90, 'Morado'),
-    (4, 14.80, 'Gris');
 
 -- Esto ajusta las secuencias internas despues de insertar IDs fijos.
 -- Evita conflictos si luego se insertan nuevos registros sin especificar ID.

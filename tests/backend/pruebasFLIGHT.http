@@ -463,3 +463,228 @@ Accept: application/json
 {
   "state": "OPEN"
 }
+
+
+### 37. Obtener todos los vuelos
+# Esperado: 200 OK.
+GET {{baseUrl}}/api/flights
+Accept: application/json
+
+
+### 38. Obtener vuelo por id
+# Esperado: 200 OK.
+GET {{baseUrl}}/api/flights/1
+Accept: application/json
+
+
+### 39. Obtener vuelo inexistente por id
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/api/flights/9999
+Accept: application/json
+
+
+### ============================================================
+### Pruebas de apertura, traslapes y reglas de puerta
+### ============================================================
+
+### 40. Preparar vuelo futuro UPCOMING para validar apertura anticipada
+# @name crearVueloFuturoParaApertura
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC20",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "UPCOMING",
+  "gate": "OP1",
+  "departureDatetime": "2099-05-22T09:00:00"
+}
+
+
+### 41. No se puede abrir un vuelo antes de su fecha de salida
+# Esperado: 400 Bad Request con:
+# "A flight cannot be opened before its departure date."
+PATCH {{baseUrl}}/api/flights/{{crearVueloFuturoParaApertura.response.body.$.flightId}}/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "OPEN"
+}
+
+
+### 42. Preparar vuelo UPCOMING con salida el dia actual para apertura valida
+# @name crearVueloHoyParaApertura
+# Esperado: 201 Created.
+# Esta prueba asume fecha local del sistema 2026-05-22.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC21",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "UPCOMING",
+  "gate": "OP2",
+  "departureDatetime": "2026-05-22T23:00:00"
+}
+
+
+### 43. Se puede abrir un vuelo el mismo dia de salida
+# Esperado: 200 OK con state = OPEN.
+PATCH {{baseUrl}}/api/flights/{{crearVueloHoyParaApertura.response.body.$.flightId}}/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "OPEN"
+}
+
+
+### 44. Crear vuelo base para pruebas de margen de puerta
+# @name crearVueloBaseMargenPuerta
+# Esperado: 201 Created.
+# Reserva la puerta GMR1 en SJO a las 10:00.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC22",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "UPCOMING",
+  "gate": "GMR1",
+  "departureDatetime": "2031-01-10T10:00:00"
+}
+
+
+### 45. Crear vuelo con misma puerta dentro del margen de 1 hora
+# Esperado: 409 Conflict con:
+# "The selected gate has another flight scheduled within 1 hour before this departure."
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC23",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "UPCOMING",
+  "gate": "gmr1",
+  "departureDatetime": "2031-01-10T10:30:00"
+}
+
+
+### 46. Crear vuelo destino para prueba de actualizacion con margen de puerta
+# @name crearVueloParaActualizarMargenPuerta
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC24",
+  "airportDepartsFromId": "LIR",
+  "airportArrivesToId": "MEX",
+  "state": "UPCOMING",
+  "gate": "GMR2",
+  "departureDatetime": "2031-01-11T12:00:00"
+}
+
+
+### 47. Actualizar vuelo usando una puerta dentro del margen de 1 hora
+# Esperado: 409 Conflict.
+PUT {{baseUrl}}/api/flights/{{crearVueloParaActualizarMargenPuerta.response.body.$.flightId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC24",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "UPCOMING",
+  "gate": "GMR1",
+  "departureDatetime": "2031-01-10T10:45:00"
+}
+
+
+### 48. Crear vuelo valido sin traslape de avion ni conflicto de puerta
+# @name crearVueloValidoSinConflictos
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC25",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "UPCOMING",
+  "gate": "GMR3",
+  "departureDatetime": "2031-01-10T12:00:00"
+}
+
+
+### 49. Actualizar vuelo valido sin traslape de avion ni conflicto de puerta
+# Esperado: 200 OK.
+PUT {{baseUrl}}/api/flights/{{crearVueloValidoSinConflictos.response.body.$.flightId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC25",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "MIA",
+  "state": "UPCOMING",
+  "gate": "GMR4",
+  "departureDatetime": "2031-01-10T14:30:00"
+}
+
+
+### 50. Crear vuelo con mismo avion y horario traslapado en seccion nueva
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC25",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "UPCOMING",
+  "gate": "GMR5",
+  "departureDatetime": "2031-01-10T15:00:00"
+}
+
+
+### 51. Crear vuelo con misma puerta y misma hora de salida en seccion nueva
+# Esperado: 409 Conflict por conflicto exacto de puerta.
+POST {{baseUrl}}/api/flights
+Content-Type: application/json
+Accept: application/json
+
+{
+  "planePlate": "TI-TEC26",
+  "airportDepartsFromId": "SJO",
+  "airportArrivesToId": "LIR",
+  "state": "UPCOMING",
+  "gate": "GMR4",
+  "departureDatetime": "2031-01-10T14:30:00"
+}
+
+
+### 52. Buscar vuelos UPCOMING despues de las pruebas nuevas
+# Esperado: 200 OK.
+GET {{baseUrl}}/api/flights/by-departure?departureCode=SJO&state=UPCOMING
+Accept: application/json
+
+
+### 53. Buscar vuelos por ruta despues de las pruebas nuevas
+# Esperado: 200 OK.
+GET {{baseUrl}}/api/flights/search?state=UPCOMING&departureCode=SJO&arrivalCode=MIA
+Accept: application/json
