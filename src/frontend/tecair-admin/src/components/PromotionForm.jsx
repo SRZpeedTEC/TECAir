@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import DatePicker from './DatePicker.jsx';
 
 const MESES_ABBR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -47,9 +47,7 @@ function fmtShortDate(iso) {
 // Props:
 //   mode             — 'create' | 'edit'
 //   itinerary        — { itineraryId, originCode, destinationCode, price,
-//                        departureDatetime, arrivalDatetime } (los dos últimos
-//                        opcionales pero recomendados: alimentan timeline y
-//                        validación de fin <= día previo al vuelo).
+//                        departureDatetime, arrivalDatetime }
 //   initialValues    — para mode='edit', valores iniciales de la promoción
 //   onSubmit         — async (payload) => void.
 //   onCancel         — () => void.
@@ -70,8 +68,15 @@ export default function PromotionForm({
   const [promoPrice,    setPromoPrice]    = useState(
     initialValues?.promoPrice != null ? String(initialValues.promoPrice) : ''
   );
+  // discountStr: campo de porcentaje bidireccional con promoPrice.
+  const [discountStr,   setDiscountStr]   = useState(
+    initialValues?.discountPercent != null ? String(initialValues.discountPercent) : ''
+  );
   const [imageUrl,      setImageUrl]      = useState(initialValues?.imageUrl ?? '');
-  const [touched, setTouched] = useState(false);
+  // imageMode: 'url' | 'file' — controla el modo de entrada de imagen.
+  const [imageMode,     setImageMode]     = useState('url');
+  const [touched,       setTouched]       = useState(false);
+  const fileInputRef = useRef(null);
 
   const basePrice    = Number(itinerary?.price ?? 0);
   const departureISO = itinerary?.departureDatetime ?? null;
@@ -80,7 +85,6 @@ export default function PromotionForm({
   const today        = dateOnly(new Date());
   const flightDay    = departureISO ? dateOnly(new Date(departureISO)) : null;
   const flightISO    = flightDay ? toISODate(flightDay) : null;
-  // Último día permitido como fin de promo = día anterior al vuelo.
   const maxEndDay    = flightDay ? new Date(flightDay.getTime() - 86400000) : null;
   const maxEndISO    = maxEndDay ? toISODate(maxEndDay) : null;
 
@@ -119,12 +123,19 @@ export default function PromotionForm({
   } else if (basePrice > 0 && Number(promoPrice) >= basePrice) {
     errors.promoPrice = `Debe ser menor al precio base (${fmtPriceCRC(basePrice)}).`;
   }
-  if (imageUrl && !/^https?:\/\//i.test(imageUrl.trim())) {
+  // Acepta URLs http/https y data URLs (imágenes desde archivo).
+  if (imageUrl && !imageUrl.startsWith('data:image/') && !/^https?:\/\//i.test(imageUrl.trim())) {
     errors.imageUrl = 'La URL debe comenzar con http:// o https://.';
   }
   const hasErrors = Object.keys(errors).length > 0;
 
-  // ─── Presets de período (anclados al día previo al vuelo) ───
+  // Cambia la fecha de inicio y descarta la de fin si quedara anterior al nuevo inicio.
+  const handleStartDateChange = (v) => {
+    setStartDate(v);
+    if (endDate && v && endDate < v) setEndDate('');
+  };
+
+  // ─── Presets de período ───
   const applyPeriod = (windowDays) => {
     if (!maxEndDay) return;
     const end = maxEndDay;
@@ -145,6 +156,46 @@ export default function PromotionForm({
   const applyDiscount = (pct) => {
     if (!basePrice) return;
     setPromoPrice(String(Math.round(basePrice * (1 - pct / 100))));
+    setDiscountStr(String(pct));
+  };
+
+  // Actualiza precio; sincroniza discountStr derivado.
+  const handlePriceChange = (v) => {
+    setPromoPrice(v);
+    if (basePrice > 0) {
+      const p = Number(v);
+      if (Number.isFinite(p) && p >= 0 && p < basePrice) {
+        setDiscountStr(((1 - p / basePrice) * 100).toFixed(1));
+      } else {
+        setDiscountStr('');
+      }
+    }
+  };
+
+  // Actualiza porcentaje; calcula y sincroniza promoPrice.
+  const handleDiscountChange = (v) => {
+    const clamped = Number(v) > 100 ? '100' : v;
+    setDiscountStr(clamped);
+    const pct = Number(clamped);
+    if (basePrice > 0 && Number.isFinite(pct) && pct > 0 && pct <= 100) {
+      setPromoPrice(String(Math.round(basePrice * (1 - pct / 100))));
+    }
+  };
+
+  // Lee el archivo y almacena como data URL para vista previa y envío.
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setImageUrl(ev.target.result ?? '');
+    reader.readAsDataURL(file);
+  };
+
+  // Cambia el modo de imagen y limpia el valor actual.
+  const switchImageMode = (mode) => {
+    setImageMode(mode);
+    setImageUrl('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = async (e) => {
@@ -168,8 +219,6 @@ export default function PromotionForm({
   const show = (field) => touched && errors[field];
 
   // ─── Timeline ───
-  // El "track" representa el rango [hoy, fechaVuelo]. Si las fechas elegidas
-  // caen fuera (p. ej. al editar una promo ya iniciada), el bar se recorta.
   const renderTimeline = () => {
     if (!flightDay) return null;
     if (daysToFlight <= 0) {
@@ -311,8 +360,9 @@ export default function PromotionForm({
               id="promo-start"
               label="Inicio"
               value={startDate}
-              onChange={setStartDate}
+              onChange={handleStartDateChange}
               invalid={!!show('startDate')}
+              minDate={today}
             />
             {show('startDate') && <div className="invalid-feedback d-block">{errors.startDate}</div>}
           </div>
@@ -323,6 +373,7 @@ export default function PromotionForm({
               value={endDate}
               onChange={setEndDate}
               invalid={!!show('endDate')}
+              minDate={startDay ?? today}
             />
             {show('endDate') && <div className="invalid-feedback d-block">{errors.endDate}</div>}
             {!show('endDate') && maxEndISO && (
@@ -366,9 +417,9 @@ export default function PromotionForm({
           </div>
         )}
 
-        <div className="row g-3">
-          {mode === 'create' && (
-            <div className="col-md-6">
+        {mode === 'create' && (
+          <div className="row g-3">
+            <div className="col-12">
               <label htmlFor="promo-code" className="form-label">Código de promoción</label>
               <input
                 id="promo-code"
@@ -382,17 +433,20 @@ export default function PromotionForm({
               />
               {show('promotionCode') && <div className="invalid-feedback d-block">{errors.promotionCode}</div>}
             </div>
-          )}
-          <div className={mode === 'create' ? 'col-md-6' : 'col-md-12'}>
-            <label htmlFor="promo-price" className="form-label">Precio promocional (CRC)</label>
+          </div>
+        )}
+
+        <div className="row g-3">
+          <div className="col-md-6">
+            <label htmlFor="promo-price" className="form-label">Precio (CRC)</label>
             <input
               id="promo-price"
               type="number"
               className={'form-control' + (show('promoPrice') ? ' is-invalid' : '')}
               min={0}
-              step={1}
+              step={1000}
               value={promoPrice}
-              onChange={(e) => setPromoPrice(e.target.value)}
+              onChange={(e) => handlePriceChange(e.target.value)}
               placeholder="0"
             />
             {show('promoPrice') && <div className="invalid-feedback d-block">{errors.promoPrice}</div>}
@@ -400,6 +454,27 @@ export default function PromotionForm({
               <div className="form-text">
                 Ahorro vs. base: <strong>{fmtPriceCRC(basePrice - Number(promoPrice))}</strong>
               </div>
+            )}
+          </div>
+          <div className="col-md-6">
+            <label htmlFor="promo-discount" className="form-label">% de descuento</label>
+            <div className="input-group">
+              <input
+                id="promo-discount"
+                type="number"
+                className="form-control"
+                min={0}
+                max={100}
+                step={0.1}
+                value={discountStr}
+                onChange={(e) => handleDiscountChange(e.target.value)}
+                placeholder="0"
+                disabled={!basePrice}
+              />
+              <span className="input-group-text">%</span>
+            </div>
+            {!basePrice && (
+              <div className="form-text">Requiere precio base del itinerario.</div>
             )}
           </div>
         </div>
@@ -412,17 +487,62 @@ export default function PromotionForm({
             <i className="bi bi-image me-2"></i>Imagen
             <span className="promo-form-section-title-optional">(opcional)</span>
           </h4>
+          <div className="promo-img-mode-tabs">
+            <button
+              type="button"
+              className={'promo-img-mode-tab' + (imageMode === 'url' ? ' active' : '')}
+              onClick={() => switchImageMode('url')}
+            >
+              <i className="bi bi-link-45deg me-1"></i>URL
+            </button>
+            <button
+              type="button"
+              className={'promo-img-mode-tab' + (imageMode === 'file' ? ' active' : '')}
+              onClick={() => switchImageMode('file')}
+            >
+              <i className="bi bi-folder2-open me-1"></i>Archivo
+            </button>
+          </div>
         </header>
-        <input
-          id="promo-img"
-          type="url"
-          className={'form-control' + (show('imageUrl') ? ' is-invalid' : '')}
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://…"
-          autoComplete="off"
-        />
-        {show('imageUrl') && <div className="invalid-feedback d-block">{errors.imageUrl}</div>}
+
+        {imageMode === 'url' ? (
+          <>
+            <input
+              id="promo-img"
+              type="url"
+              className={'form-control' + (show('imageUrl') ? ' is-invalid' : '')}
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://…"
+              autoComplete="off"
+            />
+            {show('imageUrl') && <div className="invalid-feedback d-block">{errors.imageUrl}</div>}
+          </>
+        ) : (
+          <div className="promo-img-file-area">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="d-none"
+              onChange={handleFileSelect}
+            />
+            <button
+              type="button"
+              className="promo-img-file-btn"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <i className="bi bi-folder2-open me-2"></i>
+              {imageUrl ? 'Cambiar imagen' : 'Elegir imagen desde equipo'}
+            </button>
+            {!imageUrl && (
+              <p className="form-text m-0">
+                La imagen se lee localmente y se almacena como referencia en la base de datos.
+              </p>
+            )}
+          </div>
+        )}
+
         {imageUrl && !errors.imageUrl && (
           <div className="promo-form-img-preview mt-2">
             <img src={imageUrl} alt="Vista previa" onError={(e) => { e.target.style.display = 'none'; }} />

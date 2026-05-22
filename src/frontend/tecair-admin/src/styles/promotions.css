@@ -405,3 +405,67 @@
 .promo-img-link:hover {
   text-decoration: underline;
 }
+
+/* ─── Tabs URL / Archivo en la sección de imagen ─── */
+.promo-img-mode-tabs {
+  display: flex;
+  border: 1px solid var(--burgundy-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.promo-img-mode-tab {
+  flex: 1;
+  background: #fff;
+  border: none;
+  padding: 4px 12px;
+  font-size: 0.82rem;
+  color: #777;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.promo-img-mode-tab:not(:last-child) {
+  border-right: 1px solid var(--burgundy-line);
+}
+
+.promo-img-mode-tab.active {
+  background: var(--burgundy);
+  color: #fff;
+}
+
+.promo-img-mode-tab:not(.active):hover {
+  background: var(--burgundy-soft);
+  color: var(--burgundy);
+}
+
+/* ─── Área de selección de archivo ─── */
+.promo-img-file-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.promo-img-file-btn {
+  display: inline-flex;
+  align-items: center;
+  border: 1px dashed var(--burgundy-line);
+  background: var(--burgundy-soft);
+  color: var(--burgundy);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+  width: fit-content;
+}
+
+.promo-img-file-btn:hover {
+  border-color: var(--burgundy);
+  background: rgba(91, 25, 54, 0.12);
+}
