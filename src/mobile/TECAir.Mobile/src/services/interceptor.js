@@ -1,13 +1,14 @@
 import {
-  syncItineraries, syncReservations, syncAirports,
+  syncItineraries, syncReservations,
   getItinerariesOffline, getItineraryByIdOffline,
-  searchAirportsOffline, getReservationsOffline,
+  getReservationsOffline,
 } from './sync.js';
 
+// Airport search is intentionally NOT intercepted: airportService.js already has
+// a local fallback (airports.js) that handles both online and offline cases.
 const PATTERNS = {
   itinerariesAll:     /\/api\/itineraries\/public\/with-promotions/,
   itineraryById:      /\/api\/itineraries\/(\d+)$/,
-  airportsSearch:     /\/api\/airports\/search/,
   reservationsByUser: /\/api\/reservations\/user\/(.+)/,
 };
 
@@ -67,22 +68,6 @@ export function installFetchInterceptor() {
         return res;
       }
       const cached = await getItineraryByIdOffline(id);
-      return cached ? jsonResponse(cached) : (res ?? Promise.reject(new Error('Sin conexión')));
-    }
-
-    // GET /api/airports/search?term=...
-    if (PATTERNS.airportsSearch.test(url)) {
-      const term = new URL(url, 'http://localhost').searchParams.get('term') ?? '';
-      if (!isOnline) {
-        const cached = await searchAirportsOffline(term);
-        return cached ? jsonResponse(cached) : originalFetch(input, init);
-      }
-      const res = await originalFetch(input, init).catch(() => null);
-      if (res?.ok) {
-        res.clone().json().then(syncAirports).catch(() => {});
-        return res;
-      }
-      const cached = await searchAirportsOffline(term);
       return cached ? jsonResponse(cached) : (res ?? Promise.reject(new Error('Sin conexión')));
     }
 
