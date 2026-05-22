@@ -1,0 +1,42 @@
+/* ─── Variables de color de la marca AirTEC ─── */
+:root {
+  --burgundy:      #5b1936; /* color principal: vino tinto */
+  --burgundy-deep: #3d0f24; /* variante oscura para hovers */
+  --burgundy-soft: #f7eef2; /* fondo suave para badges y resaltados */
+  --burgundy-line: #e7d5dd; /* color de bordes relacionados con vino */
+  --wine:          #7a2347;
+  --ink:           #1a1320; /* color base para texto principal */
+  --muted:         #6b6470; /* texto secundario */
+  --bg:            #fbfaf8; /* fondo general de la página */
+  --line:          #ece8e3; /* bordes neutros */
+  --green:         #2d7a4f; /* etiqueta "mejor precio" */
+  --amber:         #b87333;
+}
+
+/* ─── Base ─── */
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Clase serif para títulos con Fraunces */
+.serif {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Utilidades de color de marca */
+.text-burgundy    { color: var(--burgundy)      !important; }
+.bg-burgundy      { background: var(--burgundy) !important; color: #fff; }
+.bg-burgundy-soft { background: var(--burgundy-soft) !important; }
+.border-burgundy  { border-color: var(--burgundy) !important; }
+
+/* ─── Imagen placeholder con degradado ─── */
+/* Usada en las tarjetas de oferta hasta que se integren imágenes reales */
+.ph-img {
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0 12px, rgba(255,255,255,0.0) 12px 24px),
+    linear-gradient(135deg, var(--c1, #5b1936) 0%, var(--c2, #3d0f24) 100%);
+}

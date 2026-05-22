@@ -1,0 +1,59 @@
+/* ─── Variables de color de la marca AirTEC ─── */
+:root {
+  /* Paleta compartida con la app cliente */
+  --burgundy: #5b1936;
+  --burgundy-deep: #3d0f24;
+  --burgundy-soft: #f7eef2;
+  --burgundy-line: #e7d5dd;
+  --wine: #7a2347;
+  --ink: #1a1320;
+  --muted: #6b6470;
+  --bg: #fbfaf8;
+  --line: #ece8e3;
+  --green: #2d7a4f;
+  --amber: #b87333;
+
+  /* Variables específicas del panel admin */
+  --admin-sidebar-bg: #3d0f24;
+  /* burgundy-deep: fondo de la barra lateral */
+  --admin-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --admin-sidebar-active: rgba(255, 255, 255, 0.12);
+  --admin-sidebar-width: 240px;
+  --admin-content-bg: #faf9f7;
+  /* crema cálido para el área de contenido */
+  --admin-header-height: 56px;
+}
+
+/* ─── Base ─── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--admin-content-bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+/* ─── Tipografía ─── */
+.serif {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Utilidad: texto en monoespaciada para ids/codigos */
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}

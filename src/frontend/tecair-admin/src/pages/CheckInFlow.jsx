@@ -1,0 +1,719 @@
+import { useState, useEffect } from 'react';
+
+import SeatIcon                from '../components/SeatIcon.jsx';
+import { searchReservations } from '../services/reservationService.js';
+import { getItineraryById }   from '../services/itineraryService.js';
+import { getAvailableSeats }  from '../services/seatService.js';
+import { createCheckIn, getCheckInsByReservation } from '../services/checkInService.js';
+
+// Flujo de check-in con cuatro pasos:
+//   1. search    → buscar reservacion por pasaporte o nombre
+//   2. flight    → elegir vuelo OPEN del itinerario asociado
+//   3. seat      → elegir asiento (disponibilidad real de GET /api/seats/available/{flightId})
+//   4. confirm   → resumen final del check-in registrado en backend
+
+// Layout posible: hasta 6 columnas (A-F). El render real se ajusta segun los
+// asientos que el backend reporta como existentes para el avion del vuelo.
+const ALL_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+// A partir de la lista de seat_number ('1A', '2C', ...) deriva el layout real
+// del avion: cantidad de filas y letras presentes. Si el conjunto esta vacio
+// devuelve un layout vacio para evitar pintar una grilla fantasma.
+function deriveLayout(seatNumbers) {
+  let maxRow = 0;
+  const letters = new Set();
+  for (const s of seatNumbers) {
+    const m = /^(\d+)([A-Z])$/.exec(s);
+    if (!m) continue;
+    const row = Number(m[1]);
+    if (row > maxRow) maxRow = row;
+    letters.add(m[2]);
+  }
+  const orderedLetters = ALL_LETTERS.filter((l) => letters.has(l));
+  return { maxRow, letters: orderedLetters };
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const fmtDateTime = (value) => {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '—';
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
+
+export default function CheckInFlow() {
+  const [step, setStep] = useState('search');
+
+  // Estado compartido entre pasos
+  const [reservation, setReservation] = useState(null);
+  const [itinerary,   setItinerary]   = useState(null);
+  const [flight,      setFlight]      = useState(null);
+  const [seat,        setSeat]        = useState(null);
+
+  // Map<itineraryFlightId, CheckInResponse> con los check-ins ya hechos para
+  // esta reservacion. Permite marcar como "ya chequeado" cada vuelo del itinerario.
+  const [existingCheckIns, setExistingCheckIns] = useState(new Map());
+
+  // Resultado real del POST /api/check-ins
+  const [checkIn,        setCheckIn]        = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmError,   setConfirmError]   = useState(null);
+
+  // Carga itinerario y check-ins existentes en paralelo despues de elegir reserva.
+  const goToFlight = async (res) => {
+    setReservation(res);
+    setItinerary(null);
+    setExistingCheckIns(new Map());
+    setStep('flight');
+    try {
+      const [detail, checkIns] = await Promise.all([
+        getItineraryById(res.itineraryId),
+        getCheckInsByReservation(res.reservationId),
+      ]);
+      detail.flights.sort((a, b) => a.flightOrder - b.flightOrder);
+      setItinerary(detail);
+      setExistingCheckIns(new Map(checkIns.map((c) => [c.itineraryFlightId, c])));
+    } catch (err) {
+      setItinerary({ error: err.message });
+    }
+  };
+
+  const goToSeat = (f) => {
+    // Defensa adicional: aunque el boton este deshabilitado, no permitimos
+    // entrar al paso de asiento si el vuelo ya tiene check-in.
+    if (existingCheckIns.has(f.itineraryFlightId)) return;
+    setFlight(f);
+    setSeat(null);
+    setConfirmError(null);
+    setStep('seat');
+  };
+
+  const finishCheckIn = async () => {
+    if (!seat || !flight || !reservation) return;
+    setConfirmLoading(true);
+    setConfirmError(null);
+    try {
+      const result = await createCheckIn({
+        reservationId:     reservation.reservationId,
+        itineraryFlightId: flight.itineraryFlightId,
+        planePlate:        flight.planePlate,
+        seatNumber:        seat,
+      });
+      setCheckIn(result);
+      // Refresca el mapa para que, si el funcionario vuelve al paso de vuelos
+      // (otro tramo del mismo itinerario), este aparezca como "ya chequeado".
+      setExistingCheckIns((prev) => {
+        const next = new Map(prev);
+        next.set(result.itineraryFlightId, result);
+        return next;
+      });
+      setStep('confirm');
+    } catch (err) {
+      setConfirmError(err.message || 'No se pudo registrar el check-in.');
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
+  const reset = () => {
+    setReservation(null);
+    setItinerary(null);
+    setFlight(null);
+    setSeat(null);
+    setExistingCheckIns(new Map());
+    setCheckIn(null);
+    setConfirmError(null);
+    setStep('search');
+  };
+
+  return (
+    <div>
+      <CheckInStepper step={step} />
+
+      {step === 'search'  && <SearchStep onSelect={goToFlight} />}
+      {step === 'flight'  && (
+        <FlightStep
+          reservation={reservation}
+          itinerary={itinerary}
+          existingCheckIns={existingCheckIns}
+          onBack={() => setStep('search')}
+          onSelect={goToSeat}
+          onViewExisting={(f, c) => {
+            setFlight(f);
+            setCheckIn(c);
+            setStep('confirm');
+          }}
+        />
+      )}
+      {step === 'seat'    && (
+        <SeatStep
+          reservation={reservation}
+          flight={flight}
+          seat={seat}
+          onSeat={setSeat}
+          onBack={() => setStep('flight')}
+          onConfirm={finishCheckIn}
+          confirmLoading={confirmLoading}
+          confirmError={confirmError}
+        />
+      )}
+      {step === 'confirm' && (
+        <ConfirmStep
+          reservation={reservation}
+          flight={flight}
+          checkIn={checkIn}
+          onNew={reset}
+        />
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────
+// Barra de progreso especifica del flujo de check-in.
+// ──────────────────────────────────────────────────────────
+function CheckInStepper({ step }) {
+  const steps = [
+    { key: 'search',  label: 'Reservación' },
+    { key: 'flight',  label: 'Vuelo'       },
+    { key: 'seat',    label: 'Asiento'     },
+    { key: 'confirm', label: 'Confirmación' },
+  ];
+  const activeIndex = steps.findIndex((s) => s.key === step);
+
+  return (
+    <div className="stepper mb-4">
+      {steps.map((s, i) => (
+        <div key={s.key} style={{ display: 'contents' }}>
+          <div className={'step d-flex align-items-center ' + (i === activeIndex ? 'active' : i < activeIndex ? 'done' : '')}>
+            <div className="step-dot">
+              {i < activeIndex ? <i className="bi bi-check"></i> : i + 1}
+            </div>
+            <span className="step-label d-none d-md-inline">{s.label}</span>
+          </div>
+          {i < steps.length - 1 && (
+            <div className={'step-line ' + (i < activeIndex ? 'done' : '')}></div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────
+// Paso 1: buscar reservaciones por pasaporte o nombre.
+// Reutiliza el endpoint GET /api/reservations/search ya existente.
+// ──────────────────────────────────────────────────────────
+function SearchStep({ onSelect }) {
+  const [mode,      setMode]      = useState('passport'); // 'reservation' | 'passport' | 'name'
+  const [query,     setQuery]     = useState('');
+  const [results,   setResults]   = useState([]);
+  const [loading,   setLoading]   = useState(false);
+  const [error,     setError]     = useState(null);
+  const [touched,   setTouched]   = useState(false);
+
+  const isReservationMode = mode === 'reservation';
+  const trimmedQuery = query.trim();
+  const reservationIdNumber = isReservationMode ? Number(trimmedQuery) : NaN;
+  const reservationIdValid = isReservationMode
+    ? Number.isInteger(reservationIdNumber) && reservationIdNumber > 0
+    : true;
+  const canSearch = trimmedQuery.length > 0 && reservationIdValid && !loading;
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    if (!canSearch) return;
+    setLoading(true);
+    setError(null);
+    setTouched(true);
+    try {
+      const params =
+        mode === 'reservation' ? { reservationId: reservationIdNumber } :
+        mode === 'passport'    ? { passengerId: trimmedQuery }          :
+                                 { name: trimmedQuery };
+      const data = await searchReservations(params);
+      setResults(data);
+    } catch (err) {
+      setError(err.message);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-card">
+      <div className="admin-alert admin-alert-info mb-3" role="status">
+        <i className="bi bi-info-circle-fill"></i>
+        <span>
+          Busca la reservación del pasajero por pasaporte o nombre. Luego se mostrarán los
+          vuelos del itinerario para hacer check-in en el que esté <strong>OPEN</strong>.
+        </span>
+      </div>
+
+      <form onSubmit={submit}>
+        <div className="row g-3 align-items-end">
+          <div className="col-md-3">
+            <label className="form-label small text-muted">Buscar por</label>
+            <select
+              className="form-select"
+              value={mode}
+              onChange={(e) => { setMode(e.target.value); setQuery(''); setResults([]); setTouched(false); }}
+            >
+              <option value="reservation">N° de reservación</option>
+              <option value="passport">Pasaporte</option>
+              <option value="name">Nombre</option>
+            </select>
+          </div>
+          <div className="col-md-7">
+            <label className="form-label small text-muted">
+              {mode === 'reservation' ? 'Número de reservación'
+                : mode === 'passport' ? 'Número de pasaporte'
+                : 'Nombre o apellido'}
+            </label>
+            <input
+              type={mode === 'reservation' ? 'number' : 'text'}
+              inputMode={mode === 'reservation' ? 'numeric' : undefined}
+              min={mode === 'reservation' ? 1 : undefined}
+              className="form-control"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={mode === 'reservation' ? '12'
+                : mode === 'passport' ? 'A12345678'
+                : 'María'}
+              autoFocus
+            />
+          </div>
+          <div className="col-md-2">
+            <button type="submit" className="btn-burgundy w-100" disabled={!canSearch}>
+              {loading
+                ? <><span className="spinner-border spinner-border-sm me-2"></span>Buscando…</>
+                : <><i className="bi bi-search me-2"></i>Buscar</>}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {error && (
+        <div className="admin-alert admin-alert-error mt-3" role="alert">
+          <i className="bi bi-exclamation-circle-fill"></i>
+          <span>{error}</span>
+        </div>
+      )}
+
+      {touched && !loading && !error && results.length === 0 && (
+        <div className="flight-list-empty mt-3">
+          <i className="bi bi-person-x"></i>
+          <p className="m-0">No se encontraron reservaciones para esa búsqueda.</p>
+        </div>
+      )}
+
+      {results.length > 0 && (
+        <div className="flight-list-table-wrap mt-3">
+          <table className="flight-list-table">
+            <thead>
+              <tr>
+                <th>Reserva</th>
+                <th>Pasajero</th>
+                <th>Pasaporte</th>
+                <th>Itinerario</th>
+                <th>Estado</th>
+                <th className="text-end">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((r) => (
+                <tr key={r.reservationId}>
+                  <td className="mono">#{r.reservationId}</td>
+                  <td>{r.passengerName}</td>
+                  <td className="mono">{r.passengerId}</td>
+                  <td className="mono">#{r.itineraryId}</td>
+                  <td>
+                    <span className="it-badge">{r.state}</span>
+                  </td>
+                  <td className="text-end">
+                    <button
+                      type="button"
+                      className="btn-burgundy"
+                      onClick={() => onSelect(r)}
+                    >
+                      Seleccionar <i className="bi bi-arrow-right ms-1"></i>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────
+// Paso 2: elegir un vuelo OPEN del itinerario asociado.
+// ──────────────────────────────────────────────────────────
+function FlightStep({ reservation, itinerary, existingCheckIns, onBack, onSelect, onViewExisting }) {
+  if (!itinerary) {
+    return (
+      <div className="admin-card">
+        <div className="ib-picker-msg">
+          <span className="spinner-border spinner-border-sm me-2"></span>
+          Cargando itinerario…
+        </div>
+      </div>
+    );
+  }
+
+  if (itinerary.error) {
+    return (
+      <div className="admin-card">
+        <div className="admin-alert admin-alert-error" role="alert">
+          <i className="bi bi-exclamation-circle-fill"></i>
+          <span>{itinerary.error}</span>
+        </div>
+        <button type="button" className="btn-burgundy-outline mt-3" onClick={onBack}>
+          <i className="bi bi-arrow-left me-2"></i>Volver
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-card">
+      <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+        <div>
+          <div className="text-muted-small">Pasajero</div>
+          <div className="serif fs-5">{reservation.passengerName}</div>
+          <div className="text-muted-small">
+            Reserva <span className="mono">#{reservation.reservationId}</span> · Itinerario{' '}
+            <span className="mono">#{itinerary.itineraryId}</span>
+          </div>
+        </div>
+        <button type="button" className="btn-burgundy-outline" onClick={onBack}>
+          <i className="bi bi-arrow-left me-2"></i>Cambiar reserva
+        </button>
+      </div>
+
+      <h6 className="serif mb-2">Vuelos del itinerario</h6>
+      <p className="text-muted-small mb-3">
+        Solo los vuelos en estado <strong>OPEN</strong> permiten check-in. Para los demás
+        (UPCOMING o CLOSED) el botón aparece bloqueado con el motivo. Si el pasajero
+        ya fue chequeado en un tramo, se muestra el asiento asignado.
+      </p>
+
+      <div className="flight-list-table-wrap">
+        <table className="flight-list-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Origen</th>
+              <th>Destino</th>
+              <th>Salida</th>
+              <th>Llegada</th>
+              <th>Puerta</th>
+              <th>Estado</th>
+              <th>Check-in</th>
+              <th className="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {itinerary.flights.map((f) => {
+              const flightState   = (f.state || '').toUpperCase();
+              const isOpen        = flightState === 'OPEN';
+              const isUpcoming    = flightState === 'UPCOMING';
+              const existing      = existingCheckIns?.get(f.itineraryFlightId);
+              const alreadyChecked = !!existing;
+              return (
+                <tr key={f.flightOrder}>
+                  <td className="mono">{f.flightOrder}</td>
+                  <td className="mono">{f.departureCode}</td>
+                  <td className="mono">{f.arrivalCode}</td>
+                  <td className="mono">{fmtDateTime(f.departureDatetime)}</td>
+                  <td className="mono">{fmtDateTime(f.arrivalDatetime)}</td>
+                  <td className="mono">{f.gate ?? '—'}</td>
+                  <td>
+                    <span className={'it-badge ' + (isOpen ? '' : 'it-badge-muted')}>
+                      {f.state}
+                    </span>
+                  </td>
+                  <td>
+                    {alreadyChecked
+                      ? <span className="text-burgundy fw-semibold">Asiento {existing.seatNumber}</span>
+                      : <span className="text-muted-small">—</span>}
+                  </td>
+                  <td className="text-end">
+                    {alreadyChecked ? (
+                      <button
+                        type="button"
+                        className="btn-burgundy-outline"
+                        onClick={() => onViewExisting(f, existing)}
+                        title={`Confirmación #${existing.confirmationNumber}`}
+                      >
+                        Ver pase <i className="bi bi-eye ms-1"></i>
+                      </button>
+                    ) : isOpen ? (
+                      <button
+                        type="button"
+                        className="btn-burgundy"
+                        onClick={() => onSelect(f)}
+                        title="Hacer check-in en este vuelo"
+                      >
+                        Check-in <i className="bi bi-arrow-right ms-1"></i>
+                      </button>
+                    ) : (
+                      // No es OPEN: dejamos el boton visible pero bloqueado, con
+                      // un icono e indicio claro de por que no se puede pulsar.
+                      <button
+                        type="button"
+                        className="btn-locked"
+                        disabled
+                        aria-disabled="true"
+                        title={isUpcoming
+                          ? 'El vuelo aún no abre para check-in'
+                          : 'El vuelo ya cerró y no acepta check-in'}
+                      >
+                        <i className={isUpcoming ? 'bi bi-clock' : 'bi bi-lock-fill'}></i>
+                        {isUpcoming ? 'Aún no abierto' : 'Cerrado'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────
+// Paso 3: mapa de asientos del avion con disponibilidad real.
+// GET /api/seats/available/{flightId} devuelve solo asientos libres;
+// los que no aparecen en la respuesta se pintan como "ocupado".
+// ──────────────────────────────────────────────────────────
+function SeatStep({ reservation, flight, seat, onSeat, onBack, onConfirm, confirmLoading, confirmError }) {
+  const [availableSet, setAvailableSet] = useState(null);
+  const [layout,       setLayout]       = useState({ maxRow: 0, letters: [] });
+  const [loadError,    setLoadError]    = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAvailableSet(null);
+    setLayout({ maxRow: 0, letters: [] });
+    setLoadError(null);
+    getAvailableSeats(flight.flightId)
+      .then((seats) => {
+        if (cancelled) return;
+        const seatNumbers = seats.map((s) => s.seatNumber);
+        setAvailableSet(new Set(seatNumbers));
+        setLayout(deriveLayout(seatNumbers));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err.message || 'No se pudieron cargar los asientos disponibles.');
+      });
+    return () => { cancelled = true; };
+  }, [flight.flightId]);
+
+  const pickSeat = (id) => {
+    if (!availableSet || !availableSet.has(id)) return;
+    onSeat(seat === id ? null : id);
+  };
+
+  // Mitad izquierda / derecha del avion (pasillo central).
+  const halfIndex   = Math.ceil(layout.letters.length / 2);
+  const leftLetters  = layout.letters.slice(0, halfIndex);
+  const rightLetters = layout.letters.slice(halfIndex);
+
+  return (
+    <div className="admin-card">
+      <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+        <div>
+          <div className="text-muted-small">Asignando asiento a</div>
+          <div className="serif fs-5">{reservation.passengerName}</div>
+          <div className="text-muted-small">
+            Vuelo <span className="mono">#{flight.flightId}</span> ·{' '}
+            <span className="mono">{flight.departureCode}</span> →{' '}
+            <span className="mono">{flight.arrivalCode}</span> ·{' '}
+            <span className="mono">{fmtDateTime(flight.departureDatetime)}</span>{' '}
+            · Avión <span className="mono">{flight.planePlate}</span>
+          </div>
+        </div>
+        <div className="d-flex gap-2">
+          <button type="button" className="btn-burgundy-outline" onClick={onBack} disabled={confirmLoading}>
+            <i className="bi bi-arrow-left me-2"></i>Cambiar vuelo
+          </button>
+          <button
+            type="button"
+            className="btn-burgundy"
+            disabled={!seat || confirmLoading || !availableSet}
+            onClick={onConfirm}
+          >
+            {confirmLoading
+              ? <><span className="spinner-border spinner-border-sm me-2"></span>Registrando…</>
+              : <>Confirmar asiento{seat ? ` ${seat}` : ''} <i className="bi bi-check2 ms-1"></i></>}
+          </button>
+        </div>
+      </div>
+
+      {loadError && (
+        <div className="admin-alert admin-alert-error mb-3" role="alert">
+          <i className="bi bi-exclamation-circle-fill"></i>
+          <span>{loadError}</span>
+        </div>
+      )}
+
+      {confirmError && (
+        <div className="admin-alert admin-alert-error mb-3" role="alert">
+          <i className="bi bi-exclamation-circle-fill"></i>
+          <span>{confirmError}</span>
+        </div>
+      )}
+
+      {!availableSet && !loadError && (
+        <div className="ib-picker-msg mb-3">
+          <span className="spinner-border spinner-border-sm me-2"></span>
+          Consultando asientos disponibles…
+        </div>
+      )}
+
+      {/* Leyenda */}
+      <div className="d-flex gap-3 small mb-3 align-items-center flex-wrap">
+        <span className="d-flex align-items-center gap-1"><SeatIcon variant="available" size={22} /> Disponible</span>
+        <span className="d-flex align-items-center gap-1"><SeatIcon variant="selected"  size={22} /> Asiento elegido</span>
+        <span className="d-flex align-items-center gap-1"><SeatIcon variant="occupied"  size={22} /> Ocupado</span>
+      </div>
+
+      {availableSet && layout.maxRow > 0 && (
+        <div className="fuselage-wrap">
+          <div className="fuselage">
+            <div className="text-center small text-muted mb-3" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Frente del avión
+            </div>
+
+            <div className="d-flex justify-content-center align-items-center gap-1 mb-2">
+              <div className="row-label"></div>
+              {leftLetters.map((l) => <div key={l} className="seat-label">{l}</div>)}
+              {rightLetters.length > 0 && <div className="row-label"></div>}
+              {rightLetters.map((l) => <div key={l} className="seat-label">{l}</div>)}
+            </div>
+
+            {Array.from({ length: layout.maxRow }, (_, r) => {
+              const row = r + 1;
+              return (
+                <div key={row}>
+                  <div className="d-flex justify-content-center align-items-center gap-1 mb-1">
+                    <div className="row-label">{row}</div>
+                    {leftLetters.map((l) => renderSeatBtn(row, l, availableSet, seat, pickSeat))}
+                    {rightLetters.length > 0 && <div className="row-label">{row}</div>}
+                    {rightLetters.map((l) => renderSeatBtn(row, l, availableSet, seat, pickSeat))}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="text-center small text-muted mt-3" style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Cola del avión
+            </div>
+          </div>
+        </div>
+      )}
+
+      {availableSet && layout.maxRow === 0 && (
+        <div className="admin-alert admin-alert-info" role="status">
+          <i className="bi bi-info-circle-fill"></i>
+          <span>Este avión no tiene asientos libres en este vuelo.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// availableSet === null mientras se carga la respuesta de la API:
+// en ese caso todos los asientos se muestran como "ocupado" (placeholder visual).
+function renderSeatBtn(row, letter, availableSet, seat, pickSeat) {
+  const id          = `${row}${letter}`;
+  const isAvailable = availableSet?.has(id) ?? false;
+  const variant     = !isAvailable ? 'occupied' : seat === id ? 'selected' : 'available';
+  return (
+    <button
+      key={id}
+      type="button"
+      className={'seat-btn' + (!isAvailable ? ' occupied' : '')}
+      onClick={() => pickSeat(id)}
+      title={id}
+      disabled={!isAvailable}
+    >
+      <SeatIcon variant={variant} />
+    </button>
+  );
+}
+
+// ──────────────────────────────────────────────────────────
+// Paso 4: resumen del check-in con datos clave para el pase de abordar.
+// El pase de abordar (impresion/correo/movil) se implementara en la
+// siguiente iteracion.
+// ──────────────────────────────────────────────────────────
+function ConfirmStep({ reservation, flight, checkIn, onNew }) {
+  const confirmationNumber = checkIn?.confirmationNumber;
+  const seat               = checkIn?.seatNumber;
+  return (
+    <div className="admin-card text-center" style={{ maxWidth: 640, margin: '0 auto' }}>
+      <div
+        className="d-inline-flex align-items-center justify-content-center mb-3"
+        style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--burgundy-soft)', color: 'var(--burgundy)', fontSize: '2rem' }}
+      >
+        <i className="bi bi-check2"></i>
+      </div>
+
+      <h3 className="serif mb-1">Check-in registrado</h3>
+      <p className="text-muted-small mb-4">
+        Confirmación <span className="mono">#{confirmationNumber}</span> · El asiento queda asignado para este vuelo.
+      </p>
+
+      <div className="admin-card text-start mb-3" style={{ borderColor: 'var(--burgundy-line)' }}>
+        <div className="row g-3">
+          <div className="col-6">
+            <div className="text-muted-small">Pasajero</div>
+            <div className="fw-semibold">{reservation.passengerName}</div>
+            <div className="text-muted-small mono">{reservation.passengerId}</div>
+          </div>
+          <div className="col-6">
+            <div className="text-muted-small">Reservación</div>
+            <div className="mono">#{reservation.reservationId}</div>
+          </div>
+          <div className="col-6">
+            <div className="text-muted-small">Vuelo</div>
+            <div className="mono">#{flight.flightId}</div>
+            <div className="text-muted-small mono">{flight.departureCode} → {flight.arrivalCode}</div>
+          </div>
+          <div className="col-6">
+            <div className="text-muted-small">Salida</div>
+            <div className="mono">{fmtDateTime(flight.departureDatetime)}</div>
+          </div>
+          <div className="col-6">
+            <div className="text-muted-small">Puerta</div>
+            <div className="mono">{flight.gate ?? '—'}</div>
+          </div>
+          <div className="col-6">
+            <div className="text-muted-small">Asiento</div>
+            <div className="serif fs-4 text-burgundy">{seat}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="admin-alert admin-alert-info mb-3" role="status">
+        <i className="bi bi-info-circle-fill"></i>
+        <span>
+          El envío del pase de abordar (impresión, correo o móvil) se implementará en la
+          siguiente iteración.
+        </span>
+      </div>
+
+      <button type="button" className="btn-burgundy" onClick={onNew}>
+        <i className="bi bi-arrow-clockwise me-2"></i>Nuevo check-in
+      </button>
+    </div>
+  );
+}
