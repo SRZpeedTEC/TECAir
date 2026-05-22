@@ -158,6 +158,17 @@ export default function FlightForm({
       errs.arrivesTo = 'Origen y destino deben ser distintos.';
     }
 
+    // Al crear, la fecha de salida no puede ser anterior a hoy. En modo edit
+    // permitimos vuelos antiguos (por si se corrige un vuelo ya pasado).
+    if (mode === 'create' && form.departureDate && !errs.departureDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const picked = new Date(`${form.departureDate}T00:00:00`);
+      if (picked < today) {
+        errs.departureDate = 'La fecha de salida no puede ser anterior a hoy.';
+      }
+    }
+
     return errs;
   };
 
@@ -290,6 +301,7 @@ export default function FlightForm({
             value={form.departureDate}
             onChange={(v) => updateField('departureDate', v)}
             invalid={!!fieldErrors.departureDate}
+            minDate={mode === 'create' ? new Date() : undefined}
           />
           {fieldErrors.departureDate && (
             <div className="invalid-feedback d-block">{fieldErrors.departureDate}</div>

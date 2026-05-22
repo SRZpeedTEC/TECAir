@@ -32,7 +32,9 @@ function fmtDDMMYYYY(d) {
 //   value    — cadena "YYYY-MM-DD" o '' (vacío)
 //   onChange — recibe la nueva cadena "YYYY-MM-DD" (o '' si se borra)
 //   invalid  — bool, aplica clase is-invalid al input
-export default function DatePicker({ id, label, value, onChange, invalid }) {
+//   minDate  — Date opcional: las fechas estrictamente anteriores se muestran
+//              deshabilitadas y no se pueden seleccionar
+export default function DatePicker({ id, label, value, onChange, invalid, minDate }) {
   const selectedDate     = parseISODate(value);
   const [open, setOpen]  = useState(false);
   const [view, setView]  = useState(selectedDate || new Date());
@@ -65,7 +67,14 @@ export default function DatePicker({ id, label, value, onChange, invalid }) {
 
   const sameDay = (a, b) => a && b && a.toDateString() === b.toDateString();
 
+  // Normalizamos minDate a medianoche para comparar solo por dia.
+  const minDay = minDate
+    ? new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate())
+    : null;
+  const isDisabled = (d) => minDay !== null && d < minDay;
+
   const handleSelect = (d) => {
+    if (isDisabled(d)) return;
     onChange(toISODate(d));
     setOpen(false);
   };
@@ -114,11 +123,16 @@ export default function DatePicker({ id, label, value, onChange, invalid }) {
             ))}
             {cells.map((c, i) => {
               if (!c) return <div key={'empty' + i} className="cal-cell"></div>;
+              const disabled = isDisabled(c);
+              const classes = ['cal-cell'];
+              if (sameDay(c, selectedDate)) classes.push('selected');
+              if (disabled) classes.push('disabled');
               return (
                 <div
                   key={i}
-                  className={'cal-cell' + (sameDay(c, selectedDate) ? ' selected' : '')}
+                  className={classes.join(' ')}
                   onClick={() => handleSelect(c)}
+                  aria-disabled={disabled || undefined}
                 >
                   {c.getDate()}
                 </div>

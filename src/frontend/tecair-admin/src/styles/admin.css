@@ -1372,7 +1372,7 @@ body {
   font-weight: 600;
 }
 
-.cal-cell:not(.dow):hover {
+.cal-cell:not(.dow):not(.disabled):hover {
   background: var(--burgundy-soft);
 }
 
@@ -1383,6 +1383,13 @@ body {
 
 .cal-cell.selected:hover {
   background: var(--burgundy-deep);
+}
+
+.cal-cell.disabled {
+  color: var(--muted);
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: transparent;
 }
 
 /* ═══════════════════════════════════════════════════════

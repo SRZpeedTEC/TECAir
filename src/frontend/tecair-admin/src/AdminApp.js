@@ -52,6 +52,34 @@ export default function AdminApp() {
     }
   }, [currentAdmin]);
 
+  // Sincroniza la seccion activa con el history del navegador para que el
+  // boton Atras funcione entre secciones. Solo se activa tras login: el flujo
+  // del login no participa del history para evitar volver a el con back.
+  useEffect(() => {
+    if (!currentAdmin) return;
+
+    // Marcamos la entrada inicial con la seccion actual sin crear historia nueva.
+    window.history.replaceState({ adminPage: activePage }, '');
+
+    const onPop = (event) => {
+      const page = event.state?.adminPage;
+      if (page && Object.prototype.hasOwnProperty.call(SECTIONS, page)) {
+        setActivePage(page);
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentAdmin]);
+
+  // Navegacion controlada: empuja una entrada en el history para que cada
+  // cambio de seccion sea reversible con el boton Atras.
+  const navigateToPage = (page) => {
+    if (page === activePage) return;
+    window.history.pushState({ adminPage: page }, '');
+    setActivePage(page);
+  };
+
   const handleLogin = (user) => {
     setCurrentAdmin(user);
     setActivePage('usuarios');
@@ -70,7 +98,7 @@ export default function AdminApp() {
   return (
     <AdminLayout
       activePage={activePage}
-      onNavigate={setActivePage}
+      onNavigate={navigateToPage}
       sectionIcon={section.icon}
       sectionTitle={section.title}
       currentAdmin={currentAdmin}
