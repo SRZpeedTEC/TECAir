@@ -1,0 +1,73 @@
+/* ─── Barra de navegación ─── */
+.navbar-airtec {
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
+}
+
+/* Logo con dos tonos: "Air" en vino y "TEC" en negro */
+.brand-mark {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: var(--burgundy);
+}
+.brand-mark .accent { color: var(--ink); }
+
+/* Ítems del menú de navegación */
+.nav-link-airtec {
+  color: var(--ink);
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.nav-link-airtec:hover { background: var(--burgundy-soft); color: var(--burgundy); }
+.nav-link-airtec.active { color: var(--burgundy); }
+
+/* ─── Hero ─── */
+.hero {
+  background:
+    linear-gradient(180deg, rgba(91,25,54,0.82) 0%, rgba(61,15,36,0.88) 100%),
+    repeating-linear-gradient(135deg, #2a0f1c 0 22px, #3d0f24 22px 44px);
+  color: #fff;
+  padding: 64px 0 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero h1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: clamp(2.2rem, 4vw, 3.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.hero .lede {
+  color: rgba(255,255,255,0.8);
+  font-size: 1.05rem;
+  max-width: 520px;
+}
+
+/* Avión decorativo gigante de fondo en el hero */
+.hero .plane-deco {
+  position: absolute;
+  right: -40px;
+  top: 30px;
+  opacity: 0.08;
+  font-size: 22rem;
+  transform: rotate(-15deg);
+  pointer-events: none;
+}
+
+/* ─── Pie de página ─── */
+.site-footer {
+  background: #fff;
+  border-top: 1px solid var(--line);
+  padding: 30px 0;
+  margin-top: 60px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
