@@ -70,6 +70,9 @@ public interface IFlightRepository
         string state,
         CancellationToken cancellationToken = default);
 
+    // Marca CLOSED los itinerarios que contienen un vuelo cerrado.
+    Task CloseItinerariesByFlightAsync(int flightId, CancellationToken cancellationToken = default);
+
     // Verifica que exista el vuelo antes de actualizarlo o borrarlo.
     Task<bool> FlightExistsAsync(int flightId, CancellationToken cancellationToken = default);
 

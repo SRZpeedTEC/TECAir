@@ -9,10 +9,12 @@ namespace TECAir.Infrastructure.Repositories;
 // Repositorio encargado de consultar y crear itinerarios en PostgreSQL.
 public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : IItineraryRepository
 {
-    // Busca itinerarios por origen y destino usando el primer y ultimo vuelo de cada ruta.
+    // Busca itinerarios PUBLIC por origen y destino usando el primer y ultimo vuelo de cada ruta.
+    // Los itinerarios CLOSED quedan fuera de las busquedas publicas de clientes.
     public async Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
         string originCode,
         string destinationCode,
+        bool includeNonPublic,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -66,7 +68,8 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             INNER JOIN tecair.airport arrival_airport
                 ON arrival_airport.code = last_flight.airport_arrives_to_id
             WHERE
-                departure_airport.code = @origin_code
+                (@include_non_public = TRUE OR i.state = 'PUBLIC')
+                AND departure_airport.code = @origin_code
                 AND arrival_airport.code = @destination_code
             ORDER BY first_flight.departure_datetime, i.itinerary_id;
             """;
@@ -76,6 +79,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         await using var command = dataSource.CreateCommand(sql);
         command.Parameters.AddWithValue("origin_code", originCode);
         command.Parameters.AddWithValue("destination_code", destinationCode);
+        command.Parameters.AddWithValue("include_non_public", includeNonPublic);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
@@ -326,6 +330,74 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
         return result is true;
     }
 
+    public async Task<string?> GetItineraryStateAsync(int itineraryId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT state
+            FROM tecair.itinerary
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result as string;
+    }
+
+    public async Task<IReadOnlyList<ItineraryFlightAvailabilityData>> GetItineraryFlightAvailabilityAsync(
+        int itineraryId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            WITH reservation_counts AS (
+                SELECT
+                    itinerary_id,
+                    COUNT(*)::INTEGER AS reserved_seats
+                FROM tecair.reservation
+                WHERE itinerary_id = @itinerary_id
+                GROUP BY itinerary_id
+            )
+            SELECT
+                f.flight_id,
+                f.state,
+                f.plane_plate,
+                p.capacity,
+                COALESCE(rc.reserved_seats, 0) AS reserved_seats,
+                p.capacity - COALESCE(rc.reserved_seats, 0) AS available_seats
+            FROM tecair.flight_in_itinerary fii
+            INNER JOIN tecair.flight f
+                ON f.flight_id = fii.flight_id
+            INNER JOIN tecair.plane p
+                ON p.plate = f.plane_plate
+            LEFT JOIN reservation_counts rc
+                ON rc.itinerary_id = fii.itinerary_id
+            WHERE fii.itinerary_id = @itinerary_id
+            ORDER BY fii.flight_order;
+            """;
+
+        var flights = new List<ItineraryFlightAvailabilityData>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            flights.Add(new ItineraryFlightAvailabilityData
+            {
+                FlightId = reader.GetInt32(0),
+                FlightState = reader.GetString(1),
+                PlanePlate = reader.GetString(2),
+                PlaneCapacity = reader.GetInt32(3),
+                ReservedSeats = reader.GetInt32(4),
+                AvailableSeats = reader.GetInt32(5)
+            });
+        }
+
+        return flights;
+    }
+
     // Actualiza el precio y reemplaza todos los vuelos asociados.
     public async Task<CreateItineraryResponse> UpdateWithFlightsAsync(
         int itineraryId,
@@ -408,6 +480,70 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
                 FlightId = reader.GetInt32(1),
                 FlightOrder = reader.GetInt32(2)
             });
+        }
+
+        return itinerary;
+    }
+
+    // Cierra o cambia visibilidad sin tocar flight_in_itinerary.
+    public async Task<CreateItineraryResponse> UpdateStateAsync(
+        int itineraryId,
+        string state,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+
+        const string updateItinerarySql = """
+            UPDATE tecair.itinerary
+            SET state = @state
+            WHERE itinerary_id = @itinerary_id
+            RETURNING itinerary_id, price, state;
+            """;
+
+        CreateItineraryResponse itinerary;
+        await using (var command = new NpgsqlCommand(updateItinerarySql, connection))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+            command.Parameters.AddWithValue("state", state);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException("Failed to update the itinerary state.");
+            }
+
+            itinerary = new CreateItineraryResponse
+            {
+                ItineraryId = reader.GetInt32(0),
+                Price = reader.GetDecimal(1),
+                State = reader.GetString(2)
+            };
+        }
+
+        const string getFlightsSql = """
+            SELECT
+                itinerary_flight_id,
+                flight_id,
+                flight_order
+            FROM tecair.flight_in_itinerary
+            WHERE itinerary_id = @itinerary_id
+            ORDER BY flight_order;
+            """;
+
+        await using (var command = new NpgsqlCommand(getFlightsSql, connection))
+        {
+            command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                itinerary.Flights.Add(new CreatedItineraryFlightResponse
+                {
+                    ItineraryFlightId = reader.GetInt32(0),
+                    FlightId = reader.GetInt32(1),
+                    FlightOrder = reader.GetInt32(2)
+                });
+            }
         }
 
         return itinerary;

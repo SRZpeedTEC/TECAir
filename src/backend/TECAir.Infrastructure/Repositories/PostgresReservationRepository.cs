@@ -1,5 +1,6 @@
 using Npgsql;
 using NpgsqlTypes;
+using TECAir.Application.DTOs.Itineraries;
 using TECAir.Application.DTOs.Reservations;
 using TECAir.Application.Interfaces;
 
@@ -23,6 +24,88 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
 
         var result = await command.ExecuteScalarAsync(cancellationToken);
         return result is true;
+    }
+
+    public async Task<string?> GetItineraryStateAsync(int itineraryId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT state
+            FROM tecair.itinerary
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result as string;
+    }
+
+    public async Task<IReadOnlyList<ItineraryFlightAvailabilityData>> GetItineraryFlightAvailabilityAsync(
+        int itineraryId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            WITH reservation_counts AS (
+                SELECT
+                    itinerary_id,
+                    COUNT(*)::INTEGER AS reserved_seats
+                FROM tecair.reservation
+                WHERE itinerary_id = @itinerary_id
+                GROUP BY itinerary_id
+            )
+            SELECT
+                f.flight_id,
+                f.state,
+                f.plane_plate,
+                p.capacity,
+                COALESCE(rc.reserved_seats, 0) AS reserved_seats,
+                p.capacity - COALESCE(rc.reserved_seats, 0) AS available_seats
+            FROM tecair.flight_in_itinerary fii
+            INNER JOIN tecair.flight f
+                ON f.flight_id = fii.flight_id
+            INNER JOIN tecair.plane p
+                ON p.plate = f.plane_plate
+            LEFT JOIN reservation_counts rc
+                ON rc.itinerary_id = fii.itinerary_id
+            WHERE fii.itinerary_id = @itinerary_id
+            ORDER BY fii.flight_order;
+            """;
+
+        var flights = new List<ItineraryFlightAvailabilityData>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            flights.Add(new ItineraryFlightAvailabilityData
+            {
+                FlightId = reader.GetInt32(0),
+                FlightState = reader.GetString(1),
+                PlanePlate = reader.GetString(2),
+                PlaneCapacity = reader.GetInt32(3),
+                ReservedSeats = reader.GetInt32(4),
+                AvailableSeats = reader.GetInt32(5)
+            });
+        }
+
+        return flights;
+    }
+
+    public async Task CloseItineraryAsync(int itineraryId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE tecair.itinerary
+            SET state = 'CLOSED'
+            WHERE itinerary_id = @itinerary_id;
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("itinerary_id", itineraryId);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public async Task<bool> UserExistsAsync(string email, CancellationToken cancellationToken = default)
@@ -152,6 +235,7 @@ public sealed class PostgresReservationRepository(NpgsqlDataSource dataSource) :
                     AND (
                         LOWER(p.name) LIKE '%' || LOWER(@name) || '%'
                         OR LOWER(p.Lname) LIKE '%' || LOWER(@name) || '%'
+                        OR LOWER(CONCAT_WS(' ', p.name, p.Lname)) LIKE '%' || LOWER(@name) || '%'
                     )
                 )
             ORDER BY r.reservation_id ASC;

@@ -45,6 +45,13 @@ export async function getPublicItinerariesWithPromotions() {
   return apiFetch('/itineraries/public/with-promotions');
 }
 
+// Helper de UX: valida cupos antes de confirmar.
+// El backend vuelve a validar en POST /reservations.
+export async function getItineraryAvailability(itineraryId, passengers) {
+  const params = new URLSearchParams({ passengers: String(passengers) });
+  return apiFetch(`/itineraries/${itineraryId}/availability?${params}`);
+}
+
 // Busca itinerarios públicos disponibles entre dos aeropuertos.
 //
 // Backend único usado: GET /api/itineraries/public/with-promotions
@@ -53,6 +60,58 @@ export async function getPublicItinerariesWithPromotions() {
 // El filtrado por origen/destino se hace en cliente porque el endpoint no
 // acepta parámetros de ruta.
 export async function searchItineraries(originCode, destinationCode) {
+  const params = new URLSearchParams({ originCode, destinationCode });
+  const searchResults = await apiFetch(`/itineraries/search?${params}`);
+
+  if (searchResults.length === 0) return [];
+
+  const details = await Promise.all(
+    searchResults.map((it) => getItineraryById(it.itineraryId ?? it.ItineraryId).catch(() => null))
+  );
+
+  const searchEnriched = searchResults.map((raw, index) => {
+    const detail = details[index];
+    const basePrice = Number(raw.price ?? raw.Price);
+    const activePromo = pickActivePromotion(detail?.promotion ?? detail?.Promotion);
+    const displayPrice = activePromo ? activePromo.promoPrice : basePrice;
+    const departure = new Date(raw.departureDatetime ?? raw.DepartureDatetime);
+    const arrival = new Date(raw.arrivalDatetime ?? raw.ArrivalDatetime);
+
+    return {
+      departure,
+      arrival,
+      totalFlights: raw.totalFlights ?? raw.TotalFlights,
+      itineraryId: raw.itineraryId ?? raw.ItineraryId,
+      basePrice,
+      displayPrice,
+      activePromotion: activePromo,
+    };
+  });
+
+  const searchMinPrice = Math.min(...searchEnriched.map((e) => e.displayPrice));
+  const searchMinDuration = Math.min(...searchEnriched.map((e) => e.arrival - e.departure));
+
+  return searchEnriched.map((e) => {
+    const durMs = e.arrival - e.departure;
+    let tag = null;
+    if (e.displayPrice === searchMinPrice) tag = 'Mejor precio';
+    if (durMs === searchMinDuration) tag = 'Más rápido';
+
+    return {
+      id: `IT${e.itineraryId}`,
+      itineraryId: e.itineraryId,
+      stops: e.totalFlights - 1,
+      depart: fmtTime(e.departure),
+      arrive: fmtTime(e.arrival),
+      duration: calcDuration(e.departure, e.arrival),
+      price: e.basePrice,
+      basePrice: e.basePrice,
+      displayPrice: e.displayPrice,
+      activePromotion: e.activePromotion,
+      tag,
+    };
+  });
+
   const data = await getPublicItinerariesWithPromotions();
 
   // Cada itinerario trae sus vuelos ordenados por flight_order.

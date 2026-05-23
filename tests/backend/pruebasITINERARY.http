@@ -59,23 +59,23 @@ GET {{baseUrl}}/api/itineraries/{{crearItinerarioPublico.response.body.$.itinera
 Accept: application/json
 
 
-### 8. Actualizar itinerario con precio, state y vuelos validos
+### 8. Actualizar itinerario EDITION con precio, state y vuelos validos
 # Esperado: 200 OK.
 # itineraryId viene de la ruta; el body reemplaza precio, state y lista ordenada.
-PUT {{baseUrl}}/api/itineraries/2
+PUT {{baseUrl}}/api/itineraries/4
 Content-Type: application/json
 Accept: application/json
 
 {
   "price": 700,
-  "state": "PUBLIC",
+  "state": "EDITION",
   "flights": [
     {
-      "flightId": 1,
+      "flightId": 2,
       "flightOrder": 1
     },
     {
-      "flightId": 2,
+      "flightId": 3,
       "flightOrder": 2
     }
   ]
@@ -118,9 +118,9 @@ Accept: application/json
 }
 
 
-### 11. Actualizar itinerario con lista de vuelos vacia
+### 11. Actualizar itinerario EDITION con lista de vuelos vacia
 # Esperado: 400 Bad Request.
-PUT {{baseUrl}}/api/itineraries/2
+PUT {{baseUrl}}/api/itineraries/4
 Content-Type: application/json
 Accept: application/json
 
@@ -131,9 +131,9 @@ Accept: application/json
 }
 
 
-### 12. Actualizar itinerario con flightOrder duplicado
+### 12. Actualizar itinerario EDITION con flightOrder duplicado
 # Esperado: 409 Conflict.
-PUT {{baseUrl}}/api/itineraries/2
+PUT {{baseUrl}}/api/itineraries/4
 Content-Type: application/json
 Accept: application/json
 
@@ -153,9 +153,9 @@ Accept: application/json
 }
 
 
-### 13. Actualizar itinerario con flightId duplicado
+### 13. Actualizar itinerario EDITION con flightId duplicado
 # Esperado: 409 Conflict.
-PUT {{baseUrl}}/api/itineraries/2
+PUT {{baseUrl}}/api/itineraries/4
 Content-Type: application/json
 Accept: application/json
 
@@ -175,10 +175,10 @@ Accept: application/json
 }
 
 
-### 14. Actualizar itinerario con conexion ilogica
+### 14. Actualizar itinerario EDITION con conexion ilogica
 # Vuelo 1 llega a PTY y vuelo 4 sale de SJO.
 # Esperado: 400 Bad Request.
-PUT {{baseUrl}}/api/itineraries/2
+PUT {{baseUrl}}/api/itineraries/4
 Content-Type: application/json
 Accept: application/json
 
@@ -216,7 +216,7 @@ Accept: application/json
 }
 
 
-### 16. Actualizar itinerario con mas de un dia entre vuelos consecutivos
+### 16. Actualizar itinerario EDITION con mas de un dia entre vuelos consecutivos
 # Esperado: 400 Bad Request.
 PUT {{baseUrl}}/api/itineraries/4
 Content-Type: application/json
@@ -279,4 +279,197 @@ Accept: application/json
 # Itinerario 1 tiene reservaciones en los datos semilla.
 # Esperado: 409 Conflict.
 DELETE {{baseUrl}}/api/itineraries/1
+Accept: application/json
+
+
+### 22. Disponibilidad para itinerario PUBLIC con 1 pasajero
+# Esperado: 200 OK con canReserve = true si quedan espacios.
+GET {{baseUrl}}/api/itineraries/1/availability?passengers=1
+Accept: application/json
+
+
+### 23. Disponibilidad con pasajeros mayor al cupo disponible
+# Esperado: 200 OK con canReserve = false.
+GET {{baseUrl}}/api/itineraries/1/availability?passengers=9999
+Accept: application/json
+
+
+### 24. Disponibilidad para itinerario CLOSED
+# itinerary_id = 5 esta CLOSED en datos semilla.
+# Esperado: 200 OK con availableSeats = 0 y canReserve = false.
+GET {{baseUrl}}/api/itineraries/5/availability?passengers=1
+Accept: application/json
+
+
+### 25. Disponibilidad con valor invalido de pasajeros
+# Esperado: 400 Bad Request.
+GET {{baseUrl}}/api/itineraries/1/availability?passengers=0
+Accept: application/json
+
+
+### 26. Busqueda publica no devuelve itinerarios CLOSED
+# Esperado: 200 OK sin itineraryId = 5.
+GET {{baseUrl}}/api/itineraries/search?originCode=MIA&destinationCode=MEX
+Accept: application/json
+
+
+### 27. Busqueda administrativa puede incluir CLOSED si lo solicita
+# Esperado: 200 OK incluyendo itineraryId = 5.
+GET {{baseUrl}}/api/itineraries/search?originCode=MIA&destinationCode=MEX&includeNonPublic=true
+Accept: application/json
+
+
+### 28. Preparar itinerario EDITION para publicar
+# @name crearItinerarioEditionParaPublicar
+# Esperado: 201 Created con state = EDITION.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 150000,
+  "state": "EDITION",
+  "flights": [
+    {
+      "flightId": 3,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 29. Publicar itinerario EDITION
+# Esperado: 200 OK con state = PUBLIC.
+PUT {{baseUrl}}/api/itineraries/{{crearItinerarioEditionParaPublicar.response.body.$.itineraryId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 150000,
+  "state": "PUBLIC",
+  "flights": [
+    {
+      "flightId": 3,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 30. Intentar editar itinerario PUBLIC
+# Esperado: 409 Conflict.
+# "Only itineraries in EDITION state can be edited."
+PUT {{baseUrl}}/api/itineraries/1
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 999999,
+  "state": "PUBLIC",
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 31. Intentar regresar PUBLIC a EDITION
+# Esperado: 409 Conflict.
+# "Published itineraries cannot return to edition."
+PUT {{baseUrl}}/api/itineraries/1
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 180000,
+  "state": "EDITION",
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 32. Intentar cerrar manualmente itinerario PUBLIC
+# Esperado: 409 Conflict.
+# "Itineraries cannot be manually closed from itinerary management."
+PUT {{baseUrl}}/api/itineraries/1
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 180000,
+  "state": "CLOSED",
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 33. Intentar editar itinerario CLOSED
+# Esperado: 409 Conflict.
+# "Closed itineraries cannot be modified."
+PUT {{baseUrl}}/api/itineraries/5
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 210500,
+  "state": "CLOSED",
+  "flights": [
+    {
+      "flightId": 5,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 34. Intentar cambiar CLOSED a PUBLIC
+# Esperado: 409 Conflict.
+# "Closed itineraries cannot be modified."
+PUT {{baseUrl}}/api/itineraries/5
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 210000,
+  "state": "PUBLIC",
+  "flights": [
+    {
+      "flightId": 5,
+      "flightOrder": 1
+    }
+  ]
+}
+
+
+### 35. Cerrar vuelo relacionado con itinerario PUBLIC
+# flight_id = 4 pertenece al itinerary_id = 3.
+# Esperado: 200 OK con vuelo CLOSED; el backend cierra itinerarios relacionados automaticamente.
+PATCH {{baseUrl}}/api/flights/4/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "CLOSED"
+}
+
+
+### 36. Verificar itinerario cerrado automaticamente por cierre de vuelo
+# Esperado: 200 OK con state = CLOSED.
+GET {{baseUrl}}/api/itineraries/3
+Accept: application/json
+
+
+### 37. Busqueda publica solo devuelve PUBLIC
+# Esperado: 200 OK sin itinerarios EDITION ni CLOSED.
+GET {{baseUrl}}/api/itineraries/search?originCode=SJO&destinationCode=MIA
 Accept: application/json

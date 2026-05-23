@@ -5,6 +5,7 @@ import SummarySide from '../../components/SummarySide.jsx';
 import BirthDatePicker from '../../components/BirthDatePicker.jsx';
 import { createPassenger, mapGenderToCode } from '../../services/passengerService.js';
 import { createReservation, generatePaymentReference } from '../../services/reservationService.js';
+import { getItineraryAvailability } from '../../services/itineraryService.js';
 
 // Pantalla de datos de pasajeros: formulario con validación para cada viajero
 export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
@@ -58,6 +59,12 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
     setApiError(null);
 
     try {
+      const availability = await getItineraryAvailability(itineraryId, paxList.length);
+      if (!availability.canReserve) {
+        setApiError('El itinerario seleccionado no tiene suficientes espacios disponibles.');
+        return;
+      }
+
       const reservations = [];
 
       for (let i = 0; i < paxList.length; i++) {

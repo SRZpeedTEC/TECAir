@@ -4,8 +4,6 @@
 -- Este script crea la estructura vacia de la base de datos:
 -- tablas, llaves primarias, llaves foraneas y restricciones basicas.
 
-BEGIN;
-
 CREATE SCHEMA IF NOT EXISTS tecair;
 SET search_path TO tecair;
 
@@ -266,9 +264,10 @@ CREATE TABLE itinerary (
     CONSTRAINT ck_itinerary_price
         CHECK (price >= 0),
 
-    -- Esto los valores de estado de itineray a valores conocidos
-    CONSTRAINT ck_reservation_state
-        CHECK (state IN ('EDITION', 'PUBLIC'))
+    -- Esto limita los estados del itinerario a valores conocidos.
+    -- CLOSED no se muestra en busquedas publicas de clientes.
+    CONSTRAINT ck_itinerary_state
+        CHECK (state IN ('EDITION', 'PUBLIC', 'CLOSED'))
 );
 
 -- Esta tabla une itinerarios con vuelos.
@@ -449,4 +448,3 @@ CREATE TABLE baggage (
 
 );
 
-COMMIT;

@@ -11,11 +11,13 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
     public Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
         string originCode,
         string destinationCode,
+        bool includeNonPublic = false,
         CancellationToken cancellationToken = default)
     {
         return itineraryRepository.SearchAsync(
             originCode.Trim().ToUpperInvariant(),
             destinationCode.Trim().ToUpperInvariant(),
+            includeNonPublic,
             cancellationToken);
     }
 
@@ -35,6 +37,43 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
     public Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default)
     {
         return itineraryRepository.GetByIdAsync(itineraryId, cancellationToken);
+    }
+
+    public async Task<ItineraryAvailabilityServiceResult> GetAvailabilityAsync(
+        int itineraryId,
+        int passengers,
+        CancellationToken cancellationToken = default)
+    {
+        if (itineraryId <= 0)
+        {
+            return ItineraryAvailabilityServiceResult.ValidationError("Itinerary id must be greater than 0.");
+        }
+
+        if (passengers <= 0)
+        {
+            return ItineraryAvailabilityServiceResult.ValidationError("Passengers must be greater than 0.");
+        }
+
+        var itineraryState = await itineraryRepository.GetItineraryStateAsync(itineraryId, cancellationToken);
+        if (itineraryState is null)
+        {
+            return ItineraryAvailabilityServiceResult.NotFound($"Itinerary '{itineraryId}' was not found.");
+        }
+
+        if (itineraryState != "PUBLIC")
+        {
+            return ItineraryAvailabilityServiceResult.Success(new ItineraryAvailabilityResponse
+            {
+                ItineraryId = itineraryId,
+                RequestedPassengers = passengers,
+                AvailableSeats = 0,
+                CanReserve = false
+            });
+        }
+
+        var flights = await itineraryRepository.GetItineraryFlightAvailabilityAsync(itineraryId, cancellationToken);
+        var availability = BuildAvailabilityResponse(itineraryId, passengers, flights);
+        return ItineraryAvailabilityServiceResult.Success(availability);
     }
 
     // Caso de uso "crear itinerario".
@@ -70,6 +109,13 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
                 $"Flight ids were not found: {string.Join(", ", missingFlightIds)}.");
         }
 
+        var normalizedState = NormalizeState(request.State);
+        if (normalizedState == "CLOSED")
+        {
+            return CreateItineraryServiceResult.ValidationError(
+                "Itineraries cannot be manually closed from itinerary management.");
+        }
+
         var orderedFlights = request.Flights
             .OrderBy(flight => flight.FlightOrder)
             .Select(flight => new
@@ -79,7 +125,9 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             })
             .ToArray();
 
-        var itineraryValidationError = ValidateFlightSequence(orderedFlights.Select(flight => flight.Data).ToArray());
+        var itineraryValidationError = ValidateFlightSequence(
+            orderedFlights.Select(flight => flight.Data).ToArray(),
+            requireUpcomingFlights: normalizedState == "PUBLIC");
         if (itineraryValidationError is not null)
         {
             return CreateItineraryServiceResult.ValidationError(itineraryValidationError);
@@ -88,7 +136,7 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         var normalizedRequest = new CreateItineraryRequest
         {
             Price = request.Price,
-            State = NormalizeState(request.State),
+            State = normalizedState,
             Flights = orderedFlights
                 .Select(flight => new CreateItineraryFlightRequest
                 {
@@ -115,9 +163,23 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             return UpdateItineraryServiceResult.ValidationError("Itinerary id must be greater than 0.");
         }
 
-        if (!await itineraryRepository.ItineraryExistsAsync(itineraryId, cancellationToken))
+        var currentState = await itineraryRepository.GetItineraryStateAsync(itineraryId, cancellationToken);
+        if (currentState is null)
         {
             return UpdateItineraryServiceResult.NotFound($"Itinerary '{itineraryId}' was not found.");
+        }
+
+        var stateValidationError = ValidateItineraryState(request.State);
+        if (stateValidationError is not null)
+        {
+            return UpdateItineraryServiceResult.ValidationError(stateValidationError);
+        }
+
+        var normalizedState = NormalizeState(request.State);
+        var lifecycleError = ValidateItineraryLifecycleTransition(currentState, normalizedState);
+        if (lifecycleError is not null)
+        {
+            return UpdateItineraryServiceResult.Conflict(lifecycleError);
         }
 
         var validationError = ValidateUpdateItineraryRequest(request);
@@ -156,7 +218,9 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             })
             .ToArray();
 
-        var itineraryValidationError = ValidateFlightSequence(orderedFlights.Select(flight => flight.Data).ToArray());
+        var itineraryValidationError = ValidateFlightSequence(
+            orderedFlights.Select(flight => flight.Data).ToArray(),
+            requireUpcomingFlights: normalizedState == "PUBLIC");
         if (itineraryValidationError is not null)
         {
             return UpdateItineraryServiceResult.ValidationError(itineraryValidationError);
@@ -165,7 +229,7 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         var normalizedRequest = new UpdateItineraryRequest
         {
             Price = request.Price,
-            State = NormalizeState(request.State),
+            State = normalizedState,
             Flights = orderedFlights
                 .Select(flight => new CreateItineraryFlightRequest
                 {
@@ -226,15 +290,10 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             return "Price must be greater than or equal to 0.";
         }
 
-        if (string.IsNullOrWhiteSpace(state))
+        var stateValidationError = ValidateItineraryState(state);
+        if (stateValidationError is not null)
         {
-            return "State is required.";
-        }
-
-        var normalizedState = NormalizeState(state);
-        if (normalizedState is not "EDITION" and not "PUBLIC")
-        {
-            return "State must be EDITION or PUBLIC.";
+            return stateValidationError;
         }
 
         if (flights is null)
@@ -263,6 +322,90 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
     private static string NormalizeState(string state)
     {
         return state.Trim().ToUpperInvariant();
+    }
+
+    private static string? ValidateItineraryState(string state)
+    {
+        if (string.IsNullOrWhiteSpace(state))
+        {
+            return "State is required.";
+        }
+
+        var normalizedState = NormalizeState(state);
+        if (normalizedState is not "EDITION" and not "PUBLIC" and not "CLOSED")
+        {
+            return "State must be EDITION, PUBLIC or CLOSED.";
+        }
+
+        return null;
+    }
+
+    // El estado del itinerario sigue un ciclo de una sola via:
+    // EDITION se puede editar o publicar; PUBLIC y CLOSED son de solo lectura.
+    private static string? ValidateItineraryLifecycleTransition(string currentState, string requestedState)
+    {
+        if (currentState == "CLOSED")
+        {
+            return "Closed itineraries cannot be modified.";
+        }
+
+        if (currentState == "PUBLIC")
+        {
+            if (requestedState == "EDITION")
+            {
+                return "Published itineraries cannot return to edition.";
+            }
+
+            if (requestedState == "CLOSED")
+            {
+                return "Itineraries cannot be manually closed from itinerary management.";
+            }
+
+            return "Only itineraries in EDITION state can be edited.";
+        }
+
+        if (requestedState == "CLOSED")
+        {
+            return "Itineraries cannot be manually closed from itinerary management.";
+        }
+
+        return null;
+    }
+
+    private static ItineraryAvailabilityResponse BuildAvailabilityResponse(
+        int itineraryId,
+        int passengers,
+        IReadOnlyList<ItineraryFlightAvailabilityData> flights)
+    {
+        if (flights.Count == 0)
+        {
+            return new ItineraryAvailabilityResponse
+            {
+                ItineraryId = itineraryId,
+                RequestedPassengers = passengers,
+                AvailableSeats = 0,
+                CanReserve = false
+            };
+        }
+
+        // La disponibilidad del itinerario se calcula con el menor cupo disponible
+        // entre todos sus vuelos internos, no solo con el estado del encabezado.
+        var minimumAvailableSeats = flights.Min(flight => Math.Max(0, flight.AvailableSeats));
+        var allFlightsReservable = flights.All(IsReservableFlight);
+        var effectiveAvailableSeats = allFlightsReservable ? minimumAvailableSeats : 0;
+
+        return new ItineraryAvailabilityResponse
+        {
+            ItineraryId = itineraryId,
+            RequestedPassengers = passengers,
+            AvailableSeats = effectiveAvailableSeats,
+            CanReserve = allFlightsReservable && effectiveAvailableSeats >= passengers
+        };
+    }
+
+    private static bool IsReservableFlight(ItineraryFlightAvailabilityData flight)
+    {
+        return (flight.FlightState is "OPEN" or "UPCOMING") && flight.AvailableSeats > 0;
     }
 
     // Evita que el mismo vuelo o el mismo orden aparezcan mas de una vez.
@@ -296,14 +439,20 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         return null;
     }
 
-    // Valida que todos los vuelos esten en estado UPCOMING (los itinerarios se
-    // construyen sobre vuelos aun no publicados; al publicar el itinerario los
-    // vuelos transicionan a OPEN) y formen una ruta conectada.
-    private static string? ValidateFlightSequence(IReadOnlyList<ItineraryFlightValidationData> orderedFlights)
+    // Valida que los vuelos formen una ruta conectada. La regla UPCOMING solo
+    // aplica cuando el itinerario quedara reservable para clientes.
+    private static string? ValidateFlightSequence(
+        IReadOnlyList<ItineraryFlightValidationData> orderedFlights,
+        bool requireUpcomingFlights)
     {
         foreach (var flight in orderedFlights)
         {
-            if (flight.State != "UPCOMING")
+            if (flight.State == "CLOSED")
+            {
+                return $"Flight '{flight.FlightId}' cannot be CLOSED.";
+            }
+
+            if (requireUpcomingFlights && flight.State != "UPCOMING")
             {
                 return $"Flight '{flight.FlightId}' must have state UPCOMING.";
             }

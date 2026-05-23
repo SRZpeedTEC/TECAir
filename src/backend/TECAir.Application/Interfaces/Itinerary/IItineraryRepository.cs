@@ -9,6 +9,7 @@ public interface IItineraryRepository
     Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
         string originCode,
         string destinationCode,
+        bool includeNonPublic,
         CancellationToken cancellationToken = default);
 
     // Obtiene todos los itinerarios con promocion opcional y vuelos.
@@ -35,10 +36,24 @@ public interface IItineraryRepository
     // Verifica existencia del itinerario antes de modificarlo.
     Task<bool> ItineraryExistsAsync(int itineraryId, CancellationToken cancellationToken = default);
 
+    // Obtiene solo el estado del itinerario para reglas de disponibilidad.
+    Task<string?> GetItineraryStateAsync(int itineraryId, CancellationToken cancellationToken = default);
+
+    // Calcula cupos por vuelo interno del itinerario.
+    Task<IReadOnlyList<ItineraryFlightAvailabilityData>> GetItineraryFlightAvailabilityAsync(
+        int itineraryId,
+        CancellationToken cancellationToken = default);
+
     // Reemplaza precio y vuelos asociados.
     Task<CreateItineraryResponse> UpdateWithFlightsAsync(
         int itineraryId,
         UpdateItineraryRequest request,
+        CancellationToken cancellationToken = default);
+
+    // Actualiza solo el estado del itinerario y conserva sus vuelos actuales.
+    Task<CreateItineraryResponse> UpdateStateAsync(
+        int itineraryId,
+        string state,
         CancellationToken cancellationToken = default);
 
     // Revisa si el itinerario ya fue vendido en alguna reservacion.

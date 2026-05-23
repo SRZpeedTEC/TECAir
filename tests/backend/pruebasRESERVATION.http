@@ -118,3 +118,105 @@ Accept: application/json
 # Esperado: 400 Bad Request.
 GET {{baseUrl}}/api/reservations/user
 Accept: application/json
+
+
+### 13. Crear reservacion para itinerario PUBLIC con cupo disponible
+# Esperado: 201 Created si usuario y pasajero existen.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-PUBLIC-{{$timestamp}}"
+}
+
+
+### 14. Crear reservacion para itinerario CLOSED
+# itinerary_id = 5 esta CLOSED en los datos semilla.
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 5,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-CLOSED-{{$timestamp}}"
+}
+
+
+### 15. Cerrar vuelo interno y luego intentar reservar su itinerario
+# Ejecutar una sola vez sobre seed limpio. Al cerrar vuelo 4, el backend cierra el itinerario 3.
+# Esperado PATCH: 200 OK. Esperado POST: 400 Bad Request o 409 Conflict segun el estado final.
+PATCH {{baseUrl}}/api/flights/4/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "CLOSED"
+}
+
+###
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 3,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-FLIGHT-CLOSED-{{$timestamp}}"
+}
+
+
+### 16. Crear reservacion para itinerario lleno
+# Preparacion: crear reservaciones hasta saturar el cupo minimo del itinerario.
+# Esperado al superar el cupo: 409 Conflict con mensaje de espacios insuficientes.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-FULL-{{$timestamp}}"
+}
+
+
+### 17. Buscar reservaciones por reservationId
+# Esperado: 200 OK con la reservacion indicada si existe.
+GET {{baseUrl}}/api/reservations/search?reservationId=1
+Accept: application/json
+
+
+### 18. Buscar reservaciones por passengerId
+# Esperado: 200 OK con las reservaciones del pasajero.
+GET {{baseUrl}}/api/reservations/search?passengerId=P12345678
+Accept: application/json
+
+
+### 19. Buscar reservaciones por nombre
+# Esperado: 200 OK con coincidencias por nombre.
+GET {{baseUrl}}/api/reservations/search?passengerName=Ana
+Accept: application/json
+
+
+### 20. Buscar reservaciones por apellido
+# Esperado: 200 OK con coincidencias por apellido.
+GET {{baseUrl}}/api/reservations/search?passengerName=Rojas
+Accept: application/json
+
+
+### 21. Buscar reservaciones por nombre completo
+# Esperado: 200 OK usando CONCAT_WS(name, lname).
+GET {{baseUrl}}/api/reservations/search?passengerName=Ana%20Rojas
+Accept: application/json

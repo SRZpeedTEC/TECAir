@@ -9,6 +9,7 @@ public interface IItineraryService
     Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
         string originCode,
         string destinationCode,
+        bool includeNonPublic = false,
         CancellationToken cancellationToken = default);
 
     // Devuelve todos los itinerarios, en edicion o publicos, con promocion y vuelos.
@@ -21,6 +22,12 @@ public interface IItineraryService
 
     // Devuelve el detalle de un itinerario o null si no existe.
     Task<ItineraryDetailsResponse?> GetByIdAsync(int itineraryId, CancellationToken cancellationToken = default);
+
+    // Calcula si el itinerario puede reservar el numero solicitado de pasajeros.
+    Task<ItineraryAvailabilityServiceResult> GetAvailabilityAsync(
+        int itineraryId,
+        int passengers,
+        CancellationToken cancellationToken = default);
 
     // Crea un itinerario despues de validar la secuencia de vuelos.
     Task<CreateItineraryServiceResult> CreateAsync(

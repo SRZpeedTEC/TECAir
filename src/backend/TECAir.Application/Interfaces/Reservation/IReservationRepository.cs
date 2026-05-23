@@ -1,4 +1,5 @@
 using TECAir.Application.DTOs.Reservations;
+using TECAir.Application.DTOs.Itineraries;
 
 namespace TECAir.Application.Interfaces;
 
@@ -6,6 +7,11 @@ namespace TECAir.Application.Interfaces;
 public interface IReservationRepository
 {
     Task<bool> ItineraryExistsAsync(int itineraryId, CancellationToken cancellationToken = default);
+    Task<string?> GetItineraryStateAsync(int itineraryId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ItineraryFlightAvailabilityData>> GetItineraryFlightAvailabilityAsync(
+        int itineraryId,
+        CancellationToken cancellationToken = default);
+    Task CloseItineraryAsync(int itineraryId, CancellationToken cancellationToken = default);
     Task<bool> UserExistsAsync(string email, CancellationToken cancellationToken = default);
     Task<bool> PassengerExistsAsync(string passengerId, CancellationToken cancellationToken = default);
     Task<bool> PaymentReferenceExistsAsync(string paymentReference, CancellationToken cancellationToken = default);

@@ -11,6 +11,24 @@ import {
   deleteItinerary,
 } from '../services/itineraryService.js';
 
+function getStateBadgeStyle(state) {
+  if (state === 'PUBLIC') return { background: '#e8f5ee', color: '#2d7a4f' };
+  if (state === 'CLOSED') return { background: '#fde8ee', color: '#9b2335' };
+  return { background: '#fdf2e6', color: '#9b6d23' };
+}
+
+function getStateBadgeTitle(state) {
+  if (state === 'PUBLIC') return 'Visible para clientes';
+  if (state === 'CLOSED') return 'Cerrado (no visible para clientes)';
+  return 'Borrador (no visible para clientes)';
+}
+
+function getStateBadgeLabel(state) {
+  if (state === 'PUBLIC') return 'Publicado';
+  if (state === 'CLOSED') return 'Cerrado';
+  return 'Borrador';
+}
+
 const pad2 = (n) => String(n).padStart(2, '0');
 
 function fmtDateTime(value) {
@@ -219,7 +237,10 @@ export default function ItineraryListTab() {
                 </tr>
               </thead>
               <tbody>
-                {results.map((it) => (
+                {results.map((it) => {
+                  // Los estados PUBLIC y CLOSED se muestran solo para consulta; no se editan ni se cierran manualmente.
+                  const canManage = it.state === 'EDITION';
+                  return (
                   <tr key={it.itineraryId}>
                     <td className="mono">{it.itineraryId}</td>
                     <td className="mono">{it.originCode}</td>
@@ -235,12 +256,10 @@ export default function ItineraryListTab() {
                     <td>
                       <span
                         className="it-badge"
-                        style={it.state === 'PUBLIC'
-                          ? { background: '#e8f5ee', color: '#2d7a4f' }
-                          : { background: '#fdf2e6', color: '#9b6d23' }}
-                        title={it.state === 'PUBLIC' ? 'Visible para clientes' : 'Borrador (no visible para clientes)'}
+                        style={getStateBadgeStyle(it.state)}
+                        title={getStateBadgeTitle(it.state)}
                       >
-                        {it.state === 'PUBLIC' ? 'Publicado' : 'Borrador'}
+                        {getStateBadgeLabel(it.state)}
                       </span>
                     </td>
                     <td className="text-end">
@@ -248,23 +267,26 @@ export default function ItineraryListTab() {
                         type="button"
                         className="flight-action-btn"
                         onClick={() => openEdit(it)}
-                        aria-label={`Editar itinerario ${it.itineraryId}`}
-                        title="Editar"
+                        aria-label={`${canManage ? 'Editar' : 'Ver'} itinerario ${it.itineraryId}`}
+                        title={canManage ? 'Editar' : 'Ver detalle'}
                       >
-                        <i className="bi bi-pencil"></i>
+                        <i className={`bi ${canManage ? 'bi-pencil' : 'bi-eye'}`}></i>
                       </button>
-                      <button
-                        type="button"
-                        className="flight-action-btn flight-action-danger"
-                        onClick={() => openDelete(it)}
-                        aria-label={`Eliminar itinerario ${it.itineraryId}`}
-                        title="Eliminar"
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
+                      {canManage && (
+                        <button
+                          type="button"
+                          className="flight-action-btn flight-action-danger"
+                          onClick={() => openDelete(it)}
+                          aria-label={`Eliminar itinerario ${it.itineraryId}`}
+                          title="Eliminar"
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      )}
                     </td>
                   </tr>
-                ))}
+                );
+                })}
               </tbody>
             </table>
           </div>
@@ -275,7 +297,7 @@ export default function ItineraryListTab() {
       <Modal
         open={!!editing}
         onClose={() => setEditing(null)}
-        title={editing ? `Editar itinerario #${editing.id}` : ''}
+        title={editing ? `${editing.state === 'EDITION' ? 'Editar' : 'Ver'} itinerario #${editing.id}` : ''}
         size="lg"
       >
         {loadingDetail && (

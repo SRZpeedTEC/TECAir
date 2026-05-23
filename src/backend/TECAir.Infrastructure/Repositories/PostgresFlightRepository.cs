@@ -431,6 +431,24 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return MapFlightResponse(reader);
     }
 
+    public async Task CloseItinerariesByFlightAsync(int flightId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE tecair.itinerary i
+            SET state = 'CLOSED'
+            FROM tecair.flight_in_itinerary fii
+            WHERE
+                fii.itinerary_id = i.itinerary_id
+                AND fii.flight_id = @flight_id
+                AND i.state <> 'CLOSED';
+            """;
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     public async Task<bool> FlightExistsAsync(int flightId, CancellationToken cancellationToken = default)
     {
         const string sql = """

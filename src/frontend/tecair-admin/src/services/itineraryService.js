@@ -33,7 +33,7 @@ function pickActivePromotion(promo) {
 // Trae itinerarios en CUALQUIER estado (incluye DRAFT/PRIVATE) sin promoción.
 // La usan flujos de administración (lista de itinerarios, creación de promos).
 export async function searchItineraries(originCode, destinationCode) {
-  const params = new URLSearchParams({ originCode, destinationCode });
+  const params = new URLSearchParams({ originCode, destinationCode, includeNonPublic: 'true' });
   const data = await apiFetch(`/itineraries/search?${params}`);
 
   return data.map((it) => ({
@@ -90,6 +90,13 @@ export async function searchPublicItinerariesWithPromotions(originCode, destinat
       };
     })
     .filter(Boolean);
+}
+
+// Helper de UX: valida cupos antes de confirmar.
+// POST /reservations revalida disponibilidad en backend.
+export async function getItineraryAvailability(itineraryId, passengers) {
+  const params = new URLSearchParams({ passengers: String(passengers) });
+  return apiFetch(`/itineraries/${itineraryId}/availability?${params}`);
 }
 
 // ── Detalle por id ──

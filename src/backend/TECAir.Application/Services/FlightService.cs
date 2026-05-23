@@ -192,6 +192,14 @@ public class FlightService(
         }
 
         var flight = await flightRepository.UpdateStateAsync(flightId, targetState, cancellationToken);
+        if (targetState == "CLOSED")
+        {
+            // Sin triggers ni procedimientos: el cierre de itinerarios relacionados
+            // se hace desde el flujo de aplicacion cuando el vuelo se cierra.
+            // Por restriccion del proyecto, ambos updates se ejecutan secuencialmente sin transaccion.
+            await flightRepository.CloseItinerariesByFlightAsync(flightId, cancellationToken);
+        }
+
         return TransitionFlightStateServiceResult.Success(flight);
     }
 
@@ -292,6 +300,14 @@ public class FlightService(
             calculatedArrivalDatetime,
             calculatedMiles,
             cancellationToken);
+        if (normalizedRequest.State == "CLOSED")
+        {
+            // El cierre automatico de itinerarios relacionados vive en backend
+            // para proteger la regla aunque el frontend envie solicitudes invalidas.
+            // Por restriccion del proyecto, se ejecuta despues del update del vuelo y sin transaccion.
+            await flightRepository.CloseItinerariesByFlightAsync(flightId, cancellationToken);
+        }
+
         return UpdateFlightServiceResult.Success(flight);
     }
 

@@ -1,4 +1,5 @@
 using TECAir.Application.DTOs.Reservations;
+using TECAir.Application.DTOs.Itineraries;
 using TECAir.Application.Interfaces;
 
 namespace TECAir.Application.Services;
@@ -25,6 +26,15 @@ public class ReservationService(IReservationRepository reservationRepository) : 
                 $"Itinerary '{normalizedRequest.ItineraryId}' was not found.");
         }
 
+        var itineraryState = await reservationRepository.GetItineraryStateAsync(
+            normalizedRequest.ItineraryId,
+            cancellationToken);
+        if (itineraryState != "PUBLIC")
+        {
+            return CreateReservationServiceResult.ValidationError(
+                "Reservations can only be created for PUBLIC itineraries.");
+        }
+
         if (!await reservationRepository.UserExistsAsync(normalizedRequest.UserEmail, cancellationToken))
         {
             return CreateReservationServiceResult.NotFound(
@@ -45,7 +55,35 @@ public class ReservationService(IReservationRepository reservationRepository) : 
                 $"Payment reference '{normalizedRequest.PaymentReference}' already exists.");
         }
 
+        var availability = await reservationRepository.GetItineraryFlightAvailabilityAsync(
+            normalizedRequest.ItineraryId,
+            cancellationToken);
+        if (!CanReservePassengers(availability, passengers: 1))
+        {
+            if (ShouldCloseItinerary(availability))
+            {
+                // Sin triggers ni transacciones por restriccion del proyecto:
+                // el backend marca CLOSED cuando detecta vuelos cerrados o llenos.
+                await reservationRepository.CloseItineraryAsync(
+                    normalizedRequest.ItineraryId,
+                    cancellationToken);
+            }
+
+            return CreateReservationServiceResult.Conflict(
+                "The selected itinerary does not have enough available seats.");
+        }
+
         var reservation = await reservationRepository.CreateAsync(normalizedRequest, cancellationToken);
+
+        var updatedAvailability = await reservationRepository.GetItineraryFlightAvailabilityAsync(
+            normalizedRequest.ItineraryId,
+            cancellationToken);
+        if (ShouldCloseItinerary(updatedAvailability))
+        {
+            // La reservacion consume un asiento en cada vuelo interno del itinerario.
+            await reservationRepository.CloseItineraryAsync(normalizedRequest.ItineraryId, cancellationToken);
+        }
+
         return CreateReservationServiceResult.Success(reservation);
     }
 
@@ -62,7 +100,7 @@ public class ReservationService(IReservationRepository reservationRepository) : 
         if (normalizedReservationId is null && normalizedPassengerId is null && normalizedName is null)
         {
             return SearchReservationsServiceResult.ValidationError(
-                "Query parameter 'reservationId', 'passengerId' or 'name' is required.");
+                "Query parameter 'reservationId', 'passengerId', 'name' or 'passengerName' is required.");
         }
 
         var reservations = await reservationRepository.SearchAsync(
@@ -145,5 +183,30 @@ public class ReservationService(IReservationRepository reservationRepository) : 
             State = request.State.Trim().ToUpperInvariant(),
             PaymentReference = request.PaymentReference.Trim()
         };
+    }
+
+    private static bool CanReservePassengers(
+        IReadOnlyList<ItineraryFlightAvailabilityData> flights,
+        int passengers)
+    {
+        if (flights.Count == 0)
+        {
+            return false;
+        }
+
+        // La creacion vuelve a validar disponibilidad; el GET de disponibilidad
+        // solo ayuda al frontend y no se considera fuente de verdad.
+        return flights.All(IsReservableFlight) &&
+            flights.Min(flight => flight.AvailableSeats) >= passengers;
+    }
+
+    private static bool IsReservableFlight(ItineraryFlightAvailabilityData flight)
+    {
+        return (flight.FlightState is "OPEN" or "UPCOMING") && flight.AvailableSeats > 0;
+    }
+
+    private static bool ShouldCloseItinerary(IReadOnlyList<ItineraryFlightAvailabilityData> flights)
+    {
+        return flights.Any(flight => flight.FlightState == "CLOSED" || flight.AvailableSeats <= 0);
     }
 }

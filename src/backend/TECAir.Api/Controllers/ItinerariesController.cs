@@ -32,10 +32,12 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
 
     // GET /api/itineraries/search?originCode=...&destinationCode=...
     // Busca itinerarios cuyo primer vuelo salga del origen y cuyo ultimo vuelo llegue al destino.
+    // Por defecto solo devuelve PUBLIC; admin puede pedir includeNonPublic=true.
     [HttpGet("search")]
     public async Task<ActionResult<IReadOnlyList<ItinerarySearchResponse>>> Search(
         [FromQuery] string? originCode,
         [FromQuery] string? destinationCode,
+        [FromQuery] bool includeNonPublic,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(originCode))
@@ -48,7 +50,11 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
             return BadRequest(new { message = "Query parameter 'destinationCode' is required." });
         }
 
-        var itineraries = await itineraryService.SearchAsync(originCode, destinationCode, cancellationToken);
+        var itineraries = await itineraryService.SearchAsync(
+            originCode,
+            destinationCode,
+            includeNonPublic,
+            cancellationToken);
         return Ok(itineraries);
     }
 
@@ -71,6 +77,37 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
         }
 
         return Ok(itinerary);
+    }
+
+    // GET /api/itineraries/{itineraryId}/availability?passengers=...
+    // Ayuda al frontend a validar cupos; POST /api/reservations vuelve a validar.
+    [HttpGet("{itineraryId:int}/availability")]
+    public async Task<ActionResult<ItineraryAvailabilityResponse>> GetAvailability(
+        int itineraryId,
+        [FromQuery] int? passengers,
+        CancellationToken cancellationToken)
+    {
+        if (passengers is null)
+        {
+            return BadRequest(new { message = "Query parameter 'passengers' is required." });
+        }
+
+        var result = await itineraryService.GetAvailabilityAsync(
+            itineraryId,
+            passengers.Value,
+            cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            if (result.IsNotFound)
+            {
+                return NotFound(new { message = result.ErrorMessage });
+            }
+
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Availability);
     }
 
     // POST /api/itineraries

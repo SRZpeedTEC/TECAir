@@ -30,7 +30,7 @@ const MAX_CONNECTION_MS = 24 * 60 * 60 * 1000;
 // Props:
 //   mode           — 'create' | 'edit'
 //   initialPrice   — number (default 0). Para edit, el precio actual.
-//   initialState   — 'PUBLIC' | 'EDITION'. Default 'PUBLIC' en create, el estado actual en edit.
+//   initialState   — 'PUBLIC' | 'EDITION' | 'CLOSED'. Default 'EDITION' en create, el estado actual en edit.
 //   initialLegs    — array de "flight" (mismo shape del service /flights/by-departure) precargado para edit.
 //   onSubmit       — async (payload) → void. payload = { price, state, flights: [{ flightId, flightOrder }] }
 //   onCancel       — opcional. En modo create resetea; en edit cierra modal.
@@ -38,7 +38,7 @@ const MAX_CONNECTION_MS = 24 * 60 * 60 * 1000;
 export default function ItineraryBuilder({
   mode           = 'create',
   initialPrice   = 0,
-  initialState   = 'PUBLIC',
+  initialState   = 'EDITION',
   initialLegs    = [],
   onSubmit,
   onCancel,
@@ -47,8 +47,7 @@ export default function ItineraryBuilder({
   const [originAirport, setOriginAirport] = useState(null);
   const [legs,          setLegs]          = useState(initialLegs);
   const [price,         setPrice]         = useState(initialPrice ? String(initialPrice) : '');
-  // PUBLIC = visible para el cliente en /itineraries/public/with-promotions.
-  // EDITION = borrador interno; queda guardado pero no aparece en la vista cliente.
+  // PUBLIC = visible para el cliente; EDITION y CLOSED no aparecen en la busqueda publica.
   const [itineraryState, setItineraryState] = useState(initialState);
 
   // Panel de selección activo: 'first' | 'next' | null
@@ -72,7 +71,14 @@ export default function ItineraryBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const currentState = String(initialState || 'EDITION').toUpperCase();
+  // El admin solo puede editar itinerarios en EDITION; PUBLIC y CLOSED son de solo lectura.
+  const isReadOnly = mode === 'edit' && currentState !== 'EDITION';
+  const canEdit = !isReadOnly;
   const lastLeg     = legs.length > 0 ? legs[legs.length - 1] : null;
+  const firstLeg    = legs.length > 0 ? legs[0] : null;
+  const startCode   = originAirport?.code ?? firstLeg?.departureCode;
+  const startCity   = originAirport?.city ?? firstLeg?.departureCity;
   const cursorCode  = lastLeg ? lastLeg.arrivalCode : originAirport?.code;
   const cursorCity  = lastLeg ? lastLeg.arrivalCity : originAirport?.city;
 
@@ -181,7 +187,7 @@ export default function ItineraryBuilder({
         // Reset suave: dejamos el origen para que pueda crear otro itinerario similar
         setLegs([]);
         setPrice('');
-        setItineraryState('PUBLIC');
+        setItineraryState('EDITION');
         setPickerMode(null);
       }
     } catch (err) {
@@ -193,7 +199,16 @@ export default function ItineraryBuilder({
 
   return (
     <div className="itinerary-builder">
+      {isReadOnly && (
+        <div className="admin-alert admin-alert-info mb-3" role="status">
+          <i className="bi bi-lock-fill"></i>
+          <span>
+            Los itinerarios publicados o cerrados son de solo lectura. El cierre se aplica automaticamente cuando se cierra un vuelo relacionado.
+          </span>
+        </div>
+      )}
       {/* ─── 1. Cabecera: origen del itinerario ─── */}
+      {canEdit && (<>
       <div className="ib-section">
         <div className="ib-section-head">
           <span className="ib-section-num">1</span>
@@ -212,10 +227,12 @@ export default function ItineraryBuilder({
       </div>
 
       {/* ─── 2. Cadena de vuelos (timeline) ─── */}
+      </>)}
+
       {(originAirport || legs.length > 0) && (
         <div className="ib-section">
           <div className="ib-section-head">
-            <span className="ib-section-num">2</span>
+            <span className="ib-section-num">{canEdit ? 2 : 1}</span>
             <div>
               <h4 className="ib-section-title">Construcción de la ruta</h4>
               <p className="ib-section-sub">
@@ -230,8 +247,8 @@ export default function ItineraryBuilder({
             <div className="ib-timeline">
               {/* Nodo de inicio */}
               <div className="ib-node ib-node-airport">
-                <div className="ib-node-code">{originAirport?.code ?? '—'}</div>
-                <div className="ib-node-city">{originAirport?.city ?? ''}</div>
+                <div className="ib-node-code">{startCode ?? '—'}</div>
+                <div className="ib-node-city">{startCity ?? ''}</div>
                 <div className="ib-node-tag">Origen</div>
               </div>
 
@@ -246,7 +263,7 @@ export default function ItineraryBuilder({
                       <div className="ib-leg-chip-row">
                         <span className="ib-leg-id">#{leg.flightId}</span>
                         {leg.planePlate && <span className="ib-leg-plate">{leg.planePlate}</span>}
-                        {isLastLeg && (
+                        {isLastLeg && canEdit && (
                           <button
                             type="button"
                             className="ib-leg-remove"
@@ -294,7 +311,7 @@ export default function ItineraryBuilder({
             </div>
 
             {/* CTAs después de la cadena */}
-            {legs.length > 0 && pickerMode !== 'next' && (
+            {canEdit && legs.length > 0 && pickerMode !== 'next' && (
               <div className="ib-cta-row">
                 <button type="button" className="btn-burgundy-outline" onClick={handleAddNext}>
                   <i className="bi bi-plus-lg me-1"></i>
@@ -403,7 +420,7 @@ export default function ItineraryBuilder({
       {legs.length > 0 && (
         <div className="ib-section">
           <div className="ib-section-head">
-            <span className="ib-section-num">3</span>
+            <span className="ib-section-num">{canEdit ? 3 : 2}</span>
             <div>
               <h4 className="ib-section-title">Precio base del itinerario</h4>
               <p className="ib-section-sub">
@@ -425,6 +442,7 @@ export default function ItineraryBuilder({
                   min="0"
                   step="0.01"
                   value={price}
+                  disabled={isReadOnly}
                   onChange={(e) => setPrice(e.target.value)}
                 />
               </div>
@@ -441,6 +459,7 @@ export default function ItineraryBuilder({
               </div>
             </div>
 
+            {canEdit && (
             <fieldset className="mt-4">
               <legend className="form-label mb-2" style={{ fontSize: '0.9rem' }}>
                 Visibilidad al guardar
@@ -479,6 +498,7 @@ export default function ItineraryBuilder({
                 </label>
               </div>
             </fieldset>
+            )}
 
             {submitError && (
               <div className="admin-alert admin-alert-error mt-3" role="alert">
@@ -501,8 +521,9 @@ export default function ItineraryBuilder({
                 onClick={handleReset}
                 disabled={submitting}
               >
-                {mode === 'edit' ? 'Cancelar' : 'Empezar de nuevo'}
+                {mode === 'edit' ? 'Cerrar' : 'Empezar de nuevo'}
               </button>
+              {canEdit && (
               <button
                 type="button"
                 className="btn-burgundy"
@@ -512,6 +533,7 @@ export default function ItineraryBuilder({
                 {submitting && <span className="spinner-border spinner-border-sm me-2"></span>}
                 {mode === 'edit' ? 'Guardar cambios' : 'Crear itinerario'}
               </button>
+              )}
             </div>
           </div>
         </div>
