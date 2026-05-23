@@ -509,22 +509,22 @@ public class FlightService(
     }
 
     private static string? ValidateOpeningDate(DateTime departureDatetime)
+{
+    var now = DateTime.Now;
+    var openingWindowStart = departureDatetime.AddHours(-24);
+
+    if (now < openingWindowStart)
     {
-        var today = DateTime.Today;
-        var departureDate = departureDatetime.Date;
-
-        if (today < departureDate)
-        {
-            return "A flight cannot be opened before its departure date.";
-        }
-
-        if (today > departureDate)
-        {
-            return "A flight can only be opened on the same calendar day as its departure date.";
-        }
-
-        return null;
+        return "A flight can only be opened within 24 hours before its departure time.";
     }
+
+    if (now > departureDatetime)
+    {
+        return "A flight cannot be opened after its departure time.";
+    }
+
+    return null;
+}
 
     // Normaliza valores de entrada para que las comparaciones y el guardado sean consistentes.
     private static CreateFlightRequest NormalizeCreateFlightRequest(CreateFlightRequest request)
