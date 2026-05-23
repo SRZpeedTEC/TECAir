@@ -5,10 +5,12 @@ import FlightForm       from '../components/FlightForm.jsx';
 import Modal            from '../components/Modal.jsx';
 import ConfirmDialog    from '../components/ConfirmDialog.jsx';
 import {
+  getFlightClosingReport,
   searchFlights,
   updateFlight,
   deleteFlight,
 } from '../services/flightService.js';
+import { printFlightClosingReport } from '../utils/flightClosingReport.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -76,6 +78,7 @@ export default function FlightListTab() {
 
   // Banner global de éxito (post-update / post-delete)
   const [toast, setToast] = useState(null);
+  const [reportLoadingFlightId, setReportLoadingFlightId] = useState(null);
 
   const fetchFlights = async () => {
     setLoading(true);
@@ -149,6 +152,20 @@ export default function FlightListTab() {
       setDeleteError(err.message);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleDownloadReport = async (flight) => {
+    setToast(null);
+    setLoadError(null);
+    setReportLoadingFlightId(flight.flightId);
+    try {
+      const report = await getFlightClosingReport(flight.flightId);
+      printFlightClosingReport(report);
+    } catch (err) {
+      setLoadError(err.message);
+    } finally {
+      setReportLoadingFlightId(null);
     }
   };
 
@@ -281,24 +298,40 @@ export default function FlightListTab() {
                       </span>
                     </td>
                     <td className="text-end">
-                      <button
-                        type="button"
-                        className="flight-action-btn"
-                        onClick={() => openEdit(f)}
-                        aria-label={`Editar vuelo ${f.flightId}`}
-                        title="Editar"
-                      >
-                        <i className="bi bi-pencil"></i>
-                      </button>
-                      <button
-                        type="button"
-                        className="flight-action-btn flight-action-danger"
-                        onClick={() => openDelete(f)}
-                        aria-label={`Eliminar vuelo ${f.flightId}`}
-                        title="Eliminar"
-                      >
-                        <i className="bi bi-trash"></i>
-                      </button>
+                      <div className="flight-row-actions">
+                        {(f.state || '').toUpperCase() === 'CLOSED' && (
+                          <button
+                            type="button"
+                            className="flight-action-btn flight-report-btn"
+                            onClick={() => handleDownloadReport(f)}
+                            disabled={reportLoadingFlightId === f.flightId}
+                            aria-label={`Descargar reporte del vuelo ${f.flightId}`}
+                            title="Descargar reporte"
+                          >
+                            {reportLoadingFlightId === f.flightId
+                              ? <><span className="spinner-border spinner-border-sm me-1"></span>Reporte</>
+                              : <><i className="bi bi-file-earmark-pdf me-1"></i>Reporte</>}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="flight-action-btn"
+                          onClick={() => openEdit(f)}
+                          aria-label={`Editar vuelo ${f.flightId}`}
+                          title="Editar"
+                        >
+                          <i className="bi bi-pencil"></i>
+                        </button>
+                        <button
+                          type="button"
+                          className="flight-action-btn flight-action-danger"
+                          onClick={() => openDelete(f)}
+                          aria-label={`Eliminar vuelo ${f.flightId}`}
+                          title="Eliminar"
+                        >
+                          <i className="bi bi-trash"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

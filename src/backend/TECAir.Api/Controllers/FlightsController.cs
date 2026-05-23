@@ -57,6 +57,22 @@ public class FlightsController(IFlightService flightService) : ControllerBase
         return Ok(flight);
     }
 
+    // GET /api/flights/{flightId}/closing-report
+    // Devuelve datos de vuelo, itinerarios, pasajeros, check-ins y maletas para que el frontend genere el reporte.
+    [HttpGet("{flightId:int}/closing-report")]
+    public async Task<ActionResult<FlightClosingReportResponse>> GetClosingReport(
+        int flightId,
+        CancellationToken cancellationToken)
+    {
+        var result = await flightService.GetClosingReportAsync(flightId, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return NotFound(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Report);
+    }
+
     // POST /api/flights
     // Recibe el DTO del body y delega la creacion al servicio de aplicacion.
     [HttpPost]

@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import AirportTypeahead from './AirportTypeahead.jsx';
 import ConfirmDialog    from './ConfirmDialog.jsx';
 import {
+  getFlightClosingReport,
   searchFlights,
   transitionFlightState,
 } from '../services/flightService.js';
+import { printFlightClosingReport } from '../utils/flightClosingReport.js';
 
 // Panel compartido para Apertura (UPCOMING → OPEN) y Cierre (OPEN → CLOSED).
 // La página padre solo decide qué transición se aplica; toda la regla de qué
@@ -31,6 +33,7 @@ export default function FlightTransitionPanel({
   actionLabel,
   actionVerb,
   icon = 'bi-airplane',
+  showClosingReport = false,
 }) {
   const [flightId,    setFlightId]    = useState('');
   const [origin,      setOrigin]      = useState(null);
@@ -45,6 +48,7 @@ export default function FlightTransitionPanel({
   const [target,        setTarget]        = useState(null);
   const [transitioning, setTransitioning] = useState(false);
   const [actionError,   setActionError]   = useState(null);
+  const [reportLoadingFlightId, setReportLoadingFlightId] = useState(null);
 
   const [toast, setToast] = useState(null);
 
@@ -85,18 +89,50 @@ export default function FlightTransitionPanel({
     setTarget(flight);
   };
 
+  const handleDownloadReport = async (flight) => {
+    setToast(null);
+    setActionError(null);
+    setReportLoadingFlightId(flight.flightId);
+    try {
+      const report = await getFlightClosingReport(flight.flightId);
+      printFlightClosingReport(report);
+    } catch (err) {
+      setActionError(err.message);
+      setTarget(flight);
+    } finally {
+      setReportLoadingFlightId(null);
+    }
+  };
+
   const handleConfirm = async () => {
     if (!target) return;
+    const shouldAutoDownloadReport = showClosingReport && toState === 'CLOSED';
+    const reportWindow = shouldAutoDownloadReport
+      ? window.open('', '_blank', 'width=1180,height=820')
+      : null;
+
+    if (reportWindow) {
+      reportWindow.document.open();
+      reportWindow.document.write('<!DOCTYPE html><html lang="es"><head><title>Generando reporte</title></head><body style="font-family:Segoe UI,Arial,sans-serif;padding:32px;color:#1a1320;">Generando reporte de cierre...</body></html>');
+      reportWindow.document.close();
+    }
+
     setTransitioning(true);
     setActionError(null);
     try {
       await transitionFlightState(target.flightId, toState);
+      if (shouldAutoDownloadReport) {
+        const report = await getFlightClosingReport(target.flightId);
+        printFlightClosingReport(report, reportWindow);
+      }
+
       setToast(`Vuelo #${target.flightId} ahora está en estado ${toState}.`);
       setTarget(null);
       // Refresca la lista con los mismos filtros para que el vuelo recién
       // transicionado salga del listado actual.
       await fetchFlights();
     } catch (err) {
+      reportWindow?.close();
       setActionError(err.message);
     } finally {
       setTransitioning(false);
@@ -222,13 +258,27 @@ export default function FlightTransitionPanel({
                       </span>
                     </td>
                     <td className="text-end">
-                      <button
-                        type="button"
-                        className="btn-burgundy"
-                        onClick={() => openConfirm(f)}
-                      >
-                        {actionLabel} <i className="bi bi-arrow-right ms-1"></i>
-                      </button>
+                      <div className="flight-row-actions">
+                        {showClosingReport && (
+                          <button
+                            type="button"
+                            className="flight-action-btn flight-report-btn"
+                            onClick={() => handleDownloadReport(f)}
+                            disabled={reportLoadingFlightId === f.flightId}
+                          >
+                            {reportLoadingFlightId === f.flightId
+                              ? <><span className="spinner-border spinner-border-sm me-1"></span>Reporte</>
+                              : <><i className="bi bi-file-earmark-pdf me-1"></i>Reporte</>}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-burgundy"
+                          onClick={() => openConfirm(f)}
+                        >
+                          {actionLabel} <i className="bi bi-arrow-right ms-1"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

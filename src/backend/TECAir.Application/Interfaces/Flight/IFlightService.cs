@@ -13,6 +13,11 @@ public interface IFlightService
     // Consulta un vuelo por id.
     Task<FlightResponse?> GetByIdAsync(int flightId, CancellationToken cancellationToken = default);
 
+    // Genera los datos del reporte descargable para cierre de vuelo.
+    Task<GetFlightClosingReportServiceResult> GetClosingReportAsync(
+        int flightId,
+        CancellationToken cancellationToken = default);
+
     // Crea un vuelo aplicando validaciones antes de llegar al repositorio.
     Task<CreateFlightServiceResult> CreateAsync(
         CreateFlightRequest request,

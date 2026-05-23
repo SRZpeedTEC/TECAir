@@ -525,6 +525,19 @@ GET {{baseUrl}}/api/flights/9999
 Accept: application/json
 
 
+### 39b. Obtener datos del reporte de cierre para vuelo existente
+# Esperado: 200 OK con JSON.
+# El frontend administra el formato/descarga del reporte.
+GET {{baseUrl}}/api/flights/1/closing-report
+Accept: application/json
+
+
+### 39c. Obtener datos del reporte de cierre para vuelo inexistente
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/api/flights/9999/closing-report
+Accept: application/json
+
+
 ### ============================================================
 ### Pruebas de apertura, traslapes y reglas de puerta
 ### ============================================================

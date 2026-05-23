@@ -13,6 +13,11 @@ public interface IFlightRepository
     // Devuelve un vuelo por id o null si no existe.
     Task<FlightResponse?> GetByIdAsync(int flightId, CancellationToken cancellationToken = default);
 
+    // Consolida datos de vuelo, itinerarios, reservaciones, check-ins y maletas para cierre.
+    Task<FlightClosingReportResponse?> GetClosingReportAsync(
+        int flightId,
+        CancellationToken cancellationToken = default);
+
     // Verifica si existe un aeropuerto por codigo.
     Task<bool> AirportExistsAsync(string airportCode, CancellationToken cancellationToken = default);
 

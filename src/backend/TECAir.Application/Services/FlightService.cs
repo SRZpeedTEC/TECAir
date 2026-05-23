@@ -48,6 +48,37 @@ public class FlightService(
         return await flightRepository.GetByIdAsync(flightId, cancellationToken);
     }
 
+    public async Task<GetFlightClosingReportServiceResult> GetClosingReportAsync(
+        int flightId,
+        CancellationToken cancellationToken = default)
+    {
+        if (flightId <= 0)
+        {
+            return GetFlightClosingReportServiceResult.NotFound($"Flight '{flightId}' was not found.");
+        }
+
+        var report = await flightRepository.GetClosingReportAsync(flightId, cancellationToken);
+        if (report is null)
+        {
+            return GetFlightClosingReportServiceResult.NotFound($"Flight '{flightId}' was not found.");
+        }
+
+        report.Summary = new FlightClosingReportSummary
+        {
+            TotalPassengers = report.Passengers.Count,
+            TotalReservations = report.Passengers
+                .Select(passenger => passenger.ReservationId)
+                .Distinct()
+                .Count(),
+            TotalCheckedInPassengers = report.Passengers.Count(passenger => passenger.ConfirmationNumber is not null),
+            TotalBaggageCount = report.Passengers.Sum(passenger => passenger.BaggageCount),
+            TotalBaggageWeight = report.Passengers.Sum(passenger => passenger.TotalBaggageWeight),
+            TotalExtraBaggageCharges = report.Passengers.Sum(passenger => passenger.ExtraBaggageCharge)
+        };
+
+        return GetFlightClosingReportServiceResult.Success(report);
+    }
+
     // Crea un vuelo validando primero datos propios del request, referencias
     // existentes y conflictos de agenda de avion o puerta.
     public async Task<CreateFlightServiceResult> CreateAsync(

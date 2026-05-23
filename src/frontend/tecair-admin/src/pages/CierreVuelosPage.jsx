@@ -19,6 +19,7 @@ export default function CierreVuelosPage() {
         actionLabel="Cerrar vuelo"
         actionVerb="cerrar"
         icon="bi-lock"
+        showClosingReport
       />
     </div>
   );

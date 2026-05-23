@@ -131,6 +131,64 @@ export async function transitionFlightState(flightId, nextState) {
   });
 }
 
+function normalizeClosingReport(report) {
+  const flight = report.flight ?? report.Flight ?? {};
+  const summary = report.summary ?? report.Summary ?? {};
+  const itineraries = report.itineraries ?? report.Itineraries ?? [];
+  const passengers = report.passengers ?? report.Passengers ?? [];
+
+  return {
+    flight: {
+      flightId:             flight.flightId             ?? flight.FlightId,
+      departureAirportCode: flight.departureAirportCode ?? flight.DepartureAirportCode,
+      departureAirportName: flight.departureAirportName ?? flight.DepartureAirportName,
+      departureAirportCity: flight.departureAirportCity ?? flight.DepartureAirportCity,
+      arrivalAirportCode:   flight.arrivalAirportCode   ?? flight.ArrivalAirportCode,
+      arrivalAirportName:   flight.arrivalAirportName   ?? flight.ArrivalAirportName,
+      arrivalAirportCity:   flight.arrivalAirportCity   ?? flight.ArrivalAirportCity,
+      departureDatetime:    flight.departureDatetime    ?? flight.DepartureDatetime,
+      arrivalDatetime:      flight.arrivalDatetime      ?? flight.ArrivalDatetime,
+      gate:                 flight.gate                 ?? flight.Gate,
+      planePlate:           flight.planePlate           ?? flight.PlanePlate,
+      state:                flight.state                ?? flight.State,
+    },
+    itineraries: itineraries.map((it) => ({
+      itineraryId: it.itineraryId ?? it.ItineraryId,
+      flightOrder: it.flightOrder ?? it.FlightOrder,
+    })),
+    passengers: passengers.map((p) => ({
+      itineraryId:         p.itineraryId         ?? p.ItineraryId,
+      flightOrder:         p.flightOrder         ?? p.FlightOrder,
+      passengerFullName:   p.passengerFullName   ?? p.PassengerFullName,
+      passengerPassportId: p.passengerPassportId ?? p.PassengerPassportId,
+      reservationId:       p.reservationId       ?? p.ReservationId,
+      reservationState:    p.reservationState    ?? p.ReservationState,
+      confirmationNumber:  p.confirmationNumber  ?? p.ConfirmationNumber,
+      seatNumber:          p.seatNumber          ?? p.SeatNumber,
+      checkInPlanePlate:   p.checkInPlanePlate   ?? p.CheckInPlanePlate,
+      baggageCount:        p.baggageCount        ?? p.BaggageCount ?? 0,
+      totalBaggageWeight:  p.totalBaggageWeight  ?? p.TotalBaggageWeight ?? 0,
+      baggageColors:       p.baggageColors       ?? p.BaggageColors ?? [],
+      bagNumbers:          p.bagNumbers          ?? p.BagNumbers ?? [],
+      extraBaggageCharge:  p.extraBaggageCharge  ?? p.ExtraBaggageCharge ?? 0,
+    })),
+    summary: {
+      totalPassengers:          summary.totalPassengers          ?? summary.TotalPassengers ?? 0,
+      totalReservations:        summary.totalReservations        ?? summary.TotalReservations ?? 0,
+      totalCheckedInPassengers: summary.totalCheckedInPassengers ?? summary.TotalCheckedInPassengers ?? 0,
+      totalBaggageCount:        summary.totalBaggageCount        ?? summary.TotalBaggageCount ?? 0,
+      totalBaggageWeight:       summary.totalBaggageWeight       ?? summary.TotalBaggageWeight ?? 0,
+      totalExtraBaggageCharges: summary.totalExtraBaggageCharges ?? summary.TotalExtraBaggageCharges ?? 0,
+    },
+  };
+}
+
+// Devuelve solo datos; el formato descargable se genera en frontend.
+export async function getFlightClosingReport(flightId) {
+  const data = await apiFetch(`/flights/${flightId}/closing-report`);
+  return normalizeClosingReport(data);
+}
+
 // Elimina un vuelo. Devuelve 204 No Content cuando todo bien.
 // Corresponde a: DELETE /api/flights/{flightId}
 // 409 si el vuelo está usado en algún itinerario (no se permite borrar).

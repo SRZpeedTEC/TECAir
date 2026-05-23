@@ -88,6 +88,74 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         return MapFlightResponse(reader);
     }
 
+    public async Task<FlightClosingReportResponse?> GetClosingReportAsync(
+        int flightId,
+        CancellationToken cancellationToken = default)
+    {
+        const string flightSql = """
+            SELECT
+                f.flight_id,
+                f.airport_departs_from_id,
+                departure_airport.airport_name,
+                departure_airport.city,
+                f.airport_arrives_to_id,
+                arrival_airport.airport_name,
+                arrival_airport.city,
+                f.departure_datetime,
+                f.arrival_datetime,
+                f.gate,
+                f.plane_plate,
+                f.state
+            FROM tecair.flight f
+            INNER JOIN tecair.airport departure_airport
+                ON departure_airport.code = f.airport_departs_from_id
+            INNER JOIN tecair.airport arrival_airport
+                ON arrival_airport.code = f.airport_arrives_to_id
+            WHERE f.flight_id = @flight_id;
+            """;
+
+        FlightClosingReportFlight? flight = null;
+        await using (var command = dataSource.CreateCommand(flightSql))
+        {
+            command.Parameters.AddWithValue("flight_id", flightId);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                flight = new FlightClosingReportFlight
+                {
+                    FlightId = reader.GetInt32(0),
+                    DepartureAirportCode = reader.GetString(1),
+                    DepartureAirportName = reader.GetString(2),
+                    DepartureAirportCity = reader.GetString(3),
+                    ArrivalAirportCode = reader.GetString(4),
+                    ArrivalAirportName = reader.GetString(5),
+                    ArrivalAirportCity = reader.GetString(6),
+                    DepartureDatetime = reader.GetDateTime(7),
+                    ArrivalDatetime = reader.GetDateTime(8),
+                    Gate = reader.IsDBNull(9) ? null : reader.GetString(9),
+                    PlanePlate = reader.GetString(10),
+                    State = reader.GetString(11)
+                };
+            }
+        }
+
+        if (flight is null)
+        {
+            return null;
+        }
+
+        var itineraries = await GetClosingReportItinerariesAsync(flightId, cancellationToken);
+        var passengers = await GetClosingReportPassengersAsync(flightId, cancellationToken);
+
+        return new FlightClosingReportResponse
+        {
+            Flight = flight,
+            Itineraries = itineraries,
+            Passengers = passengers
+        };
+    }
+
     // Verifica que el aeropuerto exista antes de crear vuelos que lo referencien.
     public async Task<bool> AirportExistsAsync(string airportCode, CancellationToken cancellationToken = default)
     {
@@ -662,6 +730,120 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    private async Task<IReadOnlyList<FlightClosingReportItinerary>> GetClosingReportItinerariesAsync(
+        int flightId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                itinerary_id,
+                flight_order
+            FROM tecair.flight_in_itinerary
+            WHERE flight_id = @flight_id
+            ORDER BY itinerary_id ASC, flight_order ASC;
+            """;
+
+        var itineraries = new List<FlightClosingReportItinerary>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            itineraries.Add(new FlightClosingReportItinerary
+            {
+                ItineraryId = reader.GetInt32(0),
+                FlightOrder = reader.GetInt32(1)
+            });
+        }
+
+        return itineraries;
+    }
+
+    private async Task<IReadOnlyList<FlightClosingReportPassenger>> GetClosingReportPassengersAsync(
+        int flightId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                fii.itinerary_id,
+                fii.flight_order,
+                r.reservation_id,
+                r.state,
+                p.passport_id,
+                CONCAT_WS(' ', p.name, p.Lname) AS passenger_full_name,
+                ci.confirmation_number,
+                ci.seat_number,
+                ci.plane_plate,
+                COUNT(b.bag_number)::INTEGER AS baggage_count,
+                COALESCE(SUM(b.weight), 0)::NUMERIC AS total_baggage_weight,
+                COALESCE(STRING_AGG(DISTINCT b.color, ', ' ORDER BY b.color), '') AS baggage_colors,
+                COALESCE(STRING_AGG(b.bag_number::TEXT, ', ' ORDER BY b.bag_number), '') AS bag_numbers,
+                CASE
+                    WHEN COUNT(b.bag_number) <= 1 THEN 0
+                    WHEN COUNT(b.bag_number) = 2 THEN 50
+                    ELSE 50 + ((COUNT(b.bag_number) - 2) * 75)
+                END::NUMERIC AS extra_baggage_charge
+            FROM tecair.flight_in_itinerary fii
+            INNER JOIN tecair.reservation r
+                ON r.itinerary_id = fii.itinerary_id
+            INNER JOIN tecair.passenger p
+                ON p.passport_id = r.passenger_id
+            LEFT JOIN tecair.check_in ci
+                ON ci.reservation_id = r.reservation_id
+                AND ci.itinerary_flight_id = fii.itinerary_flight_id
+            LEFT JOIN tecair.baggage b
+                ON b.confirmation_number = ci.confirmation_number
+            WHERE fii.flight_id = @flight_id
+            GROUP BY
+                fii.itinerary_id,
+                fii.flight_order,
+                r.reservation_id,
+                r.state,
+                p.passport_id,
+                p.name,
+                p.Lname,
+                ci.confirmation_number,
+                ci.seat_number,
+                ci.plane_plate
+            ORDER BY
+                fii.itinerary_id ASC,
+                fii.flight_order ASC,
+                passenger_full_name ASC,
+                r.reservation_id ASC;
+            """;
+
+        var passengers = new List<FlightClosingReportPassenger>();
+
+        await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.AddWithValue("flight_id", flightId);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            passengers.Add(new FlightClosingReportPassenger
+            {
+                ItineraryId = reader.GetInt32(0),
+                FlightOrder = reader.GetInt32(1),
+                ReservationId = reader.GetInt32(2),
+                ReservationState = reader.GetString(3),
+                PassengerPassportId = reader.GetString(4),
+                PassengerFullName = reader.GetString(5),
+                ConfirmationNumber = reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                SeatNumber = reader.IsDBNull(7) ? null : reader.GetString(7),
+                CheckInPlanePlate = reader.IsDBNull(8) ? null : reader.GetString(8),
+                BaggageCount = reader.GetInt32(9),
+                TotalBaggageWeight = reader.GetDecimal(10),
+                BaggageColors = SplitTextList(reader.GetString(11)),
+                BagNumbers = SplitIntList(reader.GetString(12)),
+                ExtraBaggageCharge = reader.GetDecimal(13)
+            });
+        }
+
+        return passengers;
+    }
+
     // Convierte la fila devuelta por PostgreSQL al DTO de respuesta de vuelos.
     private static FlightResponse MapFlightResponse(NpgsqlDataReader reader)
     {
@@ -677,5 +859,30 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
             ArrivalDatetime = reader.GetDateTime(7),
             Miles = reader.GetInt32(8)
         };
+    }
+
+    private static IReadOnlyList<string> SplitTextList(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        return value
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+    }
+
+    private static IReadOnlyList<int> SplitIntList(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        return value
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(int.Parse)
+            .ToList();
     }
 }
