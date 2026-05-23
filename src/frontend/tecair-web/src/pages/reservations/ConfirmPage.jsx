@@ -1,5 +1,6 @@
 import Nav       from '../../components/Nav.jsx';
 import { fmtCRC } from '../../utils/format.js';
+import { printReceipt, buildReceiptDataFromState } from '../../utils/receipt.js';
 
 // Pantalla de confirmación final de la reserva
 export default function ConfirmPage({ state, goHome, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
@@ -75,6 +76,9 @@ export default function ConfirmPage({ state, goHome, goToMisViajes, currentUser,
         <div className="d-flex gap-3 justify-content-center flex-wrap mt-4">
           <button className="btn btn-burgundy-outline" onClick={goHome}>
             Volver al inicio
+          </button>
+          <button className="btn btn-burgundy-outline" onClick={() => printReceipt(buildReceiptDataFromState(state))}>
+            <i className="bi bi-file-earmark-pdf me-2"></i>Descargar factura
           </button>
           <button className="btn btn-burgundy" onClick={goToMisViajes}>
             <i className="bi bi-ticket-perforated me-2"></i>Ver mis viajes

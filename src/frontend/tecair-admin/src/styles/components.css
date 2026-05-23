@@ -188,6 +188,12 @@
   border: 1px solid #e3d6e8;
 }
 
+.admin-alert-warning {
+  background: #fff6e0;
+  color: #7a5800;
+  border: 1px solid #f0d870;
+}
+
 .admin-alert-info code {
   background: rgba(0, 0, 0, 0.04);
   padding: 1px 5px;

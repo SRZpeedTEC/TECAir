@@ -5,6 +5,7 @@ import TicketCard from '../../components/TicketCard.jsx';
 import { getReservationsByEmail } from '../../services/reservationService.js';
 import { getItineraryById } from '../../services/itineraryService.js';
 import { fmtTime, calcDuration } from '../../utils/format.js';
+import { printReceipt, buildReceiptDataFromTrip } from '../../utils/receipt.js';
 
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -13,47 +14,43 @@ function fmtTripDate(d) {
   return `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// Convierte un grupo (itinerario + reservaciones de ese itinerario) al shape que espera TicketCard.
-// Las reservaciones de un mismo itinerario para el mismo usuario son distintos pasajeros
-// del mismo viaje, asi que se colapsan en una sola tarjeta con varios pasajeros.
 function buildTripFromGroup(itinerary, reservations) {
   const flights = (itinerary.flights ?? [])
     .slice()
     .sort((a, b) => a.flightOrder - b.flightOrder);
   const first = flights[0];
-  const last = flights[flights.length - 1];
+  const last  = flights[flights.length - 1];
 
   const departure = first ? new Date(first.departureDatetime) : null;
-  const arrival = last ? new Date(last.arrivalDatetime) : null;
+  const arrival   = last  ? new Date(last.arrivalDatetime)    : null;
 
-  // Un viaje se considera "completado" si ya paso la hora de llegada.
-  // El estado de la reservacion en si (PAID/CHECKED) no determina si el vuelo ya ocurrio.
-  const now = new Date();
+  const now    = new Date();
   const status = arrival && arrival < now ? 'completado' : 'proxim';
 
-  // Si todas las reservaciones estan canceladas, la tarjeta se muestra como cancelada.
-  // (Hoy el backend solo deja PAID y CHECKED, asi que esto es defensivo.)
   const allCancelled = reservations.length > 0 &&
     reservations.every((r) => (r.state ?? '').toUpperCase() === 'CANCELLED');
   const finalStatus = allCancelled ? 'cancelado' : status;
 
-  // Cada reservacion individual = un pasajero distinto en el mismo itinerario.
+  // Pasajeros: incluye passengerId (cédula/pasaporte) para la factura.
   const passengers = reservations.map((r) => {
     const parts = (r.passengerName ?? '').trim().split(/\s+/);
     return {
-      firstName: parts[0] ?? '',
-      lastName: parts.slice(1).join(' '),
+      firstName:   parts[0] ?? '',
+      lastName:    parts.slice(1).join(' '),
+      passengerId: r.passengerId ?? '—',
     };
   });
 
-  // Usamos el reservationId mas alto como identificador visible de la tarjeta.
   const reservationCode = reservations
     .map((r) => r.reservationId)
     .sort((a, b) => b - a)[0];
 
+  const pricePerPax = Number(itinerary.price ?? 0);
+
   return {
-    id: `AT-${String(reservationCode).padStart(6, '0')}`,
-    status: finalStatus,
+    id:            `AT-${String(reservationCode).padStart(6, '0')}`,
+    reservationId: reservationCode,
+    status:        finalStatus,
     from: {
       code: first?.departureCode ?? '—',
       city: first?.departureCity ?? '',
@@ -62,24 +59,21 @@ function buildTripFromGroup(itinerary, reservations) {
       code: last?.arrivalCode ?? '—',
       city: last?.arrivalCity ?? '',
     },
-    depart: departure ? fmtTime(departure) : '—',
-    arrive: arrival ? fmtTime(arrival) : '—',
-    date: fmtTripDate(departure),
+    depart:   departure ? fmtTime(departure) : '—',
+    arrive:   arrival   ? fmtTime(arrival)   : '—',
+    date:     fmtTripDate(departure),
     duration: departure && arrival ? calcDuration(departure, arrival) : '—',
-    // Numero de vuelo: usamos el id del primer vuelo del itinerario como referencia
-    // visible. El backend no expone un codigo IATA por vuelo.
-    flight: first ? `AT${String(first.flightId).padStart(3, '0')}` : '—',
-    // Por ahora no tenemos el asiento asignado en este endpoint; cuando exista
-    // un check-in se podra resolver desde ahi.
-    seat: 'Por asignar',
+    flight:   first ? `AT${String(first.flightId).padStart(3, '0')}` : '—',
+    stops:    flights.length - 1,
     passengers,
-    price: Number(itinerary.price ?? 0) * (passengers.length || 1),
-    // Para ordenar despues por fecha.
+    // Reservaciones completas: necesarias para la factura (reservationId + paymentReference).
+    reservations,
+    pricePerPax,
+    price: pricePerPax * (passengers.length || 1),
     _departureMs: departure ? departure.getTime() : 0,
   };
 }
 
-// Pantalla de historial de viajes: reservas próximas y vuelos anteriores
 export default function MisViajesPage({
   goHome,
   goToMisViajes,
@@ -88,15 +82,12 @@ export default function MisViajesPage({
   onLogout,
   onStudentProgram,
 }) {
-  const [trips, setTrips] = useState([]);
+  const [trips,   setTrips]   = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error,   setError]   = useState(null);
 
   useEffect(() => {
-    if (!currentUser?.email) {
-      setTrips([]);
-      return;
-    }
+    if (!currentUser?.email) { setTrips([]); return; }
 
     let cancelled = false;
     const load = async () => {
@@ -105,22 +96,19 @@ export default function MisViajesPage({
       try {
         const reservations = await getReservationsByEmail(currentUser.email);
 
-        // Sin reservaciones: mostramos la pantalla vacia sin gastar fetches extra.
         if (reservations.length === 0) {
           if (!cancelled) setTrips([]);
           return;
         }
 
-        // Agrupamos las reservaciones por itinerario.
         const groups = new Map();
         for (const r of reservations) {
           if (!groups.has(r.itineraryId)) groups.set(r.itineraryId, []);
           groups.get(r.itineraryId).push(r);
         }
 
-        // Una sola peticion por itinerario unico (un usuario tipico tiene pocos).
         const itineraryIds = Array.from(groups.keys());
-        const itineraries = await Promise.all(
+        const itineraries  = await Promise.all(
           itineraryIds.map((id) => getItineraryById(id).catch(() => null)),
         );
 
@@ -145,7 +133,11 @@ export default function MisViajesPage({
   }, [currentUser?.email]);
 
   const proximos = trips.filter((t) => t.status === 'proxim');
-  const pasados = trips.filter((t) => t.status !== 'proxim');
+  const pasados  = trips.filter((t) => t.status !== 'proxim');
+
+  const handlePrintReceipt = (trip) => {
+    printReceipt(buildReceiptDataFromTrip(trip, currentUser?.email));
+  };
 
   const sectionHeading = {
     color: 'var(--muted)',
@@ -226,7 +218,7 @@ export default function MisViajesPage({
           <section className="mb-5">
             <h5 className="serif mb-3" style={sectionHeading}>Próximos vuelos</h5>
             {proximos.map((t) => (
-              <TicketCard key={t.id} trip={t} isNew={false} />
+              <TicketCard key={t.id} trip={t} isNew={false} onPrintReceipt={() => handlePrintReceipt(t)} />
             ))}
           </section>
         )}
@@ -235,7 +227,7 @@ export default function MisViajesPage({
           <section>
             <h5 className="serif mb-3" style={sectionHeading}>Vuelos anteriores</h5>
             {pasados.map((t) => (
-              <TicketCard key={t.id} trip={t} isNew={false} />
+              <TicketCard key={t.id} trip={t} isNew={false} onPrintReceipt={() => handlePrintReceipt(t)} />
             ))}
           </section>
         )}

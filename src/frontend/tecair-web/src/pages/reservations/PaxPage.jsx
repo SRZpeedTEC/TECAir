@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Nav from '../../components/Nav.jsx';
 import Stepper from '../../components/Stepper.jsx';
 import SummarySide from '../../components/SummarySide.jsx';
+import BirthDatePicker from '../../components/BirthDatePicker.jsx';
 import { createPassenger, mapGenderToCode } from '../../services/passengerService.js';
 import { createReservation, generatePaymentReference } from '../../services/reservationService.js';
 
@@ -189,11 +190,10 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
                   </div>
                   <div className="col-md-6">
                     <label className="form-label small text-muted">Fecha de nacimiento</label>
-                    <input
-                      type="date"
-                      className={'form-control ' + (errs[i + 'dob'] ? 'is-invalid' : '')}
+                    <BirthDatePicker
                       value={p.dob}
-                      onChange={(e) => update(i, 'dob', e.target.value)}
+                      onChange={(v) => update(i, 'dob', v)}
+                      invalid={!!errs[i + 'dob']}
                     />
                   </div>
                   <div className="col-md-6">
