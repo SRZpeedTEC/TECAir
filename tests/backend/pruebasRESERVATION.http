@@ -3,6 +3,7 @@
 ### 1. Crear reservacion valida
 # Esperado: 201 Created.
 # Requiere que el pasajero P12345678 exista; ejecutar pruebasPASSENGER.http primero si hace falta.
+# passengerId se normaliza con Trim() y ToUpperInvariant().
 POST {{baseUrl}}/api/reservations
 Content-Type: application/json
 Accept: application/json
@@ -10,7 +11,7 @@ Accept: application/json
 {
   "itineraryId": 1,
   "userEmail": "ana.rojas@tecair.com",
-  "passengerId": "P12345678",
+  "passengerId": " p12345678 ",
   "state": "PAID",
   "paymentReference": "PAY-2026-0001"
 }
@@ -220,3 +221,33 @@ Accept: application/json
 # Esperado: 200 OK usando CONCAT_WS(name, lname).
 GET {{baseUrl}}/api/reservations/search?passengerName=Ana%20Rojas
 Accept: application/json
+
+
+### 22. Crear reservacion con passengerId demasiado corto
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P123",
+  "state": "PAID",
+  "paymentReference": "PAY-BAD-PASSENGER-SHORT"
+}
+
+
+### 23. Crear reservacion con caracteres invalidos en passengerId
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P1234_5678",
+  "state": "PAID",
+  "paymentReference": "PAY-BAD-PASSENGER-CHARS"
+}

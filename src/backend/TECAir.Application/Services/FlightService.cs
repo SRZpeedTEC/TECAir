@@ -518,11 +518,6 @@ public class FlightService(
         return "A flight can only be opened within 24 hours before its departure time.";
     }
 
-    if (now > departureDatetime)
-    {
-        return "A flight cannot be opened after its departure time.";
-    }
-
     return null;
 }
 

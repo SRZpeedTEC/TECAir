@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using TECAir.Application.DTOs.Reservations;
 using TECAir.Application.DTOs.Itineraries;
 using TECAir.Application.Interfaces;
@@ -8,6 +9,10 @@ namespace TECAir.Application.Services;
 // Una reservacion en TECAir existe solo si ya tiene pago asociado.
 public class ReservationService(IReservationRepository reservationRepository) : IReservationService
 {
+    private static readonly Regex PassengerIdRegex = new(
+        "^[A-Za-z0-9-]+$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     public async Task<CreateReservationServiceResult> CreateAsync(
         CreateReservationRequest request,
         CancellationToken cancellationToken = default)
@@ -94,7 +99,7 @@ public class ReservationService(IReservationRepository reservationRepository) : 
         CancellationToken cancellationToken = default)
     {
         var normalizedReservationId = reservationId is > 0 ? reservationId : null;
-        var normalizedPassengerId = string.IsNullOrWhiteSpace(passengerId) ? null : passengerId.Trim();
+        var normalizedPassengerId = string.IsNullOrWhiteSpace(passengerId) ? null : NormalizePassengerId(passengerId);
         var normalizedName = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
 
         if (normalizedReservationId is null && normalizedPassengerId is null && normalizedName is null)
@@ -153,6 +158,17 @@ public class ReservationService(IReservationRepository reservationRepository) : 
             return "Passenger id is required.";
         }
 
+        var passengerId = request.PassengerId.Trim();
+        if (passengerId.Length is < 5 or > 30)
+        {
+            return "Passenger id must be between 5 and 30 characters.";
+        }
+
+        if (!PassengerIdRegex.IsMatch(passengerId))
+        {
+            return "Passenger id can only contain letters, numbers and hyphens.";
+        }
+
         if (string.IsNullOrWhiteSpace(request.State))
         {
             return "State is required.";
@@ -179,10 +195,15 @@ public class ReservationService(IReservationRepository reservationRepository) : 
         {
             ItineraryId = request.ItineraryId,
             UserEmail = request.UserEmail.Trim().ToLowerInvariant(),
-            PassengerId = request.PassengerId.Trim(),
+            PassengerId = NormalizePassengerId(request.PassengerId),
             State = request.State.Trim().ToUpperInvariant(),
             PaymentReference = request.PaymentReference.Trim()
         };
+    }
+
+    private static string NormalizePassengerId(string passengerId)
+    {
+        return passengerId.Trim().ToUpperInvariant();
     }
 
     private static bool CanReservePassengers(
