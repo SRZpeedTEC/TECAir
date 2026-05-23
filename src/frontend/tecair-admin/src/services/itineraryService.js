@@ -32,9 +32,14 @@ function pickActivePromotion(promo) {
 // Corresponde a: GET /api/itineraries/search?originCode=&destinationCode=
 // Trae itinerarios en CUALQUIER estado (incluye DRAFT/PRIVATE) sin promoción.
 // La usan flujos de administración (lista de itinerarios, creación de promos).
-export async function searchItineraries(originCode, destinationCode) {
-  const params = new URLSearchParams({ originCode, destinationCode, includeNonPublic: 'true' });
-  const data = await apiFetch(`/itineraries/search?${params}`);
+export async function searchItineraries(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.itineraryId) params.set('itineraryId', String(filters.itineraryId));
+  if (filters.departureCode) params.set('departureCode', filters.departureCode);
+  if (filters.arrivalCode) params.set('arrivalCode', filters.arrivalCode);
+  if (filters.state) params.set('state', filters.state);
+  const query = params.toString();
+  const data = await apiFetch(`/itineraries/admin/search${query ? `?${query}` : ''}`);
 
   return data.map((it) => ({
     itineraryId: it.itineraryId ?? it.ItineraryId,

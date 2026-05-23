@@ -71,8 +71,8 @@ La UI no requiere cambios estructurales.
 
 ## Cómo construye la cadena el constructor visual
 
-1. El admin elige el aeropuerto de salida → se llama `GET /api/flights/open?departureCode=XXX`.
-2. Cada vuelo seleccionado se agrega como "leg". El siguiente picker filtra `flights/open` por el
+1. El admin elige el aeropuerto de salida → se llama `GET /api/flights/by-departure?departureCode=XXX&state=UPCOMING`.
+2. Cada vuelo seleccionado se agrega como "leg". El siguiente picker filtra `flights/by-departure` por el
    aeropuerto de llegada del último leg, y client-side aplica:
    - `departureDatetime >= arrivalDatetime` del leg anterior.
    - `departureDatetime - arrivalDatetime <= 24 horas` (regla del `ItineraryService`).

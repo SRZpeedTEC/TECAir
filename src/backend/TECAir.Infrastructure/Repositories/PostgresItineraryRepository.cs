@@ -9,12 +9,11 @@ namespace TECAir.Infrastructure.Repositories;
 // Repositorio encargado de consultar y crear itinerarios en PostgreSQL.
 public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : IItineraryRepository
 {
-    // Busca itinerarios PUBLIC por origen y destino usando el primer y ultimo vuelo de cada ruta.
-    // Los itinerarios CLOSED quedan fuera de las busquedas publicas de clientes.
+    // Busca itinerarios usando filtros opcionales sobre el primer y ultimo vuelo de cada ruta.
+    // En busqueda de cliente, publicOnly obliga a devolver solo itinerarios PUBLIC.
     public async Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
-        string originCode,
-        string destinationCode,
-        bool includeNonPublic,
+        ItinerarySearchFilters filters,
+        bool publicOnly,
         CancellationToken cancellationToken = default)
     {
         const string sql = """
@@ -68,18 +67,43 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             INNER JOIN tecair.airport arrival_airport
                 ON arrival_airport.code = last_flight.airport_arrives_to_id
             WHERE
-                (@include_non_public = TRUE OR i.state = 'PUBLIC')
-                AND departure_airport.code = @origin_code
-                AND arrival_airport.code = @destination_code
-            ORDER BY first_flight.departure_datetime, i.itinerary_id;
+                (@public_only = FALSE OR i.state = 'PUBLIC')
+                AND (@itinerary_id IS NULL OR i.itinerary_id = @itinerary_id)
+                AND (@state IS NULL OR i.state = @state)
+                AND (@departure_code IS NULL OR departure_airport.code = @departure_code)
+                AND (@arrival_code IS NULL OR arrival_airport.code = @arrival_code)
+                AND (@departure_date IS NULL OR first_flight.departure_datetime::DATE = @departure_date)
+                AND (
+                    @stops IS NULL
+                    OR @stops = 'all'
+                    OR (@stops = 'direct' AND bounds.total_flights = 1)
+                    OR (@stops = 'with_stops' AND bounds.total_flights > 1)
+                )
+            ORDER BY
+                CASE WHEN @sort_by = 'price' THEN i.price END ASC,
+                CASE WHEN @sort_by = 'duration' THEN last_flight.arrival_datetime - first_flight.departure_datetime END ASC,
+                first_flight.departure_datetime,
+                i.itinerary_id;
             """;
 
         var itineraries = new List<ItinerarySearchResponse>();
 
         await using var command = dataSource.CreateCommand(sql);
-        command.Parameters.AddWithValue("origin_code", originCode);
-        command.Parameters.AddWithValue("destination_code", destinationCode);
-        command.Parameters.AddWithValue("include_non_public", includeNonPublic);
+        command.Parameters.AddWithValue("public_only", publicOnly);
+        command.Parameters.Add("itinerary_id", NpgsqlDbType.Integer).Value =
+            (object?)filters.ItineraryId ?? DBNull.Value;
+        command.Parameters.Add("state", NpgsqlDbType.Varchar).Value =
+            (object?)filters.State ?? DBNull.Value;
+        command.Parameters.Add("departure_code", NpgsqlDbType.Varchar).Value =
+            (object?)filters.DepartureCode ?? DBNull.Value;
+        command.Parameters.Add("arrival_code", NpgsqlDbType.Varchar).Value =
+            (object?)filters.ArrivalCode ?? DBNull.Value;
+        command.Parameters.Add("departure_date", NpgsqlDbType.Date).Value =
+            (object?)filters.DepartureDate ?? DBNull.Value;
+        command.Parameters.Add("stops", NpgsqlDbType.Varchar).Value =
+            (object?)filters.Stops ?? DBNull.Value;
+        command.Parameters.Add("sort_by", NpgsqlDbType.Varchar).Value =
+            (object?)filters.SortBy ?? DBNull.Value;
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))

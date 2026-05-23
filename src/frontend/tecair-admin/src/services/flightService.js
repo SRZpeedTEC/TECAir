@@ -43,6 +43,41 @@ export async function listFlightsByDepartureAndState(departureCode, state) {
   }));
 }
 
+function normalizeFlightResponse(f) {
+  const departureCode = f.departureCode ?? f.DepartureCode ?? f.airportDepartsFromId ?? f.AirportDepartsFromId;
+  const arrivalCode = f.arrivalCode ?? f.ArrivalCode ?? f.airportArrivesToId ?? f.AirportArrivesToId;
+
+  return {
+    flightId:             f.flightId             ?? f.FlightId,
+    planePlate:           f.planePlate           ?? f.PlanePlate,
+    departureAirportName: f.departureAirportName ?? f.DepartureAirportName ?? departureCode,
+    departureCode,
+    departureCity:        f.departureCity        ?? f.DepartureCity ?? departureCode,
+    arrivalAirportName:   f.arrivalAirportName   ?? f.ArrivalAirportName ?? arrivalCode,
+    arrivalCode,
+    arrivalCity:          f.arrivalCity          ?? f.ArrivalCity ?? arrivalCode,
+    state:                f.state                ?? f.State,
+    gate:                 f.gate                 ?? f.Gate,
+    departureDatetime:    f.departureDatetime    ?? f.DepartureDatetime,
+    arrivalDatetime:      f.arrivalDatetime      ?? f.ArrivalDatetime,
+  };
+}
+
+// Busqueda general de vuelos con filtros opcionales.
+// Corresponde a: GET /api/flights
+export async function searchFlights(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.flightId) params.set('flightId', String(filters.flightId));
+  if (filters.departureCode) params.set('departureCode', filters.departureCode);
+  if (filters.arrivalCode) params.set('arrivalCode', filters.arrivalCode);
+  if (filters.state) params.set('state', filters.state);
+  if (filters.departureDate) params.set('departureDate', filters.departureDate);
+
+  const query = params.toString();
+  const data = await apiFetch(`/flights${query ? `?${query}` : ''}`);
+  return data.map(normalizeFlightResponse);
+}
+
 // Actualiza un vuelo existente.
 // Corresponde a: PUT /api/flights/{flightId}
 // El payload debe incluir todos los campos (incluyendo state) ya que el PUT es completo.

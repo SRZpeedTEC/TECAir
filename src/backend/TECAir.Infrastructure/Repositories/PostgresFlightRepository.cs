@@ -1,4 +1,5 @@
 using Npgsql;
+using NpgsqlTypes;
 using TECAir.Application.DTOs.Flights;
 using TECAir.Application.Interfaces;
 
@@ -8,8 +9,10 @@ namespace TECAir.Infrastructure.Repositories;
 // Mantiene el SQL fuera de controllers y servicios, usando siempre parametros.
 public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFlightRepository
 {
-    // Lista vuelos en orden de salida para pantallas y pruebas generales.
-    public async Task<IReadOnlyList<FlightResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    // Lista vuelos en orden de salida. Todos los filtros son opcionales.
+    public async Task<IReadOnlyList<FlightResponse>> SearchAsync(
+        FlightSearchFilters filters,
+        CancellationToken cancellationToken = default)
     {
         const string sql = """
             SELECT
@@ -23,12 +26,29 @@ public sealed class PostgresFlightRepository(NpgsqlDataSource dataSource) : IFli
                 arrival_datetime,
                 miles
             FROM tecair.flight
+            WHERE
+                (@flight_id IS NULL OR flight_id = @flight_id)
+                AND (@departure_code IS NULL OR airport_departs_from_id = @departure_code)
+                AND (@arrival_code IS NULL OR airport_arrives_to_id = @arrival_code)
+                AND (@state IS NULL OR state = @state)
+                AND (@departure_date IS NULL OR departure_datetime::DATE = @departure_date)
             ORDER BY departure_datetime ASC, flight_id ASC;
             """;
 
         var flights = new List<FlightResponse>();
 
         await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.Add("flight_id", NpgsqlDbType.Integer).Value =
+            (object?)filters.FlightId ?? DBNull.Value;
+        command.Parameters.Add("departure_code", NpgsqlDbType.Varchar).Value =
+            (object?)filters.DepartureCode ?? DBNull.Value;
+        command.Parameters.Add("arrival_code", NpgsqlDbType.Varchar).Value =
+            (object?)filters.ArrivalCode ?? DBNull.Value;
+        command.Parameters.Add("state", NpgsqlDbType.Varchar).Value =
+            (object?)filters.State ?? DBNull.Value;
+        command.Parameters.Add("departure_date", NpgsqlDbType.Date).Value =
+            (object?)filters.DepartureDate ?? DBNull.Value;
+
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {

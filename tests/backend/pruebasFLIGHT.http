@@ -51,6 +51,48 @@ GET {{baseUrl}}/api/flights/by-departure?departureCode=SJO
 Accept: application/json
 
 
+### 3e. GET /api/flights sin filtros
+# Esperado: 200 OK con todos los vuelos.
+GET {{baseUrl}}/api/flights
+Accept: application/json
+
+
+### 3f. GET /api/flights por flightId
+# Esperado: 200 OK con flightId = 1.
+GET {{baseUrl}}/api/flights?flightId=1
+Accept: application/json
+
+
+### 3g. GET /api/flights por departureCode
+# Esperado: 200 OK con vuelos saliendo de SJO.
+GET {{baseUrl}}/api/flights?departureCode=SJO
+Accept: application/json
+
+
+### 3h. GET /api/flights por arrivalCode
+# Esperado: 200 OK con vuelos llegando a MEX.
+GET {{baseUrl}}/api/flights?arrivalCode=MEX
+Accept: application/json
+
+
+### 3i. GET /api/flights por state
+# Esperado: 200 OK con vuelos UPCOMING.
+GET {{baseUrl}}/api/flights?state=UPCOMING
+Accept: application/json
+
+
+### 3j. GET /api/flights por departureDate
+# Esperado: 200 OK con vuelos que salen el 2026-06-10.
+GET {{baseUrl}}/api/flights?departureDate=2026-06-10
+Accept: application/json
+
+
+### 3k. Verificar endpoint existente por salida y estado
+# Esperado: 200 OK. GET /api/flights/by-departure sigue funcionando.
+GET {{baseUrl}}/api/flights/by-departure?departureCode=SJO&state=OPEN
+Accept: application/json
+
+
 ### 4. Crear vuelo sin state
 # Esperado: 201 Created con state = UPCOMING.
 POST {{baseUrl}}/api/flights

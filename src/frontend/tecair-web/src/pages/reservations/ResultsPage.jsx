@@ -9,11 +9,10 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
   const [isLoading,   setIsLoading]   = useState(false);
   const [error,       setError]       = useState(null);
 
-  const [filter, setFilter] = useState('all');    // all | direct | stops
+  const [filter, setFilter] = useState('all');    // all | direct | with_stops
   const [sortBy, setSortBy] = useState('price');  // price | duration
 
-  // Los itinerarios ya vienen con su promoción activa embebida desde el
-  // endpoint /itineraries/public/with-promotions — un único GET por búsqueda.
+  // El backend aplica filtros y ordenamiento para no duplicar reglas en frontend.
   useEffect(() => {
     if (!state.from?.code || !state.to?.code) return;
 
@@ -21,24 +20,17 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
     setError(null);
     setItineraries([]);
 
-    searchItineraries(state.from.code, state.to.code)
+    searchItineraries(state.from.code, state.to.code, {
+      departureDate: state.depart,
+      stops: filter,
+      sortBy,
+    })
       .then(setItineraries)
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
-  }, [state.from?.code, state.to?.code]);
+  }, [state.from?.code, state.to?.code, state.depart, filter, sortBy]);
 
-  // Aplica filtro de escalas
-  let list = itineraries.filter((f) =>
-    filter === 'all'    ? true :
-    filter === 'direct' ? f.stops === 0 :
-                          f.stops > 0
-  );
-
-  // Ordena por precio efectivo (con promoción aplicada si la hay) o por duración
-  list = [...list].sort((a, b) =>
-    sortBy === 'price' ? a.displayPrice - b.displayPrice
-                       : parseDurationMs(a.duration) - parseDurationMs(b.duration)
-  );
+  const list = itineraries;
 
   const totalPax = state.pax.adults;
 
@@ -94,7 +86,7 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
                 {[
                   { v: 'all',    l: 'Todos los vuelos' },
                   { v: 'direct', l: 'Solo directos'    },
-                  { v: 'stops',  l: 'Con escalas'      },
+                  { v: 'with_stops',  l: 'Con escalas'      },
                 ].map((o) => (
                   <div className="form-check" key={o.v}>
                     <input
@@ -240,8 +232,3 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
   );
 }
 
-// Convierte "5h 30m" a milisegundos para ordenar por duración
-function parseDurationMs(duration) {
-  const [h, m] = duration.split('h ').map((s) => parseInt(s));
-  return (h * 60 + (m || 0)) * 60_000;
-}

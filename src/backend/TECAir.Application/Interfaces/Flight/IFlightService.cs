@@ -5,8 +5,10 @@ namespace TECAir.Application.Interfaces;
 // Contrato de casos de uso de vuelos que expone la capa de aplicacion.
 public interface IFlightService
 {
-    // Lista todos los vuelos registrados.
-    Task<IReadOnlyList<FlightResponse>> GetAllAsync(CancellationToken cancellationToken = default);
+    // Lista vuelos registrados con filtros opcionales.
+    Task<FlightSearchServiceResult> SearchAsync(
+        FlightSearchFilters filters,
+        CancellationToken cancellationToken = default);
 
     // Consulta un vuelo por id.
     Task<FlightResponse?> GetByIdAsync(int flightId, CancellationToken cancellationToken = default);

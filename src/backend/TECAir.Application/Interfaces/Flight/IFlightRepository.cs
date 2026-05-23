@@ -5,8 +5,10 @@ namespace TECAir.Application.Interfaces;
 // Contrato que aisla a la aplicacion de los detalles SQL de vuelos.
 public interface IFlightRepository
 {
-    // Lista todos los vuelos con los campos principales de flight.
-    Task<IReadOnlyList<FlightResponse>> GetAllAsync(CancellationToken cancellationToken = default);
+    // Lista vuelos con filtros opcionales y los campos principales de flight.
+    Task<IReadOnlyList<FlightResponse>> SearchAsync(
+        FlightSearchFilters filters,
+        CancellationToken cancellationToken = default);
 
     // Devuelve un vuelo por id o null si no existe.
     Task<FlightResponse?> GetByIdAsync(int flightId, CancellationToken cancellationToken = default);

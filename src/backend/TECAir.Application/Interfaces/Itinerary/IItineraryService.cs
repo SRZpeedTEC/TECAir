@@ -5,11 +5,14 @@ namespace TECAir.Application.Interfaces;
 // Contrato de casos de uso de itinerarios que consumen los controllers.
 public interface IItineraryService
 {
-    // Busca rutas disponibles entre dos codigos de aeropuerto.
-    Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
-        string originCode,
-        string destinationCode,
-        bool includeNonPublic = false,
+    // Busca rutas publicas con filtros opcionales para clientes.
+    Task<ItinerarySearchServiceResult> SearchAsync(
+        ItinerarySearchFilters filters,
+        CancellationToken cancellationToken = default);
+
+    // Busca rutas administrativas con filtros opcionales y todos los estados.
+    Task<ItinerarySearchServiceResult> SearchAdminAsync(
+        ItinerarySearchFilters filters,
         CancellationToken cancellationToken = default);
 
     // Devuelve todos los itinerarios, en edicion o publicos, con promocion y vuelos.

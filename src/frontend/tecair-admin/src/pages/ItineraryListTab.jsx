@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import AirportTypeahead   from '../components/AirportTypeahead.jsx';
 import Modal              from '../components/Modal.jsx';
@@ -63,8 +63,10 @@ function detailFlightToLeg(f) {
 }
 
 export default function ItineraryListTab() {
+  const [itineraryId, setItineraryId] = useState('');
   const [origin,      setOrigin]      = useState(null);
   const [destination, setDestination] = useState(null);
+  const [stateFilter, setStateFilter] = useState('');
   const [results,     setResults]     = useState([]);
   const [loading,     setLoading]     = useState(false);
   const [loadError,   setLoadError]   = useState(null);
@@ -83,16 +85,19 @@ export default function ItineraryListTab() {
   const [deletingBusy,   setDeletingBusy]   = useState(false);
   const [deleteError,    setDeleteError]    = useState(null);
 
-  const canSearch = !!origin && !!destination && origin.code !== destination.code;
-
   const handleSearch = async () => {
-    if (!canSearch) return;
     setLoading(true);
     setLoadError(null);
     setTouched(true);
     setToast(null);
     try {
-      const data = await searchItineraries(origin.code, destination.code);
+      // El backend aplica filtros opcionales; sin filtros, lista todos los itinerarios admin.
+      const data = await searchItineraries({
+        itineraryId: itineraryId.trim(),
+        departureCode: origin?.code,
+        arrivalCode: destination?.code,
+        state: stateFilter,
+      });
       setResults(data);
     } catch (err) {
       setLoadError(err.message);
@@ -101,6 +106,11 @@ export default function ItineraryListTab() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Editar ───
   const openEdit = async (itinerary) => {
@@ -156,7 +166,18 @@ export default function ItineraryListTab() {
     <div>
       <div className="admin-card">
         <div className="row g-3 align-items-end">
-          <div className="col-md-5">
+          <div className="col-md-2">
+            <label className="form-label"># Itinerario</label>
+            <input
+              type="number"
+              className="form-control"
+              min="1"
+              value={itineraryId}
+              onChange={(e) => setItineraryId(e.target.value)}
+              placeholder="Todos"
+            />
+          </div>
+          <div className="col-md-3">
             <AirportTypeahead
               id="it-origin"
               label="Origen"
@@ -165,7 +186,7 @@ export default function ItineraryListTab() {
               exclude={destination?.code}
             />
           </div>
-          <div className="col-md-5">
+          <div className="col-md-3">
             <AirportTypeahead
               id="it-destination"
               label="Destino"
@@ -174,12 +195,25 @@ export default function ItineraryListTab() {
               exclude={origin?.code}
             />
           </div>
+          <div className="col-md-2">
+            <label className="form-label">Estado</label>
+            <select
+              className="form-select"
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value)}
+            >
+              <option value="">Todos</option>
+              <option value="EDITION">Borrador</option>
+              <option value="PUBLIC">Publicado</option>
+              <option value="CLOSED">Cerrado</option>
+            </select>
+          </div>
           <div className="col-md-2 d-flex gap-2">
             <button
               type="button"
               className="btn-burgundy w-100"
               onClick={handleSearch}
-              disabled={!canSearch || loading}
+              disabled={loading}
             >
               {loading
                 ? <><span className="spinner-border spinner-border-sm me-2"></span>Buscando…</>
@@ -206,7 +240,7 @@ export default function ItineraryListTab() {
           <div className="flight-list-empty mt-3">
             <i className="bi bi-map"></i>
             <p className="m-0">
-              No hay itinerarios de <strong>{origin?.code}</strong> a <strong>{destination?.code}</strong>.
+              No hay itinerarios que coincidan con los filtros.
             </p>
           </div>
         )}
