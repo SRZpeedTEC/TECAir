@@ -51,10 +51,34 @@ public class PromotionsController(IPromotionService promotionService) : Controll
     // GET /promotions
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PromotionResponse>>> GetAll(
+        [FromQuery] string? promotionCode,
+        [FromQuery] int? itineraryId,
+        [FromQuery] DateOnly? startDate,
+        [FromQuery] DateOnly? endDate,
+        [FromQuery] bool? activeOnly,
+        [FromQuery] bool? expiredOnly,
+        [FromQuery] bool? upcomingOnly,
         CancellationToken cancellationToken)
     {
-        var promotions = await promotionService.GetAllAsync(cancellationToken);
-        return Ok(promotions);
+        var result = await promotionService.SearchAsync(
+            new PromotionSearchFilters
+            {
+                PromotionCode = promotionCode,
+                ItineraryId = itineraryId,
+                StartDate = startDate,
+                EndDate = endDate,
+                ActiveOnly = activeOnly,
+                ExpiredOnly = expiredOnly,
+                UpcomingOnly = upcomingOnly
+            },
+            cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Promotions);
     }
 
     // GET /promotions/{promotionCode}

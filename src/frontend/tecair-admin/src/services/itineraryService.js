@@ -38,6 +38,11 @@ export async function searchItineraries(filters = {}) {
   if (filters.departureCode) params.set('departureCode', filters.departureCode);
   if (filters.arrivalCode) params.set('arrivalCode', filters.arrivalCode);
   if (filters.state) params.set('state', filters.state);
+  if (Array.isArray(filters.states)) {
+    filters.states.forEach((state) => {
+      if (state) params.append('states', state);
+    });
+  }
   const query = params.toString();
   const data = await apiFetch(`/itineraries/admin/search${query ? `?${query}` : ''}`);
 

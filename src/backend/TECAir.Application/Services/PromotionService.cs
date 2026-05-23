@@ -16,6 +16,23 @@ public class PromotionService(
         ".png", ".jpg", ".jpeg", ".webp", ".gif"
     };
 
+    public async Task<PromotionSearchServiceResult> SearchAsync(
+        PromotionSearchFilters filters,
+        CancellationToken cancellationToken = default)
+    {
+        var validationError = ValidateSearchFilters(filters);
+        if (validationError is not null)
+        {
+            return PromotionSearchServiceResult.ValidationError(validationError);
+        }
+
+        // Los filtros se validan en servicio y se ejecutan en backend para no duplicar reglas en frontend.
+        var promotions = await promotionRepository.SearchAsync(
+            NormalizeSearchFilters(filters),
+            cancellationToken);
+        return PromotionSearchServiceResult.Success(promotions);
+    }
+
     public Task<IReadOnlyList<PromotionResponse>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return promotionRepository.GetAllAsync(cancellationToken);
@@ -178,6 +195,39 @@ public class PromotionService(
         }
 
         return null;
+    }
+
+    private static string? ValidateSearchFilters(PromotionSearchFilters filters)
+    {
+        if (filters.ItineraryId is <= 0)
+        {
+            return "Itinerary id must be greater than 0.";
+        }
+
+        var statusFilters = new[] { filters.ActiveOnly, filters.ExpiredOnly, filters.UpcomingOnly }
+            .Count(value => value == true);
+        if (statusFilters > 1)
+        {
+            return "Only one promotion status filter can be selected.";
+        }
+
+        return null;
+    }
+
+    private static PromotionSearchFilters NormalizeSearchFilters(PromotionSearchFilters filters)
+    {
+        return new PromotionSearchFilters
+        {
+            PromotionCode = string.IsNullOrWhiteSpace(filters.PromotionCode)
+                ? null
+                : filters.PromotionCode.Trim().ToUpperInvariant(),
+            ItineraryId = filters.ItineraryId,
+            StartDate = filters.StartDate,
+            EndDate = filters.EndDate,
+            ActiveOnly = filters.ActiveOnly == true,
+            ExpiredOnly = filters.ExpiredOnly == true,
+            UpcomingOnly = filters.UpcomingOnly == true
+        };
     }
 
     private static string? ValidateCreatePromotionRequest(CreatePromotionRequest request)

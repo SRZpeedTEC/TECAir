@@ -4,7 +4,7 @@ import Modal              from '../components/Modal.jsx';
 import ConfirmDialog      from '../components/ConfirmDialog.jsx';
 import PromotionForm      from '../components/PromotionForm.jsx';
 import {
-  getAllPromotions,
+  searchPromotions,
   updatePromotion,
   deletePromotion,
 } from '../services/promotionService.js';
@@ -28,6 +28,11 @@ function fmtPriceCRC(n) {
 // editar / eliminar cada una. Para editar necesitamos también el itinerario
 // asociado (su precio para calcular el % de descuento).
 export default function PromotionListTab() {
+  const [promotionCode, setPromotionCode] = useState('');
+  const [itineraryId,   setItineraryId]   = useState('');
+  const [startDate,     setStartDate]     = useState('');
+  const [endDate,       setEndDate]       = useState('');
+  const [statusFilter,  setStatusFilter]  = useState('');
   const [promotions, setPromotions] = useState([]);
   const [loading,    setLoading]    = useState(false);
   const [loadError,  setLoadError]  = useState(null);
@@ -49,7 +54,16 @@ export default function PromotionListTab() {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await getAllPromotions();
+      // El backend aplica filtros opcionales; sin filtros, lista todas las promociones.
+      const data = await searchPromotions({
+        promotionCode: promotionCode.trim(),
+        itineraryId: itineraryId.trim(),
+        startDate,
+        endDate,
+        activeOnly: statusFilter === 'active',
+        expiredOnly: statusFilter === 'expired',
+        upcomingOnly: statusFilter === 'upcoming',
+      });
       setPromotions(data);
     } catch (err) {
       setLoadError(err.message);
@@ -143,6 +157,74 @@ export default function PromotionListTab() {
             <i className="bi bi-arrow-clockwise me-2"></i>
             Recargar
           </button>
+        </div>
+
+        <div className="row g-3 align-items-end mt-1">
+          <div className="col-md-2">
+            <label className="form-label">Codigo</label>
+            <input
+              type="text"
+              className="form-control"
+              value={promotionCode}
+              onChange={(e) => setPromotionCode(e.target.value.toUpperCase())}
+              placeholder="Todos"
+              autoComplete="off"
+            />
+          </div>
+          <div className="col-md-2">
+            <label className="form-label"># Itinerario</label>
+            <input
+              type="number"
+              className="form-control"
+              min="1"
+              value={itineraryId}
+              onChange={(e) => setItineraryId(e.target.value)}
+              placeholder="Todos"
+            />
+          </div>
+          <div className="col-md-2">
+            <label className="form-label">Inicio</label>
+            <input
+              type="date"
+              className="form-control"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div className="col-md-2">
+            <label className="form-label">Fin</label>
+            <input
+              type="date"
+              className="form-control"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          <div className="col-md-2">
+            <label className="form-label">Vigencia</label>
+            <select
+              className="form-select"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">Todas</option>
+              <option value="active">Activas</option>
+              <option value="expired">Vencidas</option>
+              <option value="upcoming">Programadas</option>
+            </select>
+          </div>
+          <div className="col-md-2 d-flex justify-content-end">
+            <button
+              type="button"
+              className="btn-burgundy w-100"
+              onClick={loadPromotions}
+              disabled={loading}
+            >
+              {loading
+                ? <><span className="spinner-border spinner-border-sm me-2"></span>Buscando...</>
+                : <><i className="bi bi-search me-2"></i>Buscar</>}
+            </button>
+          </div>
         </div>
 
         {toast && (

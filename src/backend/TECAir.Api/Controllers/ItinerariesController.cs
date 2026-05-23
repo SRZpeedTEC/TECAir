@@ -70,6 +70,7 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
         [FromQuery] string? departureCode,
         [FromQuery] string? arrivalCode,
         [FromQuery] string? state,
+        [FromQuery] string[]? states,
         CancellationToken cancellationToken)
     {
         var result = await itineraryService.SearchAdminAsync(
@@ -78,7 +79,8 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
                 ItineraryId = itineraryId,
                 DepartureCode = departureCode,
                 ArrivalCode = arrivalCode,
-                State = state
+                State = state,
+                States = states
             },
             cancellationToken);
 

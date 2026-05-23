@@ -315,6 +315,15 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             return ValidateItineraryState(filters.State);
         }
 
+        foreach (var state in ExpandStates(filters.States))
+        {
+            var validationError = ValidateItineraryState(state);
+            if (validationError is not null)
+            {
+                return validationError;
+            }
+        }
+
         return null;
     }
 
@@ -375,7 +384,11 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
             ArrivalCode = NormalizeAirportCodeOrNull(filters.ArrivalCode),
             State = string.IsNullOrWhiteSpace(filters.State)
                 ? null
-                : NormalizeState(filters.State)
+                : NormalizeState(filters.State),
+            States = ExpandStates(filters.States)
+                .Select(NormalizeState)
+                .Distinct()
+                .ToArray()
         };
     }
 
@@ -384,6 +397,15 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
         return string.IsNullOrWhiteSpace(airportCode)
             ? null
             : airportCode.Trim().ToUpperInvariant();
+    }
+
+    private static IEnumerable<string> ExpandStates(IReadOnlyList<string>? states)
+    {
+        return states is null
+            ? []
+            : states
+                .SelectMany(state => state.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                .Where(state => !string.IsNullOrWhiteSpace(state));
     }
 
     // Mismas reglas de estructura que la creacion, aplicadas al reemplazo completo de vuelos.

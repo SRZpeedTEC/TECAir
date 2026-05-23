@@ -5,6 +5,9 @@ namespace TECAir.Application.Interfaces;
 // Contrato que aisla la persistencia de promociones de la capa de aplicacion.
 public interface IPromotionRepository
 {
+    Task<IReadOnlyList<PromotionResponse>> SearchAsync(
+        PromotionSearchFilters filters,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PromotionResponse>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<PromotionResponse?> GetByCodeAsync(string promotionCode, CancellationToken cancellationToken = default);
     Task<PromotionResponse> CreateAsync(CreatePromotionRequest request, CancellationToken cancellationToken = default);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import AirportTypeahead   from '../components/AirportTypeahead.jsx';
 import Modal              from '../components/Modal.jsx';
@@ -22,6 +22,7 @@ function fmtPriceCRC(n) {
 // Tab "Crear promoción": el admin busca itinerarios por origen+destino, los ve
 // en un grid de tarjetas y elige uno para aplicarle una promoción.
 export default function PromotionCreateTab() {
+  const [itineraryId,  setItineraryId]  = useState('');
   const [origin,      setOrigin]      = useState(null);
   const [destination, setDestination] = useState(null);
   const [results,     setResults]     = useState([]);
@@ -39,10 +40,10 @@ export default function PromotionCreateTab() {
   const [submitError,  setSubmitError] = useState(null);
   const [toast,        setToast]       = useState(null);
 
-  const canSearch = !!origin && !!destination && origin.code !== destination.code;
+  const hasInvalidRoute = !!origin && !!destination && origin.code === destination.code;
 
   const handleSearch = async () => {
-    if (!canSearch) return;
+    if (hasInvalidRoute) return;
     setLoading(true);
     setLoadError(null);
     setTouched(true);
@@ -52,7 +53,12 @@ export default function PromotionCreateTab() {
       // falla, asumimos que ningún itinerario está ocupado y dejamos que el
       // backend valide en el POST.
       const [data, allPromos] = await Promise.all([
-        searchItineraries(origin.code, destination.code),
+        searchItineraries({
+          itineraryId: itineraryId.trim(),
+          departureCode: origin?.code,
+          arrivalCode: destination?.code,
+          states: ['EDITION', 'PUBLIC'],
+        }),
         getAllPromotions().catch(() => []),
       ]);
       setResults(data);
@@ -64,6 +70,11 @@ export default function PromotionCreateTab() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCreate = async (payload) => {
     setSubmitting(true);
@@ -90,7 +101,18 @@ export default function PromotionCreateTab() {
     <div>
       <div className="admin-card">
         <div className="row g-3 align-items-end">
-          <div className="col-md-5">
+          <div className="col-md-2">
+            <label className="form-label"># Itinerario</label>
+            <input
+              type="number"
+              className="form-control"
+              min="1"
+              value={itineraryId}
+              onChange={(e) => setItineraryId(e.target.value)}
+              placeholder="Todos"
+            />
+          </div>
+          <div className="col-md-4">
             <AirportTypeahead
               id="promo-origin"
               label="Origen"
@@ -99,7 +121,7 @@ export default function PromotionCreateTab() {
               exclude={destination?.code}
             />
           </div>
-          <div className="col-md-5">
+          <div className="col-md-4">
             <AirportTypeahead
               id="promo-destination"
               label="Destino"
@@ -113,7 +135,7 @@ export default function PromotionCreateTab() {
               type="button"
               className="btn-burgundy w-100"
               onClick={handleSearch}
-              disabled={!canSearch || loading}
+              disabled={hasInvalidRoute || loading}
             >
               {loading
                 ? <><span className="spinner-border spinner-border-sm me-2"></span>Buscando…</>
@@ -140,7 +162,7 @@ export default function PromotionCreateTab() {
           <div className="flight-list-empty mt-3">
             <i className="bi bi-map"></i>
             <p className="m-0">
-              No hay itinerarios de <strong>{origin?.code}</strong> a <strong>{destination?.code}</strong>.
+              No hay itinerarios en edicion o publicados que coincidan con los filtros.
             </p>
           </div>
         )}

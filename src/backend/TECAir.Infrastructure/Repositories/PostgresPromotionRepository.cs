@@ -8,7 +8,9 @@ namespace TECAir.Infrastructure.Repositories;
 // Repositorio de promociones usando SQL manual con Npgsql.
 public sealed class PostgresPromotionRepository(NpgsqlDataSource dataSource) : IPromotionRepository
 {
-    public async Task<IReadOnlyList<PromotionResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PromotionResponse>> SearchAsync(
+        PromotionSearchFilters filters,
+        CancellationToken cancellationToken = default)
     {
         const string sql = """
             SELECT
@@ -20,12 +22,41 @@ public sealed class PostgresPromotionRepository(NpgsqlDataSource dataSource) : I
                 discount_percent,
                 promo_price
             FROM tecair.promotion
+            WHERE
+                (@promotion_code IS NULL OR UPPER(promotion_code) = @promotion_code)
+                AND (@itinerary_id IS NULL OR itinerary_id = @itinerary_id)
+                AND (@start_date IS NULL OR start_date = @start_date)
+                AND (@end_date IS NULL OR end_date = @end_date)
+                AND (
+                    @active_only = FALSE
+                    OR (start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE)
+                )
+                AND (
+                    @expired_only = FALSE
+                    OR end_date < CURRENT_DATE
+                )
+                AND (
+                    @upcoming_only = FALSE
+                    OR start_date > CURRENT_DATE
+                )
             ORDER BY start_date DESC, promotion_code ASC;
             """;
 
         var promotions = new List<PromotionResponse>();
 
         await using var command = dataSource.CreateCommand(sql);
+        command.Parameters.Add("promotion_code", NpgsqlDbType.Varchar).Value =
+            (object?)filters.PromotionCode ?? DBNull.Value;
+        command.Parameters.Add("itinerary_id", NpgsqlDbType.Integer).Value =
+            (object?)filters.ItineraryId ?? DBNull.Value;
+        command.Parameters.Add("start_date", NpgsqlDbType.Date).Value =
+            (object?)filters.StartDate ?? DBNull.Value;
+        command.Parameters.Add("end_date", NpgsqlDbType.Date).Value =
+            (object?)filters.EndDate ?? DBNull.Value;
+        command.Parameters.AddWithValue("active_only", filters.ActiveOnly == true);
+        command.Parameters.AddWithValue("expired_only", filters.ExpiredOnly == true);
+        command.Parameters.AddWithValue("upcoming_only", filters.UpcomingOnly == true);
+
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
         while (await reader.ReadAsync(cancellationToken))
@@ -34,6 +65,11 @@ public sealed class PostgresPromotionRepository(NpgsqlDataSource dataSource) : I
         }
 
         return promotions;
+    }
+
+    public Task<IReadOnlyList<PromotionResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return SearchAsync(new PromotionSearchFilters(), cancellationToken);
     }
 
     public async Task<PromotionResponse?> GetByCodeAsync(

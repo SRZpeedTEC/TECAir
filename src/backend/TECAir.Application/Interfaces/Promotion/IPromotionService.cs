@@ -5,6 +5,9 @@ namespace TECAir.Application.Interfaces;
 // Contrato de casos de uso de promociones que consume el controller.
 public interface IPromotionService
 {
+    Task<PromotionSearchServiceResult> SearchAsync(
+        PromotionSearchFilters filters,
+        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<PromotionResponse>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<PromotionResponse?> GetByCodeAsync(string promotionCode, CancellationToken cancellationToken = default);
     Task<CreatePromotionServiceResult> CreateAsync(

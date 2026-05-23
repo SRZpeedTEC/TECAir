@@ -70,6 +70,7 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
                 (@public_only = FALSE OR i.state = 'PUBLIC')
                 AND (@itinerary_id IS NULL OR i.itinerary_id = @itinerary_id)
                 AND (@state IS NULL OR i.state = @state)
+                AND (@states IS NULL OR i.state = ANY(@states))
                 AND (@departure_code IS NULL OR departure_airport.code = @departure_code)
                 AND (@arrival_code IS NULL OR arrival_airport.code = @arrival_code)
                 AND (@departure_date IS NULL OR first_flight.departure_datetime::DATE = @departure_date)
@@ -94,6 +95,8 @@ public sealed class PostgresItineraryRepository(NpgsqlDataSource dataSource) : I
             (object?)filters.ItineraryId ?? DBNull.Value;
         command.Parameters.Add("state", NpgsqlDbType.Varchar).Value =
             (object?)filters.State ?? DBNull.Value;
+        command.Parameters.Add("states", NpgsqlDbType.Array | NpgsqlDbType.Varchar).Value =
+            filters.States is { Count: > 0 } ? filters.States.ToArray() : DBNull.Value;
         command.Parameters.Add("departure_code", NpgsqlDbType.Varchar).Value =
             (object?)filters.DepartureCode ?? DBNull.Value;
         command.Parameters.Add("arrival_code", NpgsqlDbType.Varchar).Value =

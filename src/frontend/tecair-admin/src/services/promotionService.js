@@ -15,10 +15,25 @@ function normalizePromotion(p) {
   };
 }
 
+// GET /api/promotions con filtros opcionales.
+export async function searchPromotions(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.promotionCode) params.set('promotionCode', filters.promotionCode);
+  if (filters.itineraryId) params.set('itineraryId', String(filters.itineraryId));
+  if (filters.startDate) params.set('startDate', filters.startDate);
+  if (filters.endDate) params.set('endDate', filters.endDate);
+  if (filters.activeOnly) params.set('activeOnly', 'true');
+  if (filters.expiredOnly) params.set('expiredOnly', 'true');
+  if (filters.upcomingOnly) params.set('upcomingOnly', 'true');
+
+  const query = params.toString();
+  const data = await apiFetch(`/promotions${query ? `?${query}` : ''}`);
+  return data.map(normalizePromotion);
+}
+
 // GET /api/promotions
 export async function getAllPromotions() {
-  const data = await apiFetch('/promotions');
-  return data.map(normalizePromotion);
+  return searchPromotions();
 }
 
 // GET /api/promotions/{code}

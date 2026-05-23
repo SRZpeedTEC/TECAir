@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import AirportTypeahead from './AirportTypeahead.jsx';
 import ConfirmDialog    from './ConfirmDialog.jsx';
 import {
-  searchFlightsByRoute,
+  searchFlights,
   transitionFlightState,
 } from '../services/flightService.js';
 
@@ -32,8 +32,10 @@ export default function FlightTransitionPanel({
   actionVerb,
   icon = 'bi-airplane',
 }) {
+  const [flightId,    setFlightId]    = useState('');
   const [origin,      setOrigin]      = useState(null);
   const [destination, setDestination] = useState(null);
+  const [departureDate, setDepartureDate] = useState('');
 
   const [flights,   setFlights]   = useState([]);
   const [loading,   setLoading]   = useState(false);
@@ -46,22 +48,29 @@ export default function FlightTransitionPanel({
 
   const [toast, setToast] = useState(null);
 
-  const canSearch = !!origin && !!destination && !loading;
+  const hasInvalidRoute = !!origin && !!destination && origin.code === destination.code;
+
+  const fetchFlights = async () => {
+    // El backend aplica filtros opcionales y el estado queda fijo por pantalla.
+    const data = await searchFlights({
+      flightId: flightId.trim(),
+      state: fromState,
+      departureCode: origin?.code,
+      arrivalCode: destination?.code,
+      departureDate,
+    });
+    setFlights(data);
+  };
 
   const handleSearch = async (e) => {
     e?.preventDefault?.();
-    if (!canSearch) return;
+    if (hasInvalidRoute) return;
     setLoading(true);
     setLoadError(null);
     setTouched(true);
     setToast(null);
     try {
-      const data = await searchFlightsByRoute({
-        state:         fromState,
-        departureCode: origin.code,
-        arrivalCode:   destination.code,
-      });
-      setFlights(data);
+      await fetchFlights();
     } catch (err) {
       setLoadError(err.message);
       setFlights([]);
@@ -86,14 +95,7 @@ export default function FlightTransitionPanel({
       setTarget(null);
       // Refresca la lista con los mismos filtros para que el vuelo recién
       // transicionado salga del listado actual.
-      if (origin && destination) {
-        const data = await searchFlightsByRoute({
-          state:         fromState,
-          departureCode: origin.code,
-          arrivalCode:   destination.code,
-        });
-        setFlights(data);
-      }
+      await fetchFlights();
     } catch (err) {
       setActionError(err.message);
     } finally {
@@ -101,31 +103,56 @@ export default function FlightTransitionPanel({
     }
   };
 
+  useEffect(() => {
+    handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div>
       <div className="admin-card">
         <form onSubmit={handleSearch}>
           <div className="row g-3 align-items-end">
-            <div className="col-md-5">
+            <div className="col-md-2">
+              <label className="form-label"># Vuelo</label>
+              <input
+                type="number"
+                className="form-control"
+                min="1"
+                value={flightId}
+                onChange={(e) => setFlightId(e.target.value)}
+                placeholder="Todos"
+              />
+            </div>
+            <div className="col-md-3">
               <AirportTypeahead
                 id="transition-origin"
-                label="Aeropuerto origen *"
+                label="Aeropuerto origen"
                 value={origin}
                 onChange={setOrigin}
                 exclude={destination?.code}
               />
             </div>
-            <div className="col-md-5">
+            <div className="col-md-3">
               <AirportTypeahead
                 id="transition-destination"
-                label="Aeropuerto destino *"
+                label="Aeropuerto destino"
                 value={destination}
                 onChange={setDestination}
                 exclude={origin?.code}
               />
             </div>
             <div className="col-md-2">
-              <button type="submit" className="btn-burgundy w-100" disabled={!canSearch}>
+              <label className="form-label">Fecha salida</label>
+              <input
+                type="date"
+                className="form-control"
+                value={departureDate}
+                onChange={(e) => setDepartureDate(e.target.value)}
+              />
+            </div>
+            <div className="col-md-2">
+              <button type="submit" className="btn-burgundy w-100" disabled={hasInvalidRoute || loading}>
                 {loading
                   ? <><span className="spinner-border spinner-border-sm me-2"></span>Buscando…</>
                   : <><i className="bi bi-search me-2"></i>Buscar</>}
@@ -152,9 +179,7 @@ export default function FlightTransitionPanel({
           <div className="flight-list-empty">
             <i className={`bi ${icon}`}></i>
             <p className="m-0">
-              No hay vuelos en estado <strong>{fromState}</strong> de{' '}
-              <strong>{origin?.city} ({origin?.code})</strong> a{' '}
-              <strong>{destination?.city} ({destination?.code})</strong>.
+              No hay vuelos en estado <strong>{fromState}</strong> que coincidan con los filtros.
             </p>
           </div>
         )}
