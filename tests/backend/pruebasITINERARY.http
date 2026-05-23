@@ -315,7 +315,7 @@ Accept: application/json
 
 ### 27. Busqueda administrativa puede incluir CLOSED si lo solicita
 # Esperado: 200 OK incluyendo itineraryId = 5.
-GET {{baseUrl}}/api/itineraries/search?originCode=MIA&destinationCode=MEX&includeNonPublic=true
+GET {{baseUrl}}/api/itineraries/admin/search?departureCode=MIA&arrivalCode=MEX
 Accept: application/json
 
 
@@ -472,4 +472,100 @@ Accept: application/json
 ### 37. Busqueda publica solo devuelve PUBLIC
 # Esperado: 200 OK sin itinerarios EDITION ni CLOSED.
 GET {{baseUrl}}/api/itineraries/search?originCode=SJO&destinationCode=MIA
+Accept: application/json
+
+
+### 38. Busqueda publica sin filtros
+# Esperado: 200 OK. Solo itinerarios PUBLIC.
+GET {{baseUrl}}/api/itineraries/search
+Accept: application/json
+
+
+### 39. Busqueda publica por departureCode
+# Esperado: 200 OK con itinerarios cuyo primer vuelo sale de SJO.
+GET {{baseUrl}}/api/itineraries/search?departureCode=SJO
+Accept: application/json
+
+
+### 40. Busqueda publica por arrivalCode
+# Esperado: 200 OK con itinerarios cuyo ultimo vuelo llega a BOG.
+GET {{baseUrl}}/api/itineraries/search?arrivalCode=BOG
+Accept: application/json
+
+
+### 41. Busqueda publica por departureDate
+# Esperado: 200 OK con primera salida el 2026-06-10.
+GET {{baseUrl}}/api/itineraries/search?departureDate=2026-06-10
+Accept: application/json
+
+
+### 42. Busqueda publica de itinerarios directos
+# Esperado: 200 OK con totalFlights = 1.
+GET {{baseUrl}}/api/itineraries/search?stops=direct
+Accept: application/json
+
+
+### 43. Busqueda publica de itinerarios con escalas
+# Esperado: 200 OK con totalFlights > 1.
+GET {{baseUrl}}/api/itineraries/search?stops=with_stops
+Accept: application/json
+
+
+### 44. Busqueda publica ordenada por precio
+# Esperado: 200 OK ordenado por price ascendente.
+GET {{baseUrl}}/api/itineraries/search?sortBy=price
+Accept: application/json
+
+
+### 45. Busqueda publica ordenada por duracion
+# Esperado: 200 OK ordenado por duracion total ascendente.
+GET {{baseUrl}}/api/itineraries/search?sortBy=duration
+Accept: application/json
+
+
+### 46. Busqueda publica con stops invalido
+# Esperado: 400 Bad Request.
+GET {{baseUrl}}/api/itineraries/search?stops=invalid
+Accept: application/json
+
+
+### 47. Busqueda publica con sortBy invalido
+# Esperado: 400 Bad Request.
+GET {{baseUrl}}/api/itineraries/search?sortBy=invalid
+Accept: application/json
+
+
+### 48. Busqueda admin sin filtros
+# Esperado: 200 OK incluyendo EDITION, PUBLIC y CLOSED.
+GET {{baseUrl}}/api/itineraries/admin/search
+Accept: application/json
+
+
+### 49. Busqueda admin por itineraryId
+# Esperado: 200 OK con itineraryId = 1.
+GET {{baseUrl}}/api/itineraries/admin/search?itineraryId=1
+Accept: application/json
+
+
+### 50. Busqueda admin por departureCode
+# Esperado: 200 OK con primer vuelo saliendo de SJO.
+GET {{baseUrl}}/api/itineraries/admin/search?departureCode=SJO
+Accept: application/json
+
+
+### 51. Busqueda admin por arrivalCode
+# Esperado: 200 OK con ultimo vuelo llegando a MEX.
+GET {{baseUrl}}/api/itineraries/admin/search?arrivalCode=MEX
+Accept: application/json
+
+
+### 52. Busqueda admin por state
+# Esperado: 200 OK con itinerarios EDITION.
+GET {{baseUrl}}/api/itineraries/admin/search?state=EDITION
+Accept: application/json
+
+
+### 53. Busqueda admin con state invalido
+# Esperado: 400 Bad Request.
+GET {{baseUrl}}/api/itineraries/admin/search?state=DRAFT
 Accept: application/json

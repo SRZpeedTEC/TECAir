@@ -12,12 +12,33 @@ namespace TECAir.Api.Controllers;
 public class FlightsController(IFlightService flightService) : ControllerBase
 {
     // GET /api/flights
-    // Lista todos los vuelos registrados.
+    // Lista vuelos registrados; si no hay query params, funciona como get all.
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<FlightResponse>>> GetAll(CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<FlightResponse>>> GetAll(
+        [FromQuery] int? flightId,
+        [FromQuery] string? departureCode,
+        [FromQuery] string? arrivalCode,
+        [FromQuery] string? state,
+        [FromQuery] DateOnly? departureDate,
+        CancellationToken cancellationToken)
     {
-        var flights = await flightService.GetAllAsync(cancellationToken);
-        return Ok(flights);
+        var result = await flightService.SearchAsync(
+            new FlightSearchFilters
+            {
+                FlightId = flightId,
+                DepartureCode = departureCode,
+                ArrivalCode = arrivalCode,
+                State = state,
+                DepartureDate = departureDate
+            },
+            cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Flights);
     }
 
     // GET /api/flights/{flightId}

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import AirportTypeahead from '../components/AirportTypeahead.jsx';
 import FlightForm       from '../components/FlightForm.jsx';
 import Modal            from '../components/Modal.jsx';
 import ConfirmDialog    from '../components/ConfirmDialog.jsx';
 import {
-  listFlightsByDepartureAndState,
+  searchFlights,
   updateFlight,
   deleteFlight,
 } from '../services/flightService.js';
@@ -56,7 +56,11 @@ function flightToFormValues(flight) {
 }
 
 export default function FlightListTab() {
+  const [flightId,  setFlightId]  = useState('');
   const [airport,   setAirport]   = useState(null);
+  const [arrival,   setArrival]   = useState(null);
+  const [stateFilter, setStateFilter] = useState('');
+  const [departureDate, setDepartureDate] = useState('');
   const [flights,   setFlights]   = useState([]);
   const [loading,   setLoading]   = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -73,21 +77,20 @@ export default function FlightListTab() {
   // Banner global de éxito (post-update / post-delete)
   const [toast, setToast] = useState(null);
 
-  const fetchFlights = async (code) => {
+  const fetchFlights = async () => {
     setLoading(true);
     setLoadError(null);
     setTouched(true);
     try {
-      // El endpoint filtra por un solo estado a la vez, asi que pedimos los dos
-      // en paralelo y los combinamos ordenados por hora de salida.
-      const [upcoming, open] = await Promise.all([
-        listFlightsByDepartureAndState(code, 'UPCOMING'),
-        listFlightsByDepartureAndState(code, 'OPEN'),
-      ]);
-      const merged = [...upcoming, ...open].sort(
-        (a, b) => new Date(a.departureDatetime) - new Date(b.departureDatetime),
-      );
-      setFlights(merged);
+      // GET /api/flights aplica filtros opcionales en backend; sin filtros trae todos.
+      const data = await searchFlights({
+        flightId: flightId.trim(),
+        departureCode: airport?.code,
+        arrivalCode: arrival?.code,
+        state: stateFilter,
+        departureDate,
+      });
+      setFlights(data);
     } catch (err) {
       setLoadError(err.message);
       setFlights([]);
@@ -99,18 +102,16 @@ export default function FlightListTab() {
   const handleAirportChange = (ap) => {
     setAirport(ap);
     setToast(null);
-    if (ap) {
-      fetchFlights(ap.code);
-    } else {
-      setFlights([]);
-      setTouched(false);
-      setLoadError(null);
-    }
   };
 
   const handleRefresh = () => {
-    if (airport) fetchFlights(airport.code);
+    fetchFlights();
   };
+
+  useEffect(() => {
+    fetchFlights();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Editar ───
   const openEdit = (flight) => {
@@ -125,7 +126,7 @@ export default function FlightListTab() {
     await updateFlight(editingFlight.flightId, finalPayload);
     setToast(`Vuelo #${editingFlight.flightId} actualizado correctamente.`);
     setEditingFlight(null);
-    if (airport) fetchFlights(airport.code);
+    fetchFlights();
   };
 
   // ─── Eliminar ───
@@ -143,7 +144,7 @@ export default function FlightListTab() {
       await deleteFlight(deletingFlight.flightId);
       setToast(`Vuelo #${deletingFlight.flightId} eliminado correctamente.`);
       setDeletingFlight(null);
-      if (airport) fetchFlights(airport.code);
+      fetchFlights();
     } catch (err) {
       setDeleteError(err.message);
     } finally {
@@ -155,7 +156,18 @@ export default function FlightListTab() {
     <div>
       <div className="admin-card">
         <div className="row g-3 align-items-end">
-          <div className="col-md-8">
+          <div className="col-md-2">
+            <label className="form-label"># Vuelo</label>
+            <input
+              type="number"
+              className="form-control"
+              min="1"
+              value={flightId}
+              onChange={(e) => setFlightId(e.target.value)}
+              placeholder="Todos"
+            />
+          </div>
+          <div className="col-md-3">
             <AirportTypeahead
               id="list-departure"
               label="Aeropuerto de salida"
@@ -163,16 +175,47 @@ export default function FlightListTab() {
               onChange={handleAirportChange}
             />
           </div>
-          <div className="col-md-4 d-flex gap-2">
+          <div className="col-md-3">
+            <AirportTypeahead
+              id="list-arrival"
+              label="Aeropuerto de llegada"
+              value={arrival}
+              onChange={setArrival}
+              exclude={airport?.code}
+            />
+          </div>
+          <div className="col-md-2">
+            <label className="form-label">Estado</label>
+            <select
+              className="form-select"
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value)}
+            >
+              <option value="">Todos</option>
+              <option value="UPCOMING">UPCOMING</option>
+              <option value="OPEN">OPEN</option>
+              <option value="CLOSED">CLOSED</option>
+            </select>
+          </div>
+          <div className="col-md-2">
+            <label className="form-label">Fecha salida</label>
+            <input
+              type="date"
+              className="form-control"
+              value={departureDate}
+              onChange={(e) => setDepartureDate(e.target.value)}
+            />
+          </div>
+          <div className="col-md-12 d-flex justify-content-end gap-2">
             <button
               type="button"
-              className="btn-burgundy-outline w-100"
+              className="btn-burgundy-outline"
               onClick={handleRefresh}
-              disabled={!airport || loading}
+              disabled={loading}
             >
               {loading
                 ? <><span className="spinner-border spinner-border-sm me-2"></span>Buscando…</>
-                : <><i className="bi bi-arrow-clockwise me-2"></i>Refrescar</>}
+                : <><i className="bi bi-search me-2"></i>Buscar</>}
             </button>
           </div>
         </div>
@@ -195,7 +238,7 @@ export default function FlightListTab() {
           <div className="flight-list-empty">
             <i className="bi bi-airplane"></i>
             <p className="m-0">
-              No hay vuelos OPEN saliendo de <strong>{airport?.city} ({airport?.code})</strong>.
+              No hay vuelos que coincidan con los filtros.
             </p>
           </div>
         )}

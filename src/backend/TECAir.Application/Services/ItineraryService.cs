@@ -7,18 +7,42 @@ namespace TECAir.Application.Services;
 // Valida reglas de negocio como duplicados, orden de vuelos y conexiones validas.
 public class ItineraryService(IItineraryRepository itineraryRepository) : IItineraryService
 {
-    // Busca itinerarios normalizando los codigos IATA antes de consultar la base.
-    public Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
-        string originCode,
-        string destinationCode,
-        bool includeNonPublic = false,
+    // Busqueda de cliente: los filtros son opcionales y siempre se limita a PUBLIC.
+    public async Task<ItinerarySearchServiceResult> SearchAsync(
+        ItinerarySearchFilters filters,
         CancellationToken cancellationToken = default)
     {
-        return itineraryRepository.SearchAsync(
-            originCode.Trim().ToUpperInvariant(),
-            destinationCode.Trim().ToUpperInvariant(),
-            includeNonPublic,
+        var validationError = ValidateClientSearchFilters(filters);
+        if (validationError is not null)
+        {
+            return ItinerarySearchServiceResult.ValidationError(validationError);
+        }
+
+        var normalizedFilters = NormalizeClientSearchFilters(filters);
+        var itineraries = await itineraryRepository.SearchAsync(
+            normalizedFilters,
+            publicOnly: true,
             cancellationToken);
+        return ItinerarySearchServiceResult.Success(itineraries);
+    }
+
+    // Busqueda admin: puede devolver EDITION, PUBLIC y CLOSED con filtros opcionales.
+    public async Task<ItinerarySearchServiceResult> SearchAdminAsync(
+        ItinerarySearchFilters filters,
+        CancellationToken cancellationToken = default)
+    {
+        var validationError = ValidateAdminSearchFilters(filters);
+        if (validationError is not null)
+        {
+            return ItinerarySearchServiceResult.ValidationError(validationError);
+        }
+
+        var normalizedFilters = NormalizeAdminSearchFilters(filters);
+        var itineraries = await itineraryRepository.SearchAsync(
+            normalizedFilters,
+            publicOnly: false,
+            cancellationToken);
+        return ItinerarySearchServiceResult.Success(itineraries);
     }
 
     public Task<IReadOnlyList<ItineraryDetailsResponse>> GetAllWithPromotionsAsync(
@@ -272,6 +296,94 @@ public class ItineraryService(IItineraryRepository itineraryRepository) : IItine
     private static string? ValidateCreateItineraryRequest(CreateItineraryRequest request)
     {
         return ValidateItineraryRequest(request.Price, request.State, request.Flights);
+    }
+
+    private static string? ValidateClientSearchFilters(ItinerarySearchFilters filters)
+    {
+        return ValidateStops(filters.Stops) ?? ValidateSortBy(filters.SortBy);
+    }
+
+    private static string? ValidateAdminSearchFilters(ItinerarySearchFilters filters)
+    {
+        if (filters.ItineraryId is <= 0)
+        {
+            return "Itinerary id must be greater than 0.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(filters.State))
+        {
+            return ValidateItineraryState(filters.State);
+        }
+
+        return null;
+    }
+
+    private static string? ValidateStops(string? stops)
+    {
+        if (string.IsNullOrWhiteSpace(stops))
+        {
+            return null;
+        }
+
+        var normalizedStops = stops.Trim().ToLowerInvariant();
+        if (normalizedStops is not "all" and not "direct" and not "with_stops")
+        {
+            return "Stops must be all, direct or with_stops.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateSortBy(string? sortBy)
+    {
+        if (string.IsNullOrWhiteSpace(sortBy))
+        {
+            return null;
+        }
+
+        var normalizedSortBy = sortBy.Trim().ToLowerInvariant();
+        if (normalizedSortBy is not "price" and not "duration")
+        {
+            return "SortBy must be price or duration.";
+        }
+
+        return null;
+    }
+
+    private static ItinerarySearchFilters NormalizeClientSearchFilters(ItinerarySearchFilters filters)
+    {
+        return new ItinerarySearchFilters
+        {
+            DepartureCode = NormalizeAirportCodeOrNull(filters.DepartureCode),
+            ArrivalCode = NormalizeAirportCodeOrNull(filters.ArrivalCode),
+            DepartureDate = filters.DepartureDate,
+            Stops = string.IsNullOrWhiteSpace(filters.Stops)
+                ? "all"
+                : filters.Stops.Trim().ToLowerInvariant(),
+            SortBy = string.IsNullOrWhiteSpace(filters.SortBy)
+                ? null
+                : filters.SortBy.Trim().ToLowerInvariant()
+        };
+    }
+
+    private static ItinerarySearchFilters NormalizeAdminSearchFilters(ItinerarySearchFilters filters)
+    {
+        return new ItinerarySearchFilters
+        {
+            ItineraryId = filters.ItineraryId,
+            DepartureCode = NormalizeAirportCodeOrNull(filters.DepartureCode),
+            ArrivalCode = NormalizeAirportCodeOrNull(filters.ArrivalCode),
+            State = string.IsNullOrWhiteSpace(filters.State)
+                ? null
+                : NormalizeState(filters.State)
+        };
+    }
+
+    private static string? NormalizeAirportCodeOrNull(string? airportCode)
+    {
+        return string.IsNullOrWhiteSpace(airportCode)
+            ? null
+            : airportCode.Trim().ToUpperInvariant();
     }
 
     // Mismas reglas de estructura que la creacion, aplicadas al reemplazo completo de vuelos.

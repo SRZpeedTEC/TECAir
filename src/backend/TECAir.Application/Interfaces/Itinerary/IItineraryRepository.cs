@@ -5,11 +5,10 @@ namespace TECAir.Application.Interfaces;
 // Contrato que define las operaciones de persistencia para itinerarios.
 public interface IItineraryRepository
 {
-    // Busca itinerarios por origen y destino ya normalizados.
+    // Busca itinerarios con filtros opcionales ya normalizados.
     Task<IReadOnlyList<ItinerarySearchResponse>> SearchAsync(
-        string originCode,
-        string destinationCode,
-        bool includeNonPublic,
+        ItinerarySearchFilters filters,
+        bool publicOnly,
         CancellationToken cancellationToken = default);
 
     // Obtiene todos los itinerarios con promocion opcional y vuelos.

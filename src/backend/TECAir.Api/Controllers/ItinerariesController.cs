@@ -30,32 +30,64 @@ public class ItinerariesController(IItineraryService itineraryService) : Control
         return Ok(itineraries);
     }
 
-    // GET /api/itineraries/search?originCode=...&destinationCode=...
-    // Busca itinerarios cuyo primer vuelo salga del origen y cuyo ultimo vuelo llegue al destino.
-    // Por defecto solo devuelve PUBLIC; admin puede pedir includeNonPublic=true.
+    // GET /api/itineraries/search
+    // Busqueda cliente: todos los filtros son opcionales y solo devuelve PUBLIC.
     [HttpGet("search")]
     public async Task<ActionResult<IReadOnlyList<ItinerarySearchResponse>>> Search(
+        [FromQuery] string? departureCode,
+        [FromQuery] string? arrivalCode,
+        [FromQuery] DateOnly? departureDate,
+        [FromQuery] string? stops,
+        [FromQuery] string? sortBy,
         [FromQuery] string? originCode,
         [FromQuery] string? destinationCode,
-        [FromQuery] bool includeNonPublic,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(originCode))
-        {
-            return BadRequest(new { message = "Query parameter 'originCode' is required." });
-        }
-
-        if (string.IsNullOrWhiteSpace(destinationCode))
-        {
-            return BadRequest(new { message = "Query parameter 'destinationCode' is required." });
-        }
-
-        var itineraries = await itineraryService.SearchAsync(
-            originCode,
-            destinationCode,
-            includeNonPublic,
+        var result = await itineraryService.SearchAsync(
+            new ItinerarySearchFilters
+            {
+                DepartureCode = departureCode ?? originCode,
+                ArrivalCode = arrivalCode ?? destinationCode,
+                DepartureDate = departureDate,
+                Stops = stops,
+                SortBy = sortBy
+            },
             cancellationToken);
-        return Ok(itineraries);
+
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Itineraries);
+    }
+
+    // GET /api/itineraries/admin/search
+    // Busqueda administrativa: puede devolver EDITION, PUBLIC y CLOSED.
+    [HttpGet("admin/search")]
+    public async Task<ActionResult<IReadOnlyList<ItinerarySearchResponse>>> SearchAdmin(
+        [FromQuery] int? itineraryId,
+        [FromQuery] string? departureCode,
+        [FromQuery] string? arrivalCode,
+        [FromQuery] string? state,
+        CancellationToken cancellationToken)
+    {
+        var result = await itineraryService.SearchAdminAsync(
+            new ItinerarySearchFilters
+            {
+                ItineraryId = itineraryId,
+                DepartureCode = departureCode,
+                ArrivalCode = arrivalCode,
+                State = state
+            },
+            cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result.Itineraries);
     }
 
     // GET /api/itineraries/{id}

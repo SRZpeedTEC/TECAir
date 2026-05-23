@@ -52,15 +52,29 @@ export async function getItineraryAvailability(itineraryId, passengers) {
   return apiFetch(`/itineraries/${itineraryId}/availability?${params}`);
 }
 
+function formatDateParam(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) return null;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // Busca itinerarios públicos disponibles entre dos aeropuertos.
 //
-// Backend único usado: GET /api/itineraries/public/with-promotions
-// Devuelve ItineraryDetailsResponse[] con vuelos y promoción embebida, así que
-// el cruce de promociones que antes se hacía con un segundo fetch desaparece.
-// El filtrado por origen/destino se hace en cliente porque el endpoint no
-// acepta parámetros de ruta.
-export async function searchItineraries(originCode, destinationCode) {
-  const params = new URLSearchParams({ originCode, destinationCode });
+// Backend usado: GET /api/itineraries/search con filtros opcionales.
+// La API aplica filtros de ruta, fecha, escalas y ordenamiento; el detalle
+// adicional solo se consulta para mostrar promociones activas.
+export async function searchItineraries(originCode, destinationCode, options = {}) {
+  const params = new URLSearchParams();
+  if (originCode) params.set('departureCode', originCode);
+  if (destinationCode) params.set('arrivalCode', destinationCode);
+  const departureDate = formatDateParam(options.departureDate);
+  if (departureDate) params.set('departureDate', departureDate);
+  if (options.stops) params.set('stops', options.stops);
+  if (options.sortBy) params.set('sortBy', options.sortBy);
   const searchResults = await apiFetch(`/itineraries/search?${params}`);
 
   if (searchResults.length === 0) return [];
@@ -106,70 +120,6 @@ export async function searchItineraries(originCode, destinationCode) {
       duration: calcDuration(e.departure, e.arrival),
       price: e.basePrice,
       basePrice: e.basePrice,
-      displayPrice: e.displayPrice,
-      activePromotion: e.activePromotion,
-      tag,
-    };
-  });
-
-  const data = await getPublicItinerariesWithPromotions();
-
-  // Cada itinerario trae sus vuelos ordenados por flight_order.
-  // El origen/destino del itinerario es el primer y último vuelo.
-  const filtered = data
-    .map((it) => {
-      const flights = (it.flights ?? it.Flights ?? [])
-        .slice()
-        .sort((a, b) => (a.flightOrder ?? a.FlightOrder) - (b.flightOrder ?? b.FlightOrder));
-      if (flights.length === 0) return null;
-      const first = flights[0];
-      const last  = flights[flights.length - 1];
-      return {
-        raw: it,
-        flights,
-        originCode:      first.departureCode ?? first.DepartureCode,
-        destinationCode: last.arrivalCode    ?? last.ArrivalCode,
-        departure:       new Date(first.departureDatetime ?? first.DepartureDatetime),
-        arrival:         new Date(last.arrivalDatetime    ?? last.ArrivalDatetime),
-      };
-    })
-    .filter((it) => it && it.originCode === originCode && it.destinationCode === destinationCode);
-
-  if (filtered.length === 0) return [];
-
-  // Etiquetas "Mejor precio" / "Más rápido" — el precio que cuenta es el
-  // efectivo (con promo aplicada si está vigente).
-  const enriched = filtered.map(({ raw, flights, departure, arrival }) => {
-    const basePrice    = Number(raw.price ?? raw.Price);
-    const activePromo  = pickActivePromotion(raw.promotion ?? raw.Promotion);
-    const displayPrice = activePromo ? activePromo.promoPrice : basePrice;
-    return {
-      raw, departure, arrival, flights,
-      itineraryId:    raw.itineraryId ?? raw.ItineraryId,
-      basePrice,
-      displayPrice,
-      activePromotion: activePromo,
-    };
-  });
-
-  const minPrice    = Math.min(...enriched.map((e) => e.displayPrice));
-  const minDuration = Math.min(...enriched.map((e) => e.arrival - e.departure));
-
-  return enriched.map((e) => {
-    const durMs = e.arrival - e.departure;
-    let tag = null;
-    if (e.displayPrice === minPrice)    tag = 'Mejor precio';
-    if (durMs === minDuration)           tag = 'Más rápido'; // pisa "Mejor precio" si coinciden
-
-    return {
-      id:          `IT${e.itineraryId}`,
-      itineraryId: e.itineraryId,
-      stops:       e.flights.length - 1,
-      depart:      fmtTime(e.departure),
-      arrive:      fmtTime(e.arrival),
-      duration:    calcDuration(e.departure, e.arrival),
-      price:       e.basePrice,
-      basePrice:   e.basePrice,
       displayPrice: e.displayPrice,
       activePromotion: e.activePromotion,
       tag,

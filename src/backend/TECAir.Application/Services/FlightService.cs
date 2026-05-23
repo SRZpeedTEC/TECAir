@@ -10,9 +10,30 @@ public class FlightService(
     IFlightRepository flightRepository,
     IAirportRepository airportRepository) : IFlightService
 {
-    public Task<IReadOnlyList<FlightResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<FlightSearchServiceResult> SearchAsync(
+        FlightSearchFilters filters,
+        CancellationToken cancellationToken = default)
     {
-        return flightRepository.GetAllAsync(cancellationToken);
+        var validationError = ValidateFlightSearchFilters(filters);
+        if (validationError is not null)
+        {
+            return FlightSearchServiceResult.ValidationError(validationError);
+        }
+
+        // Los filtros son opcionales; sin parametros, GET /api/flights lista todos los vuelos.
+        var normalizedFilters = new FlightSearchFilters
+        {
+            FlightId = filters.FlightId,
+            DepartureCode = NormalizeAirportCodeOrNull(filters.DepartureCode),
+            ArrivalCode = NormalizeAirportCodeOrNull(filters.ArrivalCode),
+            State = string.IsNullOrWhiteSpace(filters.State)
+                ? null
+                : filters.State.Trim().ToUpperInvariant(),
+            DepartureDate = filters.DepartureDate
+        };
+
+        var flights = await flightRepository.SearchAsync(normalizedFilters, cancellationToken);
+        return FlightSearchServiceResult.Success(flights);
     }
 
     public async Task<FlightResponse?> GetByIdAsync(
@@ -334,6 +355,25 @@ public class FlightService(
     }
 
     // Reglas que se pueden validar solo con el contenido del request.
+    private static string? ValidateFlightSearchFilters(FlightSearchFilters filters)
+    {
+        if (filters.FlightId is <= 0)
+        {
+            return "Flight id must be greater than 0.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(filters.State))
+        {
+            var normalizedState = filters.State.Trim().ToUpperInvariant();
+            if (normalizedState is not "UPCOMING" and not "OPEN" and not "CLOSED")
+            {
+                return "State must be UPCOMING, OPEN or CLOSED.";
+            }
+        }
+
+        return null;
+    }
+
     private static string? ValidateCreateFlightRequest(CreateFlightRequest request)
     {
         return ValidateFlightData(
@@ -411,6 +451,13 @@ public class FlightService(
         }
 
         return null;
+    }
+
+    private static string? NormalizeAirportCodeOrNull(string? airportCode)
+    {
+        return string.IsNullOrWhiteSpace(airportCode)
+            ? null
+            : airportCode.Trim().ToUpperInvariant();
     }
 
     private async Task<string?> ValidateGatePreviousHourMarginAsync(
