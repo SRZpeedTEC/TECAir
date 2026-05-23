@@ -5,8 +5,17 @@ namespace TECAir.Application.Services;
 
 // Servicio de aplicacion para promociones.
 // Aqui se validan reglas de negocio antes de llamar al repositorio.
-public class PromotionService(IPromotionRepository promotionRepository) : IPromotionService
+public class PromotionService(
+    IPromotionRepository promotionRepository,
+    IPromotionImageStorage promotionImageStorage) : IPromotionService
 {
+    private const long MaxImageBytes = 5 * 1024 * 1024;
+
+    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".webp", ".gif"
+    };
+
     public Task<IReadOnlyList<PromotionResponse>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return promotionRepository.GetAllAsync(cancellationToken);
@@ -120,6 +129,55 @@ public class PromotionService(IPromotionRepository promotionRepository) : IPromo
 
         await promotionRepository.DeleteAsync(normalizedCode, cancellationToken);
         return DeletePromotionServiceResult.Success();
+    }
+
+    public async Task<UploadPromotionImageServiceResult> UploadImageAsync(
+        UploadPromotionImageRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var validationError = ValidateUploadImageRequest(request);
+        if (validationError is not null)
+        {
+            return UploadPromotionImageServiceResult.ValidationError(validationError);
+        }
+
+        var relativeUrl = await promotionImageStorage.SaveAsync(
+            request.Content,
+            request.FileName,
+            request.ContentType,
+            cancellationToken);
+
+        return UploadPromotionImageServiceResult.Success(new UploadPromotionImageResponse
+        {
+            ImageUrl = relativeUrl
+        });
+    }
+
+    private static string? ValidateUploadImageRequest(UploadPromotionImageRequest request)
+    {
+        if (request.Length <= 0)
+        {
+            return "Image file is required.";
+        }
+
+        if (request.Length > MaxImageBytes)
+        {
+            return "Image file must not exceed 5 MB.";
+        }
+
+        var extension = Path.GetExtension(request.FileName);
+        if (string.IsNullOrEmpty(extension) || !AllowedImageExtensions.Contains(extension))
+        {
+            return "Image format is not allowed. Use PNG, JPG, WEBP or GIF.";
+        }
+
+        if (string.IsNullOrEmpty(request.ContentType) ||
+            !request.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Uploaded file is not a valid image.";
+        }
+
+        return null;
     }
 
     private static string? ValidateCreatePromotionRequest(CreatePromotionRequest request)

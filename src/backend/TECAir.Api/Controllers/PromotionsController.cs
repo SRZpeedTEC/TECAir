@@ -12,6 +12,42 @@ namespace TECAir.Api.Controllers;
 [Route("api/promotions")]
 public class PromotionsController(IPromotionService promotionService) : ControllerBase
 {
+    private const long MaxImageBytes = 5 * 1024 * 1024;
+
+    // POST /promotions/upload-image
+    // Recibe la imagen como multipart/form-data, delega al servicio y devuelve
+    // la URL absoluta para que el admin la persista en imageUrl al crear o
+    // editar la promocion.
+    [HttpPost("upload-image")]
+    [RequestSizeLimit(MaxImageBytes)]
+    public async Task<ActionResult<UploadPromotionImageResponse>> UploadImage(
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (file is null)
+        {
+            return BadRequest(new { message = "Image file is required." });
+        }
+
+        await using var stream = file.OpenReadStream();
+        var request = new UploadPromotionImageRequest
+        {
+            Content = stream,
+            FileName = file.FileName,
+            ContentType = file.ContentType,
+            Length = file.Length
+        };
+
+        var result = await promotionService.UploadImageAsync(request, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        var absoluteUrl = $"{Request.Scheme}://{Request.Host}{result.Image!.ImageUrl}";
+        return Ok(new UploadPromotionImageResponse { ImageUrl = absoluteUrl });
+    }
+
     // GET /promotions
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PromotionResponse>>> GetAll(

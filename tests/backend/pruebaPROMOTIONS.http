@@ -193,3 +193,41 @@ Accept: application/json
 DELETE {{baseUrl}}/promotions/PROMO-NO-EXISTE
 Accept: application/json
 
+
+### 16. Subir imagen de promocion valida
+# Sube un PNG por multipart/form-data. El backend lo guarda en
+# wwwroot/uploads/promotions y devuelve { imageUrl }.
+# Reemplazar la ruta del archivo por una imagen real del equipo.
+# Esperado: 200 OK con imageUrl absoluta (http://localhost:5000/uploads/promotions/<guid>.png).
+POST {{baseUrl}}/api/promotions/upload-image
+Content-Type: multipart/form-data; boundary=----TecAirBoundary
+
+------TecAirBoundary
+Content-Disposition: form-data; name="file"; filename="promo.png"
+Content-Type: image/png
+
+< ./fixtures/promo.png
+------TecAirBoundary--
+
+
+### 17. Intentar subir imagen sin archivo
+# Esperado: 400 Bad Request con "Image file is required.".
+POST {{baseUrl}}/api/promotions/upload-image
+Content-Type: multipart/form-data; boundary=----TecAirBoundary
+
+------TecAirBoundary--
+
+
+### 18. Intentar subir archivo con formato no permitido
+# Sube un .txt; el servicio debe rechazarlo por extension.
+# Esperado: 400 Bad Request con "Image format is not allowed. Use PNG, JPG, WEBP or GIF.".
+POST {{baseUrl}}/api/promotions/upload-image
+Content-Type: multipart/form-data; boundary=----TecAirBoundary
+
+------TecAirBoundary
+Content-Disposition: form-data; name="file"; filename="notas.txt"
+Content-Type: text/plain
+
+contenido de prueba
+------TecAirBoundary--
+

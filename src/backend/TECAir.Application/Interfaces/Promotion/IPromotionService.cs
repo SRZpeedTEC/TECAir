@@ -17,4 +17,7 @@ public interface IPromotionService
     Task<DeletePromotionServiceResult> DeleteAsync(
         string promotionCode,
         CancellationToken cancellationToken = default);
+    Task<UploadPromotionImageServiceResult> UploadImageAsync(
+        UploadPromotionImageRequest request,
+        CancellationToken cancellationToken = default);
 }

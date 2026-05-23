@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import DatePicker from './DatePicker.jsx';
+import { uploadPromotionImage } from '../services/promotionService.js';
 
 const MESES_ABBR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -75,6 +76,8 @@ export default function PromotionForm({
   const [imageUrl,      setImageUrl]      = useState(initialValues?.imageUrl ?? '');
   // imageMode: 'url' | 'file' — controla el modo de entrada de imagen.
   const [imageMode,     setImageMode]     = useState('url');
+  const [uploading,     setUploading]     = useState(false);
+  const [uploadError,   setUploadError]   = useState(null);
   const [touched,       setTouched]       = useState(false);
   const fileInputRef = useRef(null);
 
@@ -123,8 +126,9 @@ export default function PromotionForm({
   } else if (basePrice > 0 && Number(promoPrice) >= basePrice) {
     errors.promoPrice = `Debe ser menor al precio base (${fmtPriceCRC(basePrice)}).`;
   }
-  // Acepta URLs http/https y data URLs (imágenes desde archivo).
-  if (imageUrl && !imageUrl.startsWith('data:image/') && !/^https?:\/\//i.test(imageUrl.trim())) {
+  // Solo URLs http/https. Las imágenes subidas desde archivo pasan por el
+  // backend (upload-image) y vuelven como URL pública servida en /uploads.
+  if (imageUrl && !/^https?:\/\//i.test(imageUrl.trim())) {
     errors.imageUrl = 'La URL debe comenzar con http:// o https://.';
   }
   const hasErrors = Object.keys(errors).length > 0;
@@ -182,19 +186,30 @@ export default function PromotionForm({
     }
   };
 
-  // Lee el archivo y almacena como data URL para vista previa y envío.
-  const handleFileSelect = (e) => {
+  // Sube el archivo al backend; el backend lo guarda en wwwroot/uploads y
+  // devuelve la URL pública que es lo único que persistimos en BD.
+  const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setImageUrl(ev.target.result ?? '');
-    reader.readAsDataURL(file);
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const url = await uploadPromotionImage(file);
+      setImageUrl(url);
+    } catch (err) {
+      setUploadError(err?.message ?? 'No se pudo subir la imagen.');
+      setImageUrl('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } finally {
+      setUploading(false);
+    }
   };
 
   // Cambia el modo de imagen y limpia el valor actual.
   const switchImageMode = (mode) => {
     setImageMode(mode);
     setImageUrl('');
+    setUploadError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -526,18 +541,34 @@ export default function PromotionForm({
               accept="image/*"
               className="d-none"
               onChange={handleFileSelect}
+              disabled={uploading}
             />
             <button
               type="button"
               className="promo-img-file-btn"
               onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
             >
-              <i className="bi bi-folder2-open me-2"></i>
-              {imageUrl ? 'Cambiar imagen' : 'Elegir imagen desde equipo'}
+              {uploading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2"></span>
+                  Subiendo imagen…
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-folder2-open me-2"></i>
+                  {imageUrl ? 'Cambiar imagen' : 'Elegir imagen desde equipo'}
+                </>
+              )}
             </button>
-            {!imageUrl && (
+            {!imageUrl && !uploading && !uploadError && (
               <p className="form-text m-0">
-                La imagen se lee localmente y se almacena como referencia en la base de datos.
+                La imagen se sube al servidor y se guarda únicamente la URL en la base de datos.
+              </p>
+            )}
+            {uploadError && (
+              <p className="text-danger small m-0">
+                <i className="bi bi-exclamation-circle me-1"></i>{uploadError}
               </p>
             )}
           </div>
@@ -571,7 +602,7 @@ export default function PromotionForm({
         <button
           type="submit"
           className="btn-burgundy"
-          disabled={submitting || !flightIsValid}
+          disabled={submitting || uploading || !flightIsValid}
         >
           {submitting && <span className="spinner-border spinner-border-sm me-2"></span>}
           {mode === 'create' ? 'Crear promoción' : 'Guardar cambios'}

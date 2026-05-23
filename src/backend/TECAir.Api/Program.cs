@@ -3,6 +3,7 @@ using TECAir.Application.Interfaces;
 using TECAir.Application.Services;
 using TECAir.Infrastructure.Repositories;
 using TECAir.Infrastructure.Security;
+using TECAir.Infrastructure.Storage;
 // Publsh command on TECAir.Api: dotnet publish -c Release -o ./publish
 
 // Program.cs configura la aplicacion web.
@@ -39,6 +40,19 @@ builder.Services.AddScoped<IPlaneRepository, PostgresPlaneRepository>();
 builder.Services.AddScoped<IPlaneService, PlaneService>();
 builder.Services.AddScoped<IPromotionRepository, PostgresPromotionRepository>();
 builder.Services.AddScoped<IPromotionService, PromotionService>();
+// Almacenamiento local de imagenes de promociones bajo wwwroot/uploads/promotions.
+// Singleton porque solo guarda configuracion (rutas) y no estado por request.
+builder.Services.AddSingleton<IPromotionImageStorage>(serviceProvider =>
+{
+    var environment = serviceProvider.GetRequiredService<IWebHostEnvironment>();
+    var webRoot = environment.WebRootPath;
+    if (string.IsNullOrEmpty(webRoot))
+    {
+        webRoot = Path.Combine(environment.ContentRootPath, "wwwroot");
+    }
+    var rootPath = Path.Combine(webRoot, "uploads", "promotions");
+    return new LocalPromotionImageStorage(rootPath, "/uploads/promotions/");
+});
 builder.Services.AddScoped<IReservationRepository, PostgresReservationRepository>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<ISeatRepository, PostgresSeatRepository>();
@@ -52,6 +66,32 @@ builder.Services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
+
+// Convierte BadHttpRequestException (413 disparado por [RequestSizeLimit] al
+// exceder el tamano del body) en una respuesta JSON con campo message, para
+// que el cliente vea un mensaje legible en vez de un 413 con body vacio.
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+    {
+        if (!context.Response.HasStarted)
+        {
+            context.Response.Clear();
+            context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+            context.Response.ContentType = "application/json; charset=utf-8";
+            await context.Response.WriteAsync(
+                """{"message":"Image file must not exceed 5 MB."}""");
+        }
+    }
+});
+
+// Sirve archivos estaticos desde wwwroot (incluye /uploads/promotions/* para
+// las imagenes que sube el admin desde el formulario de promociones).
+app.UseStaticFiles();
 
 // Endpoint simple para revisar si la API esta levantada.
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "TECAir.Api" }));

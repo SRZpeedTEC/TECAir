@@ -48,6 +48,28 @@ export async function updatePromotion(code, payload) {
   return normalizePromotion(data);
 }
 
+// POST /api/promotions/upload-image
+// Sube un File como multipart/form-data y devuelve la URL publica que
+// devolvio el backend (para guardar luego en imageUrl de la promocion).
+export async function uploadPromotionImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${BASE_URL}/promotions/upload-image`, {
+    method: 'POST',
+    body:   formData,
+  });
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body?.message) msg = body.message;
+    } catch { /* sin body json */ }
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  return data.imageUrl ?? data.ImageUrl;
+}
+
 // DELETE /api/promotions/{code}
 // Devuelve 204 No Content → no usamos apiFetch (que hace res.json()).
 export async function deletePromotion(code) {
