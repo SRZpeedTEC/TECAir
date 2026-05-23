@@ -162,6 +162,40 @@ export async function searchAirportsOffline(term) {
   }));
 }
 
+export async function searchItinerariesOffline(fromCode, toCode, departureDateStr) {
+  const db = getDB();
+  if (!db) return null;
+
+  const itinRows = await db.query("SELECT * FROM itineraries WHERE state = 'PUBLIC'");
+  const result = [];
+
+  for (const row of itinRows.values ?? []) {
+    const fRows = await db.query(
+      'SELECT * FROM itinerary_flights WHERE itinerary_id = ? ORDER BY flight_order',
+      [row.itinerary_id]
+    );
+    const flights = fRows.values ?? [];
+    if (flights.length === 0) continue;
+
+    const first = flights[0];
+    const last  = flights[flights.length - 1];
+
+    if (fromCode && first.departure_code !== fromCode) continue;
+    if (toCode   && last.arrival_code    !== toCode)   continue;
+    if (departureDateStr && !first.departure_datetime.startsWith(departureDateStr)) continue;
+
+    result.push({
+      ItineraryId:       row.itinerary_id,
+      Price:             row.price,
+      DepartureDatetime: first.departure_datetime,
+      ArrivalDatetime:   last.arrival_datetime,
+      TotalFlights:      flights.length,
+    });
+  }
+
+  return result;
+}
+
 export async function getReservationsOffline(email) {
   const db = getDB();
   if (!db) return null;

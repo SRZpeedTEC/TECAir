@@ -201,7 +201,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
           {tab === 'register' && (
             <form onSubmit={handleRegister} autoComplete="off">
               <div className="row g-2 mb-3">
-                <div className="col-6">
+                <div className="col-12 col-sm-6">
                   <FieldLabel>Nombre</FieldLabel>
                   <input
                     type="text" className="form-control" style={{ borderRadius: '10px' }}
@@ -211,7 +211,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
                     required
                   />
                 </div>
-                <div className="col-6">
+                <div className="col-12 col-sm-6">
                   <FieldLabel>Apellido</FieldLabel>
                   <input
                     type="text" className="form-control" style={{ borderRadius: '10px' }}

@@ -62,6 +62,12 @@
   pointer-events: none;
 }
 
+@media (max-width: 767px) {
+  .hero {
+    padding: 40px 0 120px;
+  }
+}
+
 /* ─── Pie de página ─── */
 .site-footer {
   background: #fff;

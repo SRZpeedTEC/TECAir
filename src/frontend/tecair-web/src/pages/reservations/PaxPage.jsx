@@ -147,7 +147,7 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
 
       <div className="container py-4">
         <div className="row">
-          <div className="col-lg-8">
+          <div className="col-12 col-lg-8">
             <h2 className="serif mb-1" style={{ fontSize: '2rem' }}>Información de pasajeros</h2>
             <p className="text-muted">
               Ingresa los datos exactamente como aparecen en el pasaporte de cada viajero.
@@ -254,7 +254,7 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
           </div>
 
           {/* Panel lateral con resumen del viaje */}
-          <div className="col-lg-4">
+          <div className="col-12 col-lg-4">
             <SummarySide state={state} />
           </div>
         </div>
