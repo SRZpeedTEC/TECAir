@@ -153,15 +153,6 @@ export default function FlightListTab() {
 
   return (
     <div>
-      <div className="admin-alert admin-alert-info mb-3" role="status">
-        <i className="bi bi-info-circle-fill"></i>
-        <span>
-          Esta consulta combina <code>GET /api/flights/by-departure?state=UPCOMING</code> y{' '}
-          <code>state=OPEN</code> filtrados por aeropuerto de salida. Cuando backend agregue{' '}
-          <code>GET /api/flights</code> esta vista listará todos los vuelos en una sola consulta.
-        </span>
-      </div>
-
       <div className="admin-card">
         <div className="row g-3 align-items-end">
           <div className="col-md-8">

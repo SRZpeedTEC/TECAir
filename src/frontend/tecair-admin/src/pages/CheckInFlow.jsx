@@ -242,14 +242,6 @@ function SearchStep({ onSelect }) {
 
   return (
     <div className="admin-card">
-      <div className="admin-alert admin-alert-info mb-3" role="status">
-        <i className="bi bi-info-circle-fill"></i>
-        <span>
-          Busca la reservación del pasajero por pasaporte o nombre. Luego se mostrarán los
-          vuelos del itinerario para hacer check-in en el que esté <strong>OPEN</strong>.
-        </span>
-      </div>
-
       <form onSubmit={submit}>
         <div className="row g-3 align-items-end">
           <div className="col-md-3">
@@ -701,14 +693,6 @@ function ConfirmStep({ reservation, flight, checkIn, onNew }) {
             <div className="serif fs-4 text-burgundy">{seat}</div>
           </div>
         </div>
-      </div>
-
-      <div className="admin-alert admin-alert-info mb-3" role="status">
-        <i className="bi bi-info-circle-fill"></i>
-        <span>
-          El envío del pase de abordar (impresión, correo o móvil) se implementará en la
-          siguiente iteración.
-        </span>
       </div>
 
       <button type="button" className="btn-burgundy" onClick={onNew}>

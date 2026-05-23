@@ -88,14 +88,6 @@ export default function PromotionCreateTab() {
 
   return (
     <div>
-      <div className="admin-alert admin-alert-info mb-3" role="status">
-        <i className="bi bi-info-circle-fill"></i>
-        <span>
-          Busca itinerarios por origen y destino. Elige uno del grid para aplicarle un descuento,
-          el período de vigencia y, opcionalmente, una imagen.
-        </span>
-      </div>
-
       <div className="admin-card">
         <div className="row g-3 align-items-end">
           <div className="col-md-5">

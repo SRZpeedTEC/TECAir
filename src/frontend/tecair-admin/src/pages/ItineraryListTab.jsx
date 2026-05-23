@@ -154,15 +154,6 @@ export default function ItineraryListTab() {
 
   return (
     <div>
-      <div className="admin-alert admin-alert-info mb-3" role="status">
-        <i className="bi bi-info-circle-fill"></i>
-        <span>
-          Esta consulta usa <code>GET /api/itineraries/search</code>: requiere indicar origen y
-          destino concretos. Cuando backend agregue <code>GET /api/itineraries</code> esta vista
-          listará todos los itinerarios.
-        </span>
-      </div>
-
       <div className="admin-card">
         <div className="row g-3 align-items-end">
           <div className="col-md-5">

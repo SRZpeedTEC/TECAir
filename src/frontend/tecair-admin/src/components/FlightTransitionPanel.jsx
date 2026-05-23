@@ -103,14 +103,6 @@ export default function FlightTransitionPanel({
 
   return (
     <div>
-      <div className="admin-alert admin-alert-info mb-3" role="status">
-        <i className="bi bi-info-circle-fill"></i>
-        <span>
-          Busca vuelos en estado <strong>{fromState}</strong> por aeropuerto de origen y destino.
-          Al confirmar, el vuelo pasa a estado <strong>{toState}</strong>.
-        </span>
-      </div>
-
       <div className="admin-card">
         <form onSubmit={handleSearch}>
           <div className="row g-3 align-items-end">

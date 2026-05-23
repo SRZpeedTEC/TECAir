@@ -103,16 +103,10 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
         <i className="bi bi-airplane plane-deco"></i>
         <div className="container position-relative">
           <div style={{ maxWidth: 600 }}>
-            <div
-              className="d-inline-block px-3 py-1 mb-3"
-              style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 999, fontSize: '0.85rem' }}
-            >
-              <i className="bi bi-stars me-2"></i>Más de 80 destinos en 4 continentes
-            </div>
             <h1 className="serif">
               {currentUser?.fullName
                 ? <>Bienvenido,<br />{currentUser.fullName.split(' ')[0]}.</>
-                : <>El cielo es nuestro<br />punto de partida.</>}
+                : <>Búsqueda de vuelos</>}
             </h1>
             <p className="lede mt-3">
               Reserva tu próximo vuelo con AirTEC y descubre tarifas pensadas para
@@ -181,18 +175,8 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
 
         {/* ─── Sección de ofertas ─── */}
         <section className="mt-5">
-          <div className="d-flex justify-content-between align-items-end mb-4">
-            <div>
-              <h2 className="serif mb-1" style={{ fontSize: '2rem' }}>Ofertas que vuelan rápido</h2>
-              <p className="text-muted mb-0">
-                {promotions && promotions.length > 0
-                  ? 'Promociones activas en este momento'
-                  : 'Tarifas especiales desde San José'}
-              </p>
-            </div>
-            <a href="#" className="text-burgundy text-decoration-none d-none d-md-inline">
-              Ver todas <i className="bi bi-arrow-right"></i>
-            </a>
+          <div className="mb-4">
+            <h2 className="serif mb-0" style={{ fontSize: '2rem' }}>Promociones</h2>
           </div>
 
           {promosLoading && (

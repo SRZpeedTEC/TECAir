@@ -1,8 +1,7 @@
 import { apiFetch } from './api.js';
 
-// Crea un pasajero. Corresponde a POST /api/passengers.
-// El backend devuelve 409 si el pasaporte ya existe — el caller puede ignorar
-// el conflicto y reusar al pasajero existente.
+// POST /api/passengers. 409 si el pasaporte ya existe — el caller puede
+// ignorar el conflicto y reusar el pasajero existente.
 export async function createPassenger(payload) {
   return apiFetch('/passengers', {
     method:  'POST',
@@ -11,7 +10,7 @@ export async function createPassenger(payload) {
   });
 }
 
-// Mapea el valor visible en el formulario al código aceptado por la BD.
+// Mapea el valor del formulario al codigo aceptado por la BD.
 export function mapGenderToCode(uiValue) {
   switch (uiValue) {
     case 'Femenino':  return 'FEMALE';

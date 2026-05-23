@@ -214,7 +214,6 @@ export default function ReservacionVuelosPage() {
         <h2 className="serif admin-page-title">Búsqueda y Reservación de Vuelos</h2>
         <p className="admin-page-subtitle">
           Cotiza itinerarios disponibles y reserva en nombre de un cliente registrado.
-          Este flujo consume los mismos endpoints que utiliza la aplicación del cliente.
         </p>
       </header>
 

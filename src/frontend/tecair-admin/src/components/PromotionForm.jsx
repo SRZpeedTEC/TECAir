@@ -561,11 +561,6 @@ export default function PromotionForm({
                 </>
               )}
             </button>
-            {!imageUrl && !uploading && !uploadError && (
-              <p className="form-text m-0">
-                La imagen se sube al servidor y se guarda únicamente la URL en la base de datos.
-              </p>
-            )}
             {uploadError && (
               <p className="text-danger small m-0">
                 <i className="bi bi-exclamation-circle me-1"></i>{uploadError}

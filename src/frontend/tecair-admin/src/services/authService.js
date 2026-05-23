@@ -1,7 +1,6 @@
 import { apiFetch } from './api.js';
 
 // POST /api/auth/login → 200 LoginResponse | 401 { message } | 400 { message }
-// LoginResponse: { email, fullName, role, isStudent, collegeName, userCarnet, miles, message }
 export async function loginAdmin(email, password) {
   return apiFetch('/auth/login', {
     method:  'POST',
@@ -10,7 +9,7 @@ export async function loginAdmin(email, password) {
   });
 }
 
-// Mapeo de mensajes del backend (en ingles) a textos en espanol para el login admin.
+// Traduce mensajes del backend (en ingles) a textos en espanol.
 export function translateLoginError(message) {
   if (!message) return 'Ocurrio un error.';
   const map = {

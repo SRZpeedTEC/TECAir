@@ -1,15 +1,9 @@
 import { apiFetch, BASE_URL } from './api.js';
 
-// Cliente HTTP para el modulo de gestion de usuarios.
-// Endpoints expuestos por UsersController:
-//   GET    /users/{email}        → UserResponse
-//   POST   /users                → UserResponse (201)
-//   PUT    /api/users/{email}    → UserResponse
-//   DELETE /api/users/{email}    → 204 NoContent
-//
+// Cliente HTTP del modulo de usuarios (UsersController).
 // UserResponse: { email, fullName, phoneNum, role, isStudent, collegeName, userCarnet, miles }
 
-// El email forma parte de la ruta y puede contener caracteres como '@' o '+'.
+// El email es parte de la ruta y puede traer caracteres como '@' o '+'.
 function encodeEmail(email) {
   return encodeURIComponent(email.trim());
 }
@@ -34,7 +28,7 @@ export async function updateUser(email, payload) {
   });
 }
 
-// DELETE devuelve 204 sin cuerpo, asi que no se puede pasar por apiFetch (que hace res.json()).
+// DELETE devuelve 204 sin cuerpo, por eso no usamos apiFetch (hace res.json()).
 export async function deleteUser(email) {
   const res = await fetch(`${BASE_URL}/users/${encodeEmail(email)}`, {
     method: 'DELETE',
@@ -44,7 +38,7 @@ export async function deleteUser(email) {
     try {
       const body = await res.json();
       if (body?.message) msg = body.message;
-    } catch { /* sin body json */ }
+    } catch { /* body no JSON */ }
     throw new Error(msg);
   }
   return true;

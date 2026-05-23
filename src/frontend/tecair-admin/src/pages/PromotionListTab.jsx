@@ -131,14 +131,6 @@ export default function PromotionListTab() {
 
   return (
     <div>
-      <div className="admin-alert admin-alert-info mb-3" role="status">
-        <i className="bi bi-info-circle-fill"></i>
-        <span>
-          Esta vista lista todas las promociones existentes (<code>GET /api/promotions</code>).
-          Desde aquí puedes editar el precio promocional, el período o la imagen, o eliminar la promoción.
-        </span>
-      </div>
-
       <div className="admin-card">
         <div className="d-flex justify-content-between align-items-center mb-2">
           <h3 className="serif m-0">Promociones registradas</h3>
