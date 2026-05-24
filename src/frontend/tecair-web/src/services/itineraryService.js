@@ -37,6 +37,47 @@ export async function getItineraryById(id) {
   return apiFetch(`/itineraries/${id}`);
 }
 
+function itineraryDetailToSearchResult(detail) {
+  if (!detail) return null;
+
+  const flights = (detail.flights ?? detail.Flights ?? [])
+    .slice()
+    .sort((a, b) => (a.flightOrder ?? a.FlightOrder) - (b.flightOrder ?? b.FlightOrder));
+  const first = flights[0];
+  const last = flights[flights.length - 1];
+  if (!first || !last) return null;
+
+  const departure = new Date(first.departureDatetime ?? first.DepartureDatetime);
+  const arrival = new Date(last.arrivalDatetime ?? last.ArrivalDatetime);
+  if (isNaN(departure.getTime()) || isNaN(arrival.getTime())) return null;
+
+  const itineraryId = detail.itineraryId ?? detail.ItineraryId;
+  const basePrice = Number(detail.price ?? detail.Price);
+  const activePromo = pickActivePromotion(detail.promotion ?? detail.Promotion);
+  const displayPrice = activePromo ? activePromo.promoPrice : basePrice;
+
+  return {
+    id: `IT${itineraryId}`,
+    itineraryId,
+    stops: Math.max(flights.length - 1, 0),
+    depart: fmtTime(departure),
+    arrive: fmtTime(arrival),
+    duration: calcDuration(departure, arrival),
+    price: basePrice,
+    basePrice,
+    displayPrice,
+    activePromotion: activePromo,
+    tag: null,
+  };
+}
+
+// Devuelve un unico itinerario en el mismo formato usado por la pantalla de resultados.
+export async function searchItineraryById(itineraryId) {
+  if (!itineraryId) return [];
+  const detail = await getItineraryById(itineraryId);
+  return [itineraryDetailToSearchResult(detail)].filter(Boolean);
+}
+
 // Devuelve todos los itinerarios publicos junto con su promocion (cuando exista).
 // Corresponde a: GET /api/itineraries/public/with-promotions
 // Esta es la unica fuente que deben usar las pantallas publicas para listar

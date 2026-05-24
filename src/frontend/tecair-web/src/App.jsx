@@ -14,6 +14,7 @@ const INITIAL_STATE = {
   depart: null,
   pax: { adults: 1 },
   selectedFlight: null,
+  promotionItineraryId: null,
   passengers: [],
 };
 

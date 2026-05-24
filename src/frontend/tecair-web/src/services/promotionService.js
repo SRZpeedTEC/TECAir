@@ -37,6 +37,7 @@ export async function getPromotionsWithItinerary() {
         originCity:      first?.departureCity ?? first?.DepartureCity ?? null,
         destinationCode: last?.arrivalCode    ?? last?.ArrivalCode    ?? null,
         destinationCity: last?.arrivalCity    ?? last?.ArrivalCity    ?? null,
+        departureDatetime: first?.departureDatetime ?? first?.DepartureDatetime ?? null,
       };
     })
     .filter(Boolean);

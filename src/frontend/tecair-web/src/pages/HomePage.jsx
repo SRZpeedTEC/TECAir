@@ -61,7 +61,17 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
     const dest   = resolveAirport(p.destinationCode, p.destinationCity);
     if (!origin || !dest) return;
 
-    setState((s) => ({ ...s, from: origin, to: dest }));
+    const departure = p.departureDatetime ? new Date(p.departureDatetime) : null;
+    const validDeparture = departure && !isNaN(departure.getTime()) ? departure : null;
+
+    setState((s) => ({
+      ...s,
+      from: origin,
+      to: dest,
+      depart: validDeparture ?? s.depart,
+      selectedFlight: null,
+      promotionItineraryId: p.itineraryId,
+    }));
     setSelectedPromo(null);
     goToResults();
   };
@@ -83,6 +93,11 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
 
   // Intercambia origen y destino
   const swap = () => setState((s) => ({ ...s, from: s.to, to: s.from }));
+
+  const handleSearch = () => {
+    setState((s) => ({ ...s, selectedFlight: null, promotionItineraryId: null }));
+    goToResults();
+  };
 
   // El botón de búsqueda se activa solo cuando los campos obligatorios están completos
   const canSearch = state.from && state.to && state.depart && (state.pax?.adults || 0) >= 1;
@@ -167,7 +182,7 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
             <button
               className="btn btn-burgundy px-4"
               disabled={!canSearch}
-              onClick={goToResults}
+              onClick={handleSearch}
             >
               <i className="bi bi-search me-2"></i>Buscar vuelos
             </button>

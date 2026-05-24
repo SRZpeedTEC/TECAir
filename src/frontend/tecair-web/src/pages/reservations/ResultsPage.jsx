@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Nav                   from '../../components/Nav.jsx';
-import { searchItineraries } from '../../services/itineraryService.js';
+import { searchItineraries, searchItineraryById } from '../../services/itineraryService.js';
 import { fmtCRC, fmtDateShort } from '../../utils/format.js';
 
 // Pantalla de resultados: consulta la API y muestra los itinerarios disponibles
@@ -14,21 +14,25 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
 
   // El backend aplica filtros y ordenamiento para no duplicar reglas en frontend.
   useEffect(() => {
-    if (!state.from?.code || !state.to?.code) return;
+    if (!state.promotionItineraryId && (!state.from?.code || !state.to?.code)) return;
 
     setIsLoading(true);
     setError(null);
     setItineraries([]);
 
-    searchItineraries(state.from.code, state.to.code, {
-      departureDate: state.depart,
-      stops: filter,
-      sortBy,
-    })
+    const request = state.promotionItineraryId
+      ? searchItineraryById(state.promotionItineraryId)
+      : searchItineraries(state.from.code, state.to.code, {
+          departureDate: state.depart,
+          stops: filter,
+          sortBy,
+        });
+
+    request
       .then(setItineraries)
       .catch((err) => setError(err.message))
       .finally(() => setIsLoading(false));
-  }, [state.from?.code, state.to?.code, state.depart, filter, sortBy]);
+  }, [state.from?.code, state.to?.code, state.depart, state.promotionItineraryId, filter, sortBy]);
 
   const list = itineraries;
 
