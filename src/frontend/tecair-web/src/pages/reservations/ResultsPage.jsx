@@ -4,7 +4,7 @@ import { searchItineraries } from '../../services/itineraryService.js';
 import { fmtCRC, fmtDateShort } from '../../utils/format.js';
 
 // Pantalla de resultados: consulta la API y muestra los itinerarios disponibles
-export default function ResultsPage({ state, setState, goBack, goToPax, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
+export default function ResultsPage({ state, setState, goBack, goToPax, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram, onEditProfile }) {
   const [itineraries, setItineraries] = useState([]);
   const [isLoading,   setIsLoading]   = useState(false);
   const [error,       setError]       = useState(null);
@@ -50,7 +50,7 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
 
   return (
     <>
-      <Nav onLogoClick={goBack} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} currentUser={currentUser} />
+      <Nav onLogoClick={goBack} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} onEditProfile={onEditProfile} currentUser={currentUser} />
 
       {/* Barra de resumen de búsqueda */}
       <div style={{ background: '#fff', borderBottom: '1px solid var(--line)' }}>
@@ -78,7 +78,7 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
       <div className="container py-4">
         <div className="row g-4">
           {/* ─── Panel de filtros ─── */}
-          <div className="col-lg-3">
+          <div className="col-12 col-lg-3">
             <div className="bg-white p-3 rounded-3 border" style={{ borderColor: 'var(--line)' }}>
               <h6 className="serif mb-3">Filtrar</h6>
               <div className="mb-3">
@@ -118,7 +118,7 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
           </div>
 
           {/* ─── Lista de itinerarios ─── */}
-          <div className="col-lg-9">
+          <div className="col-12 col-lg-9">
             <div className="d-flex justify-content-between align-items-end mb-3">
               <h2 className="serif mb-0" style={{ fontSize: '1.6rem' }}>Selecciona tu vuelo de salida</h2>
               {!isLoading && !error && (
@@ -149,7 +149,7 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
                   <div className={'flight-card' + (f.activePromotion ? ' flight-card-promo' : '')} key={f.id}>
                     <div className="row align-items-center g-3">
                       {/* Información de horarios y ruta */}
-                      <div className="col-md-8">
+                      <div className="col-12 col-md-8">
                         <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
                           <span className="badge bg-burgundy-soft text-burgundy">{f.id}</span>
                           {f.tag && (
@@ -191,7 +191,7 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
                         </div>
                       </div>
                       {/* Precio y selección */}
-                      <div className="col-md-4 text-md-end">
+                      <div className="col-12 col-md-4 text-md-end">
                         <div className="text-muted small">
                           {f.activePromotion ? 'Precio promocional' : 'Económica desde'}
                         </div>

@@ -195,6 +195,27 @@
 .ap-item .city-name { font-weight: 500; }
 .ap-item .city-meta { font-size: 0.85rem; color: var(--muted); }
 
+@media (max-width: 767px) {
+  .search-card {
+    margin-top: -80px;
+  }
+  .calendar-pop {
+    left: 0;
+    right: 0;
+    min-width: 0;
+  }
+  .pax-pop {
+    left: 0;
+    right: auto;
+    min-width: 0;
+    width: 100%;
+  }
+  .explore-panel {
+    left: 0;
+    right: 0;
+  }
+}
+
 /* Código IATA con pill de fondo suave */
 .ap-code {
   font-family: 'JetBrains Mono', 'Courier New', monospace;

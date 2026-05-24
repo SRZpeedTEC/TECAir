@@ -21,6 +21,21 @@ export async function registerUser(data) {
   });
 }
 
+// GET /users/{email} → 200 UserResponse | 404
+export async function getUserByEmail(email) {
+  return apiFetch(`/users/${encodeURIComponent(email)}`);
+}
+
+// PUT /api/users/{email} → 200 UserResponse | 400 | 404
+// Envía contraseña vacía para no cambiarla; el backend la preserva si viene en blanco.
+export async function updateUser(email, data) {
+  return apiFetch(`/users/${encodeURIComponent(email)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
 // POST /users/{email}/student → endpoint todavía no existe en backend.
 // Stub temporal: marca el usuario como estudiante en memoria.
 // TODO: implementar el endpoint real en backend.

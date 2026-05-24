@@ -81,6 +81,7 @@ export default function MisViajesPage({
   onOpenAuth,
   onLogout,
   onStudentProgram,
+  onEditProfile,
 }) {
   const [trips,   setTrips]   = useState([]);
   const [loading, setLoading] = useState(false);
@@ -155,6 +156,7 @@ export default function MisViajesPage({
         onLogout={onLogout}
         onStudentProgram={onStudentProgram}
         onMisViajes={goToMisViajes}
+        onEditProfile={onEditProfile}
         currentUser={currentUser}
       />
 

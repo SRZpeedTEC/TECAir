@@ -6,8 +6,8 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
-      '/api':   'http://localhost:5000',
-      '/users': 'http://localhost:5000',
+      '/api':   'http://localhost:5050',
+      '/users': 'http://localhost:5050',
     },
   },
 });

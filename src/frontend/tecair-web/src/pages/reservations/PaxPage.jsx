@@ -8,7 +8,7 @@ import { createReservation, generatePaymentReference } from '../../services/rese
 import { getItineraryAvailability } from '../../services/itineraryService.js';
 
 // Pantalla de datos de pasajeros: formulario con validación para cada viajero
-export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
+export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram, onEditProfile }) {
   const total = state.pax.adults;
 
   // Inicializa la lista con los datos ya ingresados o con campos vacíos
@@ -136,7 +136,7 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
 
   return (
     <>
-      <Nav onLogoClick={goBack} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} currentUser={currentUser} />
+      <Nav onLogoClick={goBack} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} onEditProfile={onEditProfile} currentUser={currentUser} />
 
       {/* Barra de progreso de la reserva */}
       <div style={{ background: '#fff', borderBottom: '1px solid var(--line)' }}>
@@ -147,7 +147,7 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
 
       <div className="container py-4">
         <div className="row">
-          <div className="col-lg-8">
+          <div className="col-12 col-lg-8">
             <h2 className="serif mb-1" style={{ fontSize: '2rem' }}>Información de pasajeros</h2>
             <p className="text-muted">
               Ingresa los datos exactamente como aparecen en el pasaporte de cada viajero.
@@ -254,7 +254,7 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
           </div>
 
           {/* Panel lateral con resumen del viaje */}
-          <div className="col-lg-4">
+          <div className="col-12 col-lg-4">
             <SummarySide state={state} />
           </div>
         </div>

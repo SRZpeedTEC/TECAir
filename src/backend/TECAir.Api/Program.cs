@@ -14,6 +14,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+// CORS: permite peticiones desde el WebView de Android (capacitor/localhost) y
+// desde el frontend web en desarrollo. En produccion reemplazar con el dominio real.
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 // La cadena de conexion se lee desde appsettings.json o variables de entorno.
 // Si no existe, la API falla al arrancar para evitar errores mas dificiles luego.
 var connectionString = builder.Configuration.GetConnectionString("TECAirDatabase")
@@ -88,6 +100,8 @@ app.Use(async (context, next) =>
         }
     }
 });
+
+app.UseCors();
 
 // Sirve archivos estaticos desde wwwroot (incluye /uploads/promotions/* para
 // las imagenes que sube el admin desde el formulario de promociones).

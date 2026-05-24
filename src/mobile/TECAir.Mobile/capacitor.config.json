@@ -3,6 +3,6 @@
   "appName": "TECAir",
   "webDir": "../../frontend/tecair-web/dist",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "http"
   }
 }

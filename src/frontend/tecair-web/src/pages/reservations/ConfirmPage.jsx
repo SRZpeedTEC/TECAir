@@ -3,7 +3,7 @@ import { fmtCRC } from '../../utils/format.js';
 import { printReceipt, buildReceiptDataFromState } from '../../utils/receipt.js';
 
 // Pantalla de confirmación final de la reserva
-export default function ConfirmPage({ state, goHome, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
+export default function ConfirmPage({ state, goHome, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram, onEditProfile }) {
   const f        = state.selectedFlight;
   const total    = state.pax.adults;
   const subtotal = f ? f.price * total : 0;
@@ -16,7 +16,7 @@ export default function ConfirmPage({ state, goHome, goToMisViajes, currentUser,
 
   return (
     <>
-      <Nav onLogoClick={goHome} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} currentUser={currentUser} />
+      <Nav onLogoClick={goHome} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} onEditProfile={onEditProfile} currentUser={currentUser} />
 
       <div className="container py-5 text-center" style={{ maxWidth: 680 }}>
         {/* Ícono de éxito */}
