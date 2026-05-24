@@ -18,7 +18,7 @@ export default function StudentProgramPage({ currentUser, onOpenAuth, onLogout, 
     setError('');
     setLoading(true);
     try {
-      const updated = await enrollAsStudent(currentUser.email, college, carnet, currentUser);
+      const updated = await enrollAsStudent(currentUser.email, college, carnet);
       onUserUpdate(updated);
     } catch (err) {
       setError(err.message);

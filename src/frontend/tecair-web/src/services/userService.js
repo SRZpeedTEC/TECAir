@@ -36,10 +36,21 @@ export async function updateUser(email, data) {
   });
 }
 
-// POST /users/{email}/student → endpoint todavía no existe en backend.
-// Stub temporal: marca el usuario como estudiante en memoria.
-// TODO: implementar el endpoint real en backend.
-export async function enrollAsStudent(email, collegeName, userCarnet, currentUser) {
-  await new Promise((r) => setTimeout(r, 400));
-  return { ...currentUser, isStudent: true, collegeName, userCarnet, miles: 0 };
+// Inscribe al usuario en el Student Program actualizando su perfil vía
+// PUT /api/users/{email}. Obtiene primero el perfil completo para no perder
+// campos que el login no devuelve (phoneNum, name, lname separados).
+export async function enrollAsStudent(email, collegeName, userCarnet) {
+  const user  = await getUserByEmail(email);
+  const parts = (user.fullName ?? '').trim().split(/\s+/);
+
+  return updateUser(email, {
+    password:    '',                      // vacío = el backend conserva el hash
+    name:        parts[0] ?? '',
+    lname:       parts.slice(1).join(' '),
+    phoneNum:    user.phoneNum ?? '',
+    role:        user.role ?? 'CLIENT',
+    isStudent:   true,
+    collegeName,
+    userCarnet,
+  });
 }
