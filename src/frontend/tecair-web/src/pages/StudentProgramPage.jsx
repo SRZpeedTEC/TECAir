@@ -5,7 +5,7 @@ import { enrollAsStudent } from '../services/userService.js';
 // Página del programa de lealtad estudiantil.
 // Si el usuario está logueado y es estudiante, confirma su inscripción.
 // Si está logueado pero no es estudiante, muestra el formulario de enroll.
-export default function StudentProgramPage({ currentUser, onOpenAuth, onLogout, onStudentProgram, goHome, goToMisViajes, onUserUpdate }) {
+export default function StudentProgramPage({ currentUser, onOpenAuth, onLogout, onStudentProgram, goHome, goToMisViajes, onUserUpdate, onEditProfile }) {
   const isEnrolled = currentUser?.isStudent === true;
 
   const [college,   setCollege]   = useState('');
@@ -35,6 +35,7 @@ export default function StudentProgramPage({ currentUser, onOpenAuth, onLogout, 
         onLogout={onLogout}
         onStudentProgram={() => {}}
         onMisViajes={goToMisViajes}
+        onEditProfile={onEditProfile}
         currentUser={currentUser}
       />
 

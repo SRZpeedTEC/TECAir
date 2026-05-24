@@ -7,7 +7,7 @@ import { useState } from 'react';
 //   onStudentProgram – navega a la página del Student Program
 //   onMisViajes      – navega a mis viajes
 //   onLogoClick      – navega al home
-export default function Nav({ onLogoClick, onOpenAuth, onLogout, onStudentProgram, onMisViajes, currentUser }) {
+export default function Nav({ onLogoClick, onOpenAuth, onLogout, onStudentProgram, onMisViajes, onEditProfile, currentUser }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const firstName = currentUser?.fullName?.split(' ')[0] ?? '';
@@ -167,6 +167,9 @@ export default function Nav({ onLogoClick, onOpenAuth, onLogout, onStudentProgra
                             Student Program
                           </DropdownItem>
                         )}
+                        <DropdownItem icon="person-gear" onClick={() => { setUserMenuOpen(false); onEditProfile?.(); }}>
+                          Editar perfil
+                        </DropdownItem>
                         <div style={{ borderTop: '1px solid var(--line)', margin: '4px 0' }}></div>
                         <DropdownItem icon="box-arrow-right" onClick={() => { setUserMenuOpen(false); onLogout(); }} danger>
                           Cerrar sesión

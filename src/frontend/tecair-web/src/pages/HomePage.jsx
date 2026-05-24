@@ -43,7 +43,7 @@ function fmtDateRange(start, end) {
 }
 
 // Pantalla de inicio: hero, buscador de vuelos flotante, tarjetas de ofertas y características
-export default function HomePage({ state, setState, goToResults, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
+export default function HomePage({ state, setState, goToResults, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram, onEditProfile }) {
   // Promociones traídas del backend. Si el endpoint falla o no hay registros
   // mostramos el array estático original como fallback.
   const [promotions,    setPromotions]    = useState(null);
@@ -95,6 +95,7 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
         onLogout={onLogout}
         onStudentProgram={onStudentProgram}
         onMisViajes={goToMisViajes}
+        onEditProfile={onEditProfile}
         currentUser={currentUser}
       />
 

@@ -8,7 +8,7 @@ import { createReservation, generatePaymentReference } from '../../services/rese
 import { getItineraryAvailability } from '../../services/itineraryService.js';
 
 // Pantalla de datos de pasajeros: formulario con validación para cada viajero
-export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram }) {
+export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram, onEditProfile }) {
   const total = state.pax.adults;
 
   // Inicializa la lista con los datos ya ingresados o con campos vacíos
@@ -136,7 +136,7 @@ export default function PaxPage({ state, setState, goBack, goToConfirm, goToMisV
 
   return (
     <>
-      <Nav onLogoClick={goBack} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} currentUser={currentUser} />
+      <Nav onLogoClick={goBack} onOpenAuth={onOpenAuth} onLogout={onLogout} onStudentProgram={onStudentProgram} onMisViajes={goToMisViajes} onEditProfile={onEditProfile} currentUser={currentUser} />
 
       {/* Barra de progreso de la reserva */}
       <div style={{ background: '#fff', borderBottom: '1px solid var(--line)' }}>

@@ -5,7 +5,8 @@ import PaxPage from './pages/reservations/PaxPage.jsx';
 import ConfirmPage from './pages/reservations/ConfirmPage.jsx';
 import MisViajesPage from './pages/reservations/MisViajesPage.jsx';
 import StudentProgramPage from './pages/StudentProgramPage.jsx';
-import AuthModal from './components/AuthModal.jsx';
+import AuthModal     from './components/AuthModal.jsx';
+import ProfileModal  from './components/ProfileModal.jsx';
 
 const INITIAL_STATE = {
   from: null,
@@ -20,7 +21,8 @@ export default function App() {
   const [page, setPage] = useState('home');
   const [state, setState] = useState(INITIAL_STATE);
   const [currentUser, setCurrentUser] = useState(null);
-  const [showAuth, setShowAuth] = useState(false);
+  const [showAuth,    setShowAuth]    = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   // Inicializa el primer entry del historial del navegador.
   useEffect(() => {
@@ -50,8 +52,12 @@ export default function App() {
 
   const openAuth  = () => setShowAuth(true);
   const closeAuth = () => setShowAuth(false);
-  const handleLogin  = (user) => { setCurrentUser(user); setShowAuth(false); };
-  const handleLogout = () => { setCurrentUser(null); go('home', true); };
+  const handleLogin   = (user) => { setCurrentUser(user); setShowAuth(false); };
+  const handleLogout  = () => { setCurrentUser(null); go('home', true); };
+  const handleProfile = (updated) => {
+    // Actualiza la sesión con los datos nuevos devueltos por el backend.
+    setCurrentUser((prev) => ({ ...prev, ...updated }));
+  };
 
   const goToMisViajes      = () => go('misviajes');
   const goToStudentProgram = () => go('student');
@@ -61,6 +67,7 @@ export default function App() {
     onOpenAuth:       openAuth,
     onLogout:         handleLogout,
     onStudentProgram: goToStudentProgram,
+    onEditProfile:    () => setShowProfile(true),
   };
 
   return (
@@ -72,7 +79,8 @@ export default function App() {
       {page === 'misviajes' && <MisViajesPage      {...authProps} state={state} goHome={() => go('home')} goToMisViajes={goToMisViajes} />}
       {page === 'student'   && <StudentProgramPage {...authProps} goHome={() => go('home')} goToMisViajes={goToMisViajes} onUserUpdate={setCurrentUser} />}
 
-      <AuthModal show={showAuth} onClose={closeAuth} onSuccess={handleLogin} />
+      <AuthModal    show={showAuth}    onClose={closeAuth}              onSuccess={handleLogin} />
+      <ProfileModal show={showProfile} onClose={() => setShowProfile(false)} currentUser={currentUser} onSuccess={handleProfile} />
     </div>
   );
 }
