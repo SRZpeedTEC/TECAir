@@ -22,32 +22,55 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
 
+  // Inicializa el primer entry del historial del navegador.
+  useEffect(() => {
+    window.history.replaceState({ page: 'home' }, '');
+  }, []);
+
+  // Escucha el botón atrás del navegador/Android y navega dentro de la SPA
+  // sin recargar la página, preservando la sesión del usuario.
+  useEffect(() => {
+    const onPop = (e) => setPage(e.state?.page ?? 'home');
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   useEffect(() => { window.scrollTo(0, 0); }, [page]);
 
-  const openAuth = () => setShowAuth(true);
+  // Navega a una página registrándola en el historial del navegador.
+  // replace=true reemplaza la entrada actual (sin crear punto de retorno).
+  const go = (newPage, replace = false) => {
+    if (replace) {
+      window.history.replaceState({ page: newPage }, '');
+    } else {
+      window.history.pushState({ page: newPage }, '');
+    }
+    setPage(newPage);
+  };
+
+  const openAuth  = () => setShowAuth(true);
   const closeAuth = () => setShowAuth(false);
-  const handleLogin = (user) => { setCurrentUser(user); setShowAuth(false); };
-  const handleLogout = () => { setCurrentUser(null); setPage('home'); };
+  const handleLogin  = (user) => { setCurrentUser(user); setShowAuth(false); };
+  const handleLogout = () => { setCurrentUser(null); go('home', true); };
 
-  const goToMisViajes = () => setPage('misviajes');
-  const goToStudentProgram = () => setPage('student');
+  const goToMisViajes      = () => go('misviajes');
+  const goToStudentProgram = () => go('student');
 
-  // Props comunes que recibe cada página para pasarlos a Nav
   const authProps = {
     currentUser,
-    onOpenAuth: openAuth,
-    onLogout: handleLogout,
+    onOpenAuth:       openAuth,
+    onLogout:         handleLogout,
     onStudentProgram: goToStudentProgram,
   };
 
   return (
     <div data-screen={`airtec-${page}`}>
-      {page === 'home' && <HomePage      {...authProps} state={state} setState={setState} goToResults={() => setPage('results')} goToMisViajes={goToMisViajes} />}
-      {page === 'results' && <ResultsPage   {...authProps} state={state} setState={setState} goBack={() => setPage('home')} goToPax={() => setPage('pax')} goToMisViajes={goToMisViajes} />}
-      {page === 'pax' && <PaxPage       {...authProps} state={state} setState={setState} goBack={() => setPage('results')} goToConfirm={() => setPage('confirm')} goToMisViajes={goToMisViajes} />}
-      {page === 'confirm' && <ConfirmPage   {...authProps} state={state} goHome={() => setPage('home')} goToMisViajes={goToMisViajes} />}
-      {page === 'misviajes' && <MisViajesPage {...authProps} state={state} goHome={() => setPage('home')} goToMisViajes={goToMisViajes} />}
-      {page === 'student' && <StudentProgramPage {...authProps} goHome={() => setPage('home')} goToMisViajes={goToMisViajes} onUserUpdate={setCurrentUser} />}
+      {page === 'home'      && <HomePage          {...authProps} state={state} setState={setState} goToResults={() => go('results')} goToMisViajes={goToMisViajes} />}
+      {page === 'results'   && <ResultsPage        {...authProps} state={state} setState={setState} goBack={() => go('home')} goToPax={() => go('pax')} goToMisViajes={goToMisViajes} />}
+      {page === 'pax'       && <PaxPage            {...authProps} state={state} setState={setState} goBack={() => go('results')} goToConfirm={() => go('confirm', true)} goToMisViajes={goToMisViajes} />}
+      {page === 'confirm'   && <ConfirmPage        {...authProps} state={state} goHome={() => go('home', true)} goToMisViajes={goToMisViajes} />}
+      {page === 'misviajes' && <MisViajesPage      {...authProps} state={state} goHome={() => go('home')} goToMisViajes={goToMisViajes} />}
+      {page === 'student'   && <StudentProgramPage {...authProps} goHome={() => go('home')} goToMisViajes={goToMisViajes} onUserUpdate={setCurrentUser} />}
 
       <AuthModal show={showAuth} onClose={closeAuth} onSuccess={handleLogin} />
     </div>
