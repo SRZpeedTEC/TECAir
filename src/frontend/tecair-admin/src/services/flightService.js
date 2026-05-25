@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js';
+import { apiFetch, BASE_URL } from './api.js';
 
 // Crea un vuelo atómico.
 // Corresponde a: POST /api/flights
@@ -193,7 +193,7 @@ export async function getFlightClosingReport(flightId) {
 // Corresponde a: DELETE /api/flights/{flightId}
 // 409 si el vuelo está usado en algún itinerario (no se permite borrar).
 export async function deleteFlight(flightId) {
-  const res = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? '/api'}/flights/${flightId}`, {
+  const res = await fetch(`${BASE_URL}/flights/${flightId}`, {
     method: 'DELETE',
   });
   if (!res.ok) {

@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js';
+import { apiFetch, BASE_URL } from './api.js';
 
 // Lista las maletas de un check-in.
 // Corresponde a: GET /api/check-ins/{confirmationNumber}/baggages
@@ -43,7 +43,7 @@ export async function updateBaggage(bagNumber, { weight, color }) {
 // Corresponde a: DELETE /api/baggages/{bagNumber}
 export async function deleteBaggage(bagNumber) {
   await fetch(
-    `${(import.meta.env.VITE_API_BASE_URL ?? '/api')}/baggages/${bagNumber}`,
+    `${BASE_URL}/baggages/${bagNumber}`,
     { method: 'DELETE' },
   ).then((res) => {
     if (!res.ok && res.status !== 204) {

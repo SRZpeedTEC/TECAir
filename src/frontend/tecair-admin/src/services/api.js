@@ -1,5 +1,5 @@
-// En desarrollo: '/api' (ruta relativa, el proxy de Vite la redirige a localhost:5000).
-export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+export const API_URL = "http://localhost:5000";
+export const BASE_URL = `${API_URL}/api`;
 
 // Lanza un Error con el mensaje del servidor si el status no es 2xx.
 export async function apiFetch(path, options) {
