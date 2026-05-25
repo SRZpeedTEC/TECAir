@@ -1,0 +1,253 @@
+@baseUrl = http://localhost:5000
+
+### 1. Crear reservacion valida
+# Esperado: 201 Created.
+# Requiere que el pasajero P12345678 exista; ejecutar pruebasPASSENGER.http primero si hace falta.
+# passengerId se normaliza con Trim() y ToUpperInvariant().
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": " p12345678 ",
+  "state": "PAID",
+  "paymentReference": "PAY-2026-0001"
+}
+
+
+### 2. Crear reservacion con itineraryId inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 9999,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-2026-0002"
+}
+
+
+### 3. Crear reservacion con userEmail inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "no.existe@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-2026-0003"
+}
+
+
+### 4. Crear reservacion con passengerId inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "NOEXISTE",
+  "state": "PAID",
+  "paymentReference": "PAY-2026-0004"
+}
+
+
+### 5. Crear reservacion con estado invalido
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PENDING",
+  "paymentReference": "PAY-2026-0005"
+}
+
+
+### 6. Buscar reservaciones por passengerId
+# Esperado: 200 OK con las reservaciones del pasajero.
+GET {{baseUrl}}/api/reservations/search?passengerId=P12345678
+Accept: application/json
+
+
+### 7. Buscar reservaciones por nombre
+# Esperado: 200 OK con coincidencias por nombre o apellido.
+GET {{baseUrl}}/api/reservations/search?name=Carlos
+Accept: application/json
+
+
+### 8. Buscar reservaciones sin parametros
+# Esperado: 400 Bad Request.
+GET {{baseUrl}}/api/reservations/search
+Accept: application/json
+
+
+### 9. Buscar reservaciones por email de usuario con reservaciones
+# Esperado: 200 OK con las reservaciones asociadas a ana.rojas@tecair.com.
+GET {{baseUrl}}/api/reservations/user/ana.rojas@tecair.com
+Accept: application/json
+
+
+### 10. Buscar reservaciones por email de usuario existente sin reservaciones
+# admin@tecair.com existe, pero no tiene reservaciones en los datos semilla.
+# Esperado: 200 OK con lista vacia.
+GET {{baseUrl}}/api/reservations/user/admin@tecair.com
+Accept: application/json
+
+
+### 11. Buscar reservaciones por email de usuario inexistente
+# El servicio valida el usuario para ser consistente con la creacion de reservaciones.
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/api/reservations/user/noexiste@tecair.com
+Accept: application/json
+
+
+### 12. Buscar reservaciones sin email en la ruta
+# Esperado: 400 Bad Request.
+GET {{baseUrl}}/api/reservations/user
+Accept: application/json
+
+
+### 13. Crear reservacion para itinerario PUBLIC con cupo disponible
+# Esperado: 201 Created si usuario y pasajero existen.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-PUBLIC-{{$timestamp}}"
+}
+
+
+### 14. Crear reservacion para itinerario CLOSED
+# itinerary_id = 5 esta CLOSED en los datos semilla.
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 5,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-CLOSED-{{$timestamp}}"
+}
+
+
+### 15. Cerrar vuelo interno y luego intentar reservar su itinerario
+# Ejecutar una sola vez sobre seed limpio. Al cerrar vuelo 4, el backend cierra el itinerario 3.
+# Esperado PATCH: 200 OK. Esperado POST: 400 Bad Request o 409 Conflict segun el estado final.
+PATCH {{baseUrl}}/api/flights/4/state
+Content-Type: application/json
+Accept: application/json
+
+{
+  "state": "CLOSED"
+}
+
+###
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 3,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-FLIGHT-CLOSED-{{$timestamp}}"
+}
+
+
+### 16. Crear reservacion para itinerario lleno
+# Preparacion: crear reservaciones hasta saturar el cupo minimo del itinerario.
+# Esperado al superar el cupo: 409 Conflict con mensaje de espacios insuficientes.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P12345678",
+  "state": "PAID",
+  "paymentReference": "PAY-FULL-{{$timestamp}}"
+}
+
+
+### 17. Buscar reservaciones por reservationId
+# Esperado: 200 OK con la reservacion indicada si existe.
+GET {{baseUrl}}/api/reservations/search?reservationId=1
+Accept: application/json
+
+
+### 18. Buscar reservaciones por passengerId
+# Esperado: 200 OK con las reservaciones del pasajero.
+GET {{baseUrl}}/api/reservations/search?passengerId=P12345678
+Accept: application/json
+
+
+### 19. Buscar reservaciones por nombre
+# Esperado: 200 OK con coincidencias por nombre.
+GET {{baseUrl}}/api/reservations/search?passengerName=Ana
+Accept: application/json
+
+
+### 20. Buscar reservaciones por apellido
+# Esperado: 200 OK con coincidencias por apellido.
+GET {{baseUrl}}/api/reservations/search?passengerName=Rojas
+Accept: application/json
+
+
+### 21. Buscar reservaciones por nombre completo
+# Esperado: 200 OK usando CONCAT_WS(name, lname).
+GET {{baseUrl}}/api/reservations/search?passengerName=Ana%20Rojas
+Accept: application/json
+
+
+### 22. Crear reservacion con passengerId demasiado corto
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P123",
+  "state": "PAID",
+  "paymentReference": "PAY-BAD-PASSENGER-SHORT"
+}
+
+
+### 23. Crear reservacion con caracteres invalidos en passengerId
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/reservations
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "userEmail": "ana.rojas@tecair.com",
+  "passengerId": "P1234_5678",
+  "state": "PAID",
+  "paymentReference": "PAY-BAD-PASSENGER-CHARS"
+}

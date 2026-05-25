@@ -1,4 +1,14 @@
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-}
+/* ═══════════════════════════════════════════════════════
+   AirTEC Web — entry-point de estilos.
+   Los estilos están separados por feature/responsabilidad.
+   El orden importa: base define las variables que todos
+   los demás archivos usan.
+   ═══════════════════════════════════════════════════════ */
+
+@import './base.css';
+@import './layout.css';
+@import './components.css';
+@import './search.css';
+@import './flights.css';
+@import './promos.css';
+@import './check-in.css';

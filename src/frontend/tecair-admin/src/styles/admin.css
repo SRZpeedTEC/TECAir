@@ -1,0 +1,15 @@
+/* ═══════════════════════════════════════════════════════
+   AirTEC Admin — entry-point de estilos.
+   Los estilos están separados por feature/responsabilidad.
+   El orden importa: base define las variables que todos
+   los demás archivos usan.
+   ═══════════════════════════════════════════════════════ */
+
+@import './base.css';
+@import './layout.css';
+@import './components.css';
+@import './flights.css';
+@import './itinerary-builder.css';
+@import './check-in.css';
+@import './baggage.css';
+@import './promotions.css';

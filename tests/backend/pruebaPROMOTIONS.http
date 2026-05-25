@@ -1,0 +1,233 @@
+@baseUrl = http://localhost:5000
+
+### 1. Health check de la API
+# Esperado: 200 OK
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Obtener todas las promociones
+# Esperado: 200 OK con promociones de database/postgresql/02_seed_data.sql.
+GET {{baseUrl}}/promotions
+Accept: application/json
+
+
+### 3. Obtener promocion existente por codigo
+# PROMO-PANAMA-15 viene en los datos semilla.
+# Esperado: 200 OK.
+GET {{baseUrl}}/api/promotions/PROMO-PANAMA-15
+Accept: application/json
+
+
+### 4. Obtener promocion inexistente
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/promotions/PROMO-NO-EXISTE
+Accept: application/json
+
+
+### 5. Crear promocion valida
+# @name crearPromocionValida
+# Usa itinerary_id = 5 de los datos semilla.
+# Esperado la primera vez: 201 Created.
+POST {{baseUrl}}/api/promotions
+Content-Type: application/json
+Accept: application/json
+
+{
+  "promotionCode": "PROMO-TEST-2026",
+  "itineraryId": 5,
+  "imageUrl": "https://example.com/promos/test-2026.jpg",
+  "startDate": "2026-05-15",
+  "endDate": "2026-06-15",
+  "discountPercent": 12.50,
+  "promoPrice": 446
+}
+
+
+### 6. Intentar crear promocion duplicada
+# PROMO-TEST-2026 ya fue creada en la prueba anterior.
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/promotions
+Content-Type: application/json
+Accept: application/json
+
+{
+  "promotionCode": "PROMO-TEST-2026",
+  "itineraryId": 5,
+  "imageUrl": "https://example.com/promos/test-2026.jpg",
+  "startDate": "2026-05-15",
+  "endDate": "2026-06-15",
+  "discountPercent": 12.50,
+  "promoPrice": 446
+}
+
+
+### 7. Intentar crear promocion con datos invalidos
+# endDate es menor que startDate y discountPercent es invalido.
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/promotions
+Content-Type: application/json
+Accept: application/json
+
+{
+  "promotionCode": "PROMO-INVALIDA",
+  "itineraryId": 1,
+  "imageUrl": null,
+  "startDate": "2026-07-01",
+  "endDate": "2026-06-01",
+  "discountPercent": 0,
+  "promoPrice": 100
+}
+
+
+### 8. Intentar crear promocion para itinerary que ya tiene promocion
+# itinerary_id = 1 ya tiene PROMO-PANAMA-15 por UNIQUE(itinerary_id).
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/promotions
+Content-Type: application/json
+Accept: application/json
+
+{
+  "promotionCode": "PROMO-ITINERARIO-REPETIDO",
+  "itineraryId": 1,
+  "imageUrl": null,
+  "startDate": "2026-05-15",
+  "endDate": "2026-06-15",
+  "discountPercent": 10,
+  "promoPrice": 100
+}
+
+
+### 9. Intentar crear promocion con itinerario inexistente
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/promotions
+Content-Type: application/json
+Accept: application/json
+
+{
+  "promotionCode": "PROMO-SIN-ITINERARIO",
+  "itineraryId": 9999,
+  "imageUrl": null,
+  "startDate": "2026-05-15",
+  "endDate": "2026-06-15",
+  "discountPercent": 10,
+  "promoPrice": 100
+}
+
+
+### 10. Actualizar promocion existente
+# No cambia promotionCode; solo datos editables y conserva itinerary_id = 5.
+# Esperado: 200 OK.
+PUT {{baseUrl}}/api/promotions/PROMO-TEST-2026
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 5,
+  "imageUrl": "https://example.com/promos/test-actualizada.jpg",
+  "startDate": "2026-05-20",
+  "endDate": "2026-07-20",
+  "discountPercent": 18.00,
+  "promoPrice": 287
+}
+
+
+### 11. Intentar mover promocion a itinerary que ya tiene otra promocion
+# itinerary_id = 1 ya tiene PROMO-PANAMA-15.
+# Esperado: 409 Conflict.
+PUT {{baseUrl}}/api/promotions/PROMO-TEST-2026
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 1,
+  "imageUrl": "https://example.com/promos/test-actualizada.jpg",
+  "startDate": "2026-05-20",
+  "endDate": "2026-07-20",
+  "discountPercent": 18.00,
+  "promoPrice": 287
+}
+
+
+### 12. Actualizar promocion inexistente
+# Esperado: 404 Not Found.
+PUT {{baseUrl}}/promotions/PROMO-NO-EXISTE
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 4,
+  "imageUrl": null,
+  "startDate": "2026-05-20",
+  "endDate": "2026-07-20",
+  "discountPercent": 18.00,
+  "promoPrice": 287
+}
+
+
+### 13. Actualizar promocion con datos invalidos
+# imageUrl viene como string vacio.
+# Esperado: 400 Bad Request.
+PUT {{baseUrl}}/api/promotions/PROMO-TEST-2026
+Content-Type: application/json
+Accept: application/json
+
+{
+  "itineraryId": 5,
+  "imageUrl": "   ",
+  "startDate": "2026-05-20",
+  "endDate": "2026-07-20",
+  "discountPercent": 18.00,
+  "promoPrice": 287
+}
+
+
+### 14. Eliminar promocion existente
+# Esperado: 204 No Content.
+DELETE {{baseUrl}}/api/promotions/PROMO-TEST-2026
+Accept: application/json
+
+
+### 15. Eliminar promocion inexistente
+# Esperado: 404 Not Found.
+DELETE {{baseUrl}}/promotions/PROMO-NO-EXISTE
+Accept: application/json
+
+
+### 16. Subir imagen de promocion valida
+# Sube un PNG por multipart/form-data. El backend lo guarda en
+# wwwroot/uploads/promotions y devuelve { imageUrl }.
+# Reemplazar la ruta del archivo por una imagen real del equipo.
+# Esperado: 200 OK con imageUrl absoluta (http://localhost:5000/uploads/promotions/<guid>.png).
+POST {{baseUrl}}/api/promotions/upload-image
+Content-Type: multipart/form-data; boundary=----TecAirBoundary
+
+------TecAirBoundary
+Content-Disposition: form-data; name="file"; filename="promo.png"
+Content-Type: image/png
+
+< ./fixtures/promo.png
+------TecAirBoundary--
+
+
+### 17. Intentar subir imagen sin archivo
+# Esperado: 400 Bad Request con "Image file is required.".
+POST {{baseUrl}}/api/promotions/upload-image
+Content-Type: multipart/form-data; boundary=----TecAirBoundary
+
+------TecAirBoundary--
+
+
+### 18. Intentar subir archivo con formato no permitido
+# Sube un .txt; el servicio debe rechazarlo por extension.
+# Esperado: 400 Bad Request con "Image format is not allowed. Use PNG, JPG, WEBP or GIF.".
+POST {{baseUrl}}/api/promotions/upload-image
+Content-Type: multipart/form-data; boundary=----TecAirBoundary
+
+------TecAirBoundary
+Content-Disposition: form-data; name="file"; filename="notas.txt"
+Content-Type: text/plain
+
+contenido de prueba
+------TecAirBoundary--
+

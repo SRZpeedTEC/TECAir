@@ -1,0 +1,161 @@
+@baseUrl = http://localhost:5000
+
+### Health
+GET {{baseUrl}}/health
+
+### Airport search - SJO
+GET {{baseUrl}}/api/airports/search?term=sjo
+
+### Airport search - SAN
+GET {{baseUrl}}/api/airports/search?term=san
+
+### Itinerary search - SJO to IAH
+GET {{baseUrl}}/api/itineraries/search?originCode=SJO&destinationCode=BOG
+
+### Itinerary search - SJO to DFW
+GET {{baseUrl}}/api/itineraries/search?originCode=SJO&destinationCode=DFW
+
+### Itinerary details - existing
+GET {{baseUrl}}/api/itineraries/2
+
+### Itinerary details - missing
+GET {{baseUrl}}/api/itineraries/9999
+
+### Create itinerary - direct flight
+# Esperado: 201 Created.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 180,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    }
+  ]
+}
+
+### Create itinerary - connected flights
+# Esperado: 201 Created porque el vuelo 1 llega a PTY y el vuelo 2 sale de PTY.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 420,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    },
+    {
+      "flightId": 2,
+      "flightOrder": 2
+    }
+  ]
+}
+
+### Create itinerary - missing flights list
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 100,
+  "flights": []
+}
+
+### Create itinerary - duplicated flight id
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 250,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    },
+    {
+      "flightId": 1,
+      "flightOrder": 2
+    }
+  ]
+}
+
+### Create itinerary - duplicated flight order
+# Esperado: 409 Conflict.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 250,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    },
+    {
+      "flightId": 2,
+      "flightOrder": 1
+    }
+  ]
+}
+
+### Create itinerary - flight does not exist
+# Esperado: 404 Not Found.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 250,
+  "flights": [
+    {
+      "flightId": 9999,
+      "flightOrder": 1
+    }
+  ]
+}
+
+### Create itinerary - flight is CLOSED
+# Esperado: 400 Bad Request porque el vuelo 6 esta CLOSED en seed data.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 95,
+  "flights": [
+    {
+      "flightId": 6,
+      "flightOrder": 1
+    }
+  ]
+}
+
+### Create itinerary - invalid airport sequence
+# Esperado: 400 Bad Request porque vuelo 1 llega a PTY y vuelo 4 sale de SJO.
+POST {{baseUrl}}/api/itineraries
+Content-Type: application/json
+Accept: application/json
+
+{
+  "price": 500,
+  "flights": [
+    {
+      "flightId": 1,
+      "flightOrder": 1
+    },
+    {
+      "flightId": 4,
+      "flightOrder": 2
+    }
+  ]
+}

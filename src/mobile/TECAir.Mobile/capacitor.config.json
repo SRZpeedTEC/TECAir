@@ -1,0 +1,8 @@
+{
+  "appId": "cr.ac.tec.tecair",
+  "appName": "TECAir",
+  "webDir": "../../frontend/tecair-web/dist",
+  "server": {
+    "androidScheme": "http"
+  }
+}

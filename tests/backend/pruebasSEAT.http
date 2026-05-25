@@ -1,0 +1,24 @@
+@baseUrl = http://localhost:5000
+
+### 1. Health check
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Consultar asientos disponibles de un vuelo existente
+# Esperado: 200 OK con asientos del avion del vuelo.
+# Vuelo 1 usa TI-TEC01 en los datos semilla.
+GET {{baseUrl}}/api/seats/available/3
+Accept: application/json
+
+
+### 3. Consultar asientos disponibles excluyendo check-ins reales
+# Esperado: 200 OK sin el asiento 1A, porque flight_id 4 tiene check_in en itinerary_flight_id 5.
+GET {{baseUrl}}/api/seats/available/4
+Accept: application/json
+
+
+### 4. Consultar asientos de vuelo inexistente
+# Esperado: 404 Not Found.
+GET {{baseUrl}}/api/seats/available/9999
+Accept: application/json

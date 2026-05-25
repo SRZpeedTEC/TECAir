@@ -1,0 +1,65 @@
+/* ─── Tarjeta de vuelo en resultados ─── */
+.flight-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.flight-card:hover {
+  border-color: var(--burgundy-line);
+  box-shadow: 0 8px 18px rgba(40,10,25,0.06);
+}
+.flight-card.selected {
+  border-color: var(--burgundy);
+  box-shadow: 0 0 0 3px var(--burgundy-soft);
+}
+
+/* Línea de ruta con avión y puntos de escala */
+.route-line {
+  position: relative;
+  height: 2px;
+  background: var(--burgundy-line);
+  margin: 14px 0;
+}
+.route-line .stop {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--burgundy);
+}
+.route-line .plane-icon {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 0 8px;
+  color: var(--burgundy);
+}
+
+/* ─── Realce de tarjeta de vuelo con promoción ─── */
+.flight-card-promo {
+  border: 1px solid var(--burgundy) !important;
+  box-shadow: 0 0 0 3px var(--burgundy-soft);
+}
+
+.flight-promo-badge {
+  background: var(--burgundy);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.flight-price-strike {
+  text-decoration: line-through;
+  color: #888;
+  font-size: 0.85rem;
+  margin-top: -2px;
+}

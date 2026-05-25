@@ -1,0 +1,23 @@
+{
+  "name": "tecair-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:web": "cd ../../frontend/tecair-web && VITE_API_BASE_URL=http://10.0.2.2:5000/api npx vite build",
+    "build:mobile-js": "npx esbuild src/index.js --bundle --format=iife --platform=browser --target=es2020 --loader:.sql=text --outfile=../../frontend/tecair-web/dist/mobile-bootstrap.js",
+    "inject": "node scripts/inject.js",
+    "sync": "npx cap sync android",
+    "open": "npx cap open android",
+    "build:android": "npm run build:web && npm run build:mobile-js && npm run inject && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/core": "^8.3.1",
+    "@capacitor-community/sqlite": "^8.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.3.1",
+    "esbuild": "^0.24.0"
+  }
+}

@@ -1,0 +1,135 @@
+@baseUrl = http://localhost:5000
+
+### 1. Crear pasajero valido
+# Esperado la primera vez: 201 Created.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": " p12345678 ",
+  "birthday": "2002-08-15",
+  "gender": "M",
+  "name": "Carlos José",
+  "lname": "Ramírez-O'Neill"
+}
+
+
+### 2. Crear pasajero sin passportId
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "",
+  "birthday": "2002-08-15",
+  "gender": "M",
+  "name": "Carlos",
+  "lname": "Ramirez"
+}
+
+
+### 3. Crear pasajero con passportId duplicado
+# Esperado: 409 Conflict si ya se ejecuto la prueba valida.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "P12345678",
+  "birthday": "2002-08-15",
+  "gender": "M",
+  "name": "Carlos",
+  "lname": "Ramirez"
+}
+
+
+### 4. Crear pasajero con birthday futuro
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "P12349999",
+  "birthday": "2999-01-01",
+  "gender": "M",
+  "name": "Carlos",
+  "lname": "Ramirez"
+}
+
+
+### 5. Crear pasajero con birthday demasiado antiguo
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "P12349998",
+  "birthday": "1899-12-31",
+  "gender": "F",
+  "name": "Maria",
+  "lname": "Lopez"
+}
+
+
+### 6. Crear pasajero con numeros en name
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "P12349997",
+  "birthday": "2002-08-15",
+  "gender": "O",
+  "name": "Carlos2",
+  "lname": "Ramirez"
+}
+
+
+### 7. Crear pasajero con numeros en lname
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "P12349996",
+  "birthday": "2002-08-15",
+  "gender": "MALE",
+  "name": "Carlos",
+  "lname": "Ramirez2"
+}
+
+
+### 8. Crear pasajero con passportId demasiado corto
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "P123",
+  "birthday": "2002-08-15",
+  "gender": "M",
+  "name": "Carlos",
+  "lname": "Ramirez"
+}
+
+
+### 9. Crear pasajero con caracteres invalidos en passportId
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/passengers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "passportId": "P1234_5678",
+  "birthday": "2002-08-15",
+  "gender": "M",
+  "name": "Carlos",
+  "lname": "Ramirez"
+}

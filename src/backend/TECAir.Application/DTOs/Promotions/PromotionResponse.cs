@@ -1,0 +1,13 @@
+namespace TECAir.Application.DTOs.Promotions;
+
+// DTO que representa una promocion expuesta por la API.
+public class PromotionResponse
+{
+    public string PromotionCode { get; set; } = string.Empty;
+    public int ItineraryId { get; set; }
+    public string? ImageUrl { get; set; }
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
+    public decimal DiscountPercent { get; set; }
+    public int PromoPrice { get; set; }
+}

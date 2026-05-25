@@ -1,0 +1,471 @@
+/* ─── Grid de itinerarios para aplicar promoción ─── */
+.promo-itinerary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.promo-itinerary-card {
+  background: #fff;
+  border: 1px solid var(--burgundy-line);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.promo-itinerary-card:hover {
+  box-shadow: 0 4px 12px rgba(91, 25, 54, 0.10);
+  transform: translateY(-1px);
+}
+
+.promo-itinerary-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--burgundy-line);
+}
+
+.promo-itinerary-card-route {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--burgundy);
+  display: flex;
+  align-items: center;
+}
+
+.promo-itinerary-card-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--burgundy);
+  background: var(--burgundy-soft);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.promo-itinerary-card-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.promo-itinerary-card-meta>div {
+  display: flex;
+  flex-direction: column;
+}
+
+.promo-itinerary-card-meta dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #777;
+  font-weight: 600;
+  margin: 0;
+}
+
+.promo-itinerary-card-meta dd {
+  margin: 2px 0 0 0;
+  font-size: 0.9rem;
+}
+
+.promo-itinerary-card-footer {
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+/* Estado: itinerario que ya tiene una promoción activa.
+   Se atenúa la tarjeta y el botón "Aplicar promoción" queda inhabilitado. */
+.promo-itinerary-card-busy {
+  background: #fafafa;
+  border-style: dashed;
+  opacity: 0.92;
+}
+
+.promo-itinerary-card-busy:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.promo-itinerary-card-warning {
+  background: var(--burgundy-soft);
+  color: var(--burgundy-deep);
+  border-left: 3px solid var(--burgundy);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
+/* ─── Formulario de promoción ─── */
+.promo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Header del itinerario: ruta + datos de vuelo + precio base */
+.promo-form-header {
+  background: linear-gradient(135deg, var(--burgundy) 0%, var(--burgundy-deep) 100%);
+  color: #fff;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(91, 25, 54, 0.18);
+}
+
+.promo-form-header-route {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+
+.promo-form-header-code {
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+}
+
+.promo-form-header-arrow {
+  opacity: 0.85;
+  font-size: 1rem;
+  transform: rotate(45deg);
+}
+
+.promo-form-header-id {
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.promo-form-header-meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+@media (min-width: 540px) {
+  .promo-form-header-meta {
+    grid-template-columns: 1fr 1fr;
+  }
+  .promo-form-header-row-price {
+    grid-column: 1 / -1;
+    border-top: 1px dashed rgba(255, 255, 255, 0.25);
+    padding-top: 8px;
+    margin-top: 2px;
+  }
+}
+
+.promo-form-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.promo-form-header-row > i {
+  opacity: 0.8;
+}
+
+.promo-form-header-row-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.promo-form-header-row-value {
+  font-weight: 600;
+  color: #fff;
+}
+
+.promo-form-header-row-price .promo-form-header-row-value {
+  font-size: 1.05rem;
+}
+
+/* Secciones del formulario */
+.promo-form-section {
+  background: #fff;
+  border: 1px solid var(--burgundy-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.promo-form-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.promo-form-section-title {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--burgundy-deep);
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.promo-form-section-title-optional {
+  font-size: 0.78rem;
+  color: #888;
+  font-weight: 400;
+  font-family: inherit;
+  margin-left: 8px;
+}
+
+.promo-form-section-hint {
+  font-size: 0.82rem;
+  color: var(--burgundy);
+  background: var(--burgundy-soft);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+/* Chips de presets (período y precio) */
+.promo-form-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.promo-form-presets-label {
+  font-size: 0.78rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+
+.promo-form-chip {
+  border: 1px solid var(--burgundy-line);
+  background: #fff;
+  color: var(--burgundy);
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+
+.promo-form-chip:hover {
+  background: var(--burgundy-soft);
+  border-color: var(--burgundy);
+  transform: translateY(-1px);
+}
+
+.promo-form-chip:active {
+  transform: translateY(0);
+}
+
+/* Badge grande para mostrar el descuento calculado */
+.promo-form-discount-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--burgundy);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 4px 12px;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(91, 25, 54, 0.25);
+}
+
+.promo-form-discount-badge.is-zero {
+  background: #999;
+  box-shadow: none;
+}
+
+.promo-form-discount-badge i {
+  font-size: 1.1rem;
+}
+
+/* Timeline visual: Hoy → vuelo, con franja de la promo superpuesta */
+.promo-timeline {
+  margin-top: 4px;
+}
+
+.promo-timeline-track {
+  position: relative;
+  height: 8px;
+  background: var(--burgundy-soft);
+  border-radius: 999px;
+  margin: 32px 14px 38px;
+}
+
+.promo-timeline-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, var(--burgundy) 0%, var(--burgundy-deep) 100%);
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(91, 25, 54, 0.3);
+  transition: left 0.18s ease, width 0.18s ease;
+}
+
+.promo-timeline-dot {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--burgundy);
+  box-shadow: 0 0 0 3px var(--burgundy-soft);
+  transform: translate(-50%, -50%);
+}
+
+.promo-timeline-dot-today  { left: 0%; }
+.promo-timeline-dot-flight { left: 100%; border-color: var(--burgundy-deep); }
+
+.promo-timeline-label {
+  position: absolute;
+  top: -26px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--burgundy-deep);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.promo-timeline-label-start { left: 0;  transform: translateX(-50%); }
+.promo-timeline-label-end   { left: 100%; transform: translateX(-50%); }
+
+.promo-timeline-date {
+  position: absolute;
+  top: 18px;
+  font-size: 0.72rem;
+  color: #777;
+  white-space: nowrap;
+}
+
+.promo-timeline-date-start { left: 0;   transform: translateX(-50%); }
+.promo-timeline-date-end   { left: 100%; transform: translateX(-50%); }
+
+.promo-timeline-footer {
+  font-size: 0.85rem;
+  color: #555;
+  text-align: center;
+}
+
+.promo-timeline-empty {
+  background: #fdf2f2;
+  border: 1px solid #f5c2c2;
+  color: #842029;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.88rem;
+}
+
+.promo-form-img-preview {
+  border: 1px dashed var(--burgundy-line);
+  border-radius: 8px;
+  padding: 8px;
+  max-width: 260px;
+}
+
+.promo-form-img-preview img {
+  max-width: 100%;
+  max-height: 160px;
+  display: block;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.promo-img-link {
+  color: var(--burgundy);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.promo-img-link:hover {
+  text-decoration: underline;
+}
+
+/* ─── Tabs URL / Archivo en la sección de imagen ─── */
+.promo-img-mode-tabs {
+  display: flex;
+  border: 1px solid var(--burgundy-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.promo-img-mode-tab {
+  flex: 1;
+  background: #fff;
+  border: none;
+  padding: 4px 12px;
+  font-size: 0.82rem;
+  color: #777;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.promo-img-mode-tab:not(:last-child) {
+  border-right: 1px solid var(--burgundy-line);
+}
+
+.promo-img-mode-tab.active {
+  background: var(--burgundy);
+  color: #fff;
+}
+
+.promo-img-mode-tab:not(.active):hover {
+  background: var(--burgundy-soft);
+  color: var(--burgundy);
+}
+
+/* ─── Área de selección de archivo ─── */
+.promo-img-file-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.promo-img-file-btn {
+  display: inline-flex;
+  align-items: center;
+  border: 1px dashed var(--burgundy-line);
+  background: var(--burgundy-soft);
+  color: var(--burgundy);
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+  width: fit-content;
+}
+
+.promo-img-file-btn:hover {
+  border-color: var(--burgundy);
+  background: rgba(91, 25, 54, 0.12);
+}

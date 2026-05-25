@@ -30,6 +30,9 @@ project.assets.json
 # Visual Studio Code
 .vscode/
 
+# Zed
+.zed/
+
 # =========================
 # Node / React / Angular
 # =========================
@@ -96,3 +99,8 @@ captures/
 *.pdf
 *.xlsx
 *.docx
+
+# =========================
+# Notas de desarrollo locales
+# =========================
+commit_changes.md

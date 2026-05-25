@@ -1,0 +1,61 @@
+@baseUrl = http://localhost:5000
+
+### 1. Login con credenciales validas
+# Usuario sembrado en database/postgresql/02_seed_data.sql.
+# Esperado: 200 OK sin password ni password_hash en la respuesta.
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "santiboza3008@gmail.com",
+  "password": "HolaMundo1"
+}
+
+
+### 2. Login con password incorrecto
+# Esperado: 401 Unauthorized con mensaje generico.
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "santiboza3008@gmail.com",
+  "password": "incorrecto"
+}
+
+
+### 3. Login con email inexistente
+# Esperado: 401 Unauthorized con el mismo mensaje generico.
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "no.existe@tecair.com",
+  "password": "123456"
+}
+
+
+### 4. Login sin email
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "",
+  "password": "123456"
+}
+
+
+### 5. Login sin password
+# Esperado: 400 Bad Request.
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "carlos.mora@tecair.com",
+  "password": ""
+}
