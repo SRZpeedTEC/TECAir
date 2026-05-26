@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js';
+import { apiFetch, BASE_URL } from './api.js';
 
 // Convierte "YYYY-MM-DD" a Date local sin desfase horario.
 function parseISODateLocal(iso) {
@@ -166,7 +166,7 @@ export async function createItinerary(payload) {
 // backend valide internamente y devuelva 409, interceptamos el error acá y
 // mostramos un mensaje claro al admin.
 export async function updateItinerary(id, payload) {
-  const url = `${import.meta.env.VITE_API_BASE_URL ?? '/api'}/itineraries/${id}`;
+  const url = `${BASE_URL}/itineraries/${id}`;
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -216,7 +216,7 @@ export async function updateItinerary(id, payload) {
 // Corresponde a: DELETE /api/itineraries/{id}
 // 409 si ya tiene reservaciones.
 export async function deleteItinerary(id) {
-  const url = `${import.meta.env.VITE_API_BASE_URL ?? '/api'}/itineraries/${id}`;
+  const url = `${BASE_URL}/itineraries/${id}`;
   const res = await fetch(url, { method: 'DELETE' });
   if (!res.ok) {
     let msg = `Error ${res.status}`;
