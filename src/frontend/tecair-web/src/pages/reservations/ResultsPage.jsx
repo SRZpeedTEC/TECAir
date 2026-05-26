@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Nav                   from '../../components/Nav.jsx';
 import { searchItineraries, searchItineraryById } from '../../services/itineraryService.js';
-import { fmtCRC, fmtDateShort } from '../../utils/format.js';
+import { fmtCRC, fmtDateShort, stopsLabel } from '../../utils/format.js';
 
 // Pantalla de resultados: consulta la API y muestra los itinerarios disponibles
 export default function ResultsPage({ state, setState, goBack, goToPax, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram, onEditProfile }) {
@@ -177,7 +177,7 @@ export default function ResultsPage({ state, setState, goBack, goToPax, goToMisV
                           {/* Línea de ruta */}
                           <div className="col-6">
                             <div className="text-center small text-muted">
-                              {f.duration} · {f.stops === 0 ? 'Directo' : `${f.stops} escala${f.stops > 1 ? 's' : ''}`}
+                              {f.duration} · {stopsLabel(f.stopAirports)}
                             </div>
                             <div className="route-line">
                               <span className="plane-icon" style={{ left: '50%' }}>

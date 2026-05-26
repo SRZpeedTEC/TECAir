@@ -26,3 +26,15 @@ export const fmtDateShort = (d) => {
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   return `${d.getDate()} ${meses[d.getMonth()]}`;
 };
+
+// Texto descriptivo de las escalas de un itinerario.
+// `stops` es un arreglo de aeropuertos intermedios { code, city }.
+//   []            → "Directo"
+//   [JFK]         → "Escala en JFK"
+//   [JFK, DXB]    → "Escalas en JFK, DXB"
+export const stopsLabel = (stops) => {
+  if (!Array.isArray(stops) || stops.length === 0) return 'Directo';
+  const codes = stops.map((s) => s.code).filter(Boolean).join(', ');
+  if (!codes) return `${stops.length} escala${stops.length > 1 ? 's' : ''}`;
+  return stops.length === 1 ? `Escala en ${codes}` : `Escalas en ${codes}`;
+};

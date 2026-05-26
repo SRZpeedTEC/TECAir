@@ -86,6 +86,22 @@ export async function searchPublicItinerariesWithPromotions(originCode, destinat
       const activePromo  = pickActivePromotion(it.promotion ?? it.Promotion);
       const displayPrice = activePromo ? activePromo.promoPrice : basePrice;
 
+      // Tramos del itinerario (cada vuelo con su ruta y horario) y los
+      // aeropuertos intermedios (escalas = llegada de cada vuelo menos el último).
+      const segments = flights.map((fl) => ({
+        flightId:      fl.flightId ?? fl.FlightId,
+        departureCode: fl.departureCode ?? fl.DepartureCode,
+        departureCity: fl.departureCity ?? fl.DepartureCity,
+        arrivalCode:   fl.arrivalCode ?? fl.ArrivalCode,
+        arrivalCity:   fl.arrivalCity ?? fl.ArrivalCity,
+        departureDatetime: fl.departureDatetime ?? fl.DepartureDatetime,
+        arrivalDatetime:   fl.arrivalDatetime ?? fl.ArrivalDatetime,
+      }));
+      const stopAirports = flights.slice(0, -1).map((fl) => ({
+        code: fl.arrivalCode ?? fl.ArrivalCode,
+        city: fl.arrivalCity ?? fl.ArrivalCity,
+      }));
+
       return {
         itineraryId:       it.itineraryId ?? it.ItineraryId,
         price:             basePrice,
@@ -94,6 +110,8 @@ export async function searchPublicItinerariesWithPromotions(originCode, destinat
         totalFlights:      flights.length,
         departureDatetime: first.departureDatetime ?? first.DepartureDatetime,
         arrivalDatetime:   last.arrivalDatetime    ?? last.ArrivalDatetime,
+        segments,
+        stopAirports,
         basePrice,
         displayPrice,
         activePromotion:   activePromo,
