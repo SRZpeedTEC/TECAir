@@ -1,5 +1,8 @@
 export const API_URL = "http://localhost:5000";
-export const BASE_URL = `${API_URL}/api`;
+
+// Web (IIS):     BASE_URL = http://localhost:5000/api  (sin env var → usa API_URL)
+// Mobile build:  BASE_URL = http://10.0.2.2:5000/api   (VITE_API_BASE_URL inyectado por build:web)
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? `${API_URL}/api`;
 
 // Helper generico de fetch: lanza un Error con el mensaje del servidor si el status no es 2xx.
 export async function apiFetch(path, options) {
