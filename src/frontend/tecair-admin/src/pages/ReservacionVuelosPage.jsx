@@ -4,6 +4,7 @@ import DatePicker from '../components/DatePicker.jsx';
 import { getItineraryAvailability, searchPublicItinerariesWithPromotions } from '../services/itineraryService.js';
 import { createPassenger, mapGenderToCode } from '../services/passengerService.js';
 import { createReservation, generatePaymentReference } from '../services/reservationService.js';
+import { buildReceiptDataFromAdminProps, printReceipt } from '../utils/receipt.js';
 
 // Página unificada de búsqueda + reservación de vuelos para la Vista Aeropuerto.
 // Reproduce el flujo del cliente (Inicio → Resultados → Pasajeros → Confirmación)
@@ -263,6 +264,7 @@ export default function ReservacionVuelosPage() {
           reservations={reservations}
           selectedFlight={selectedFlight}
           from={from} to={to}
+          depart={depart}
           paxList={paxList}
           clientEmail={clientEmail}
           totalPrice={totalPrice}
@@ -600,9 +602,14 @@ function PaxStep({ paxList, updatePax, clientEmail, setClientEmail, errs, submit
 }
 
 // ── Paso 4: confirmación ───────────────────────────────────────────────────
-function ConfirmStep({ reservations, selectedFlight, from, to, paxList, clientEmail, totalPrice, onNew }) {
+function ConfirmStep({ reservations, selectedFlight, from, to, depart, paxList, clientEmail, totalPrice, onNew }) {
   const primaryId = reservations[0]?.reservationId;
   const confirmId = primaryId ? `AT-${String(primaryId).padStart(6, '0')}` : '—';
+
+  const handlePrint = () => {
+    const data = buildReceiptDataFromAdminProps({ reservations, selectedFlight, from, to, paxList, clientEmail, depart });
+    printReceipt(data);
+  };
 
   return (
     <div className="bg-white border rounded-3 p-4" style={{ borderColor: 'var(--line)' }}>
@@ -647,7 +654,10 @@ function ConfirmStep({ reservations, selectedFlight, from, to, paxList, clientEm
         </div>
       </div>
 
-      <div className="d-flex justify-content-center mt-4">
+      <div className="d-flex justify-content-center gap-3 flex-wrap mt-4">
+        <button className="btn btn-burgundy-outline" onClick={handlePrint}>
+          <i className="bi bi-file-earmark-pdf me-2"></i>Descargar factura
+        </button>
         <button className="btn btn-burgundy" onClick={onNew}>
           <i className="bi bi-plus-lg me-2"></i>Nueva reservación
         </button>
