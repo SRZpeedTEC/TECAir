@@ -37,12 +37,43 @@ export async function getItineraryById(id) {
   return apiFetch(`/itineraries/${id}`);
 }
 
+// Normaliza la lista de vuelos de un itinerario y la ordena por flightOrder.
+function sortedFlights(detail) {
+  return (detail?.flights ?? detail?.Flights ?? [])
+    .slice()
+    .sort((a, b) => (a.flightOrder ?? a.FlightOrder) - (b.flightOrder ?? b.FlightOrder));
+}
+
+// Construye los tramos (segments) de un itinerario con horarios y ruta de
+// cada vuelo, para mostrar el detalle completo en el resumen del viaje.
+function buildSegments(flights) {
+  return flights.map((f) => {
+    const dep = new Date(f.departureDatetime ?? f.DepartureDatetime);
+    const arr = new Date(f.arrivalDatetime ?? f.ArrivalDatetime);
+    return {
+      flightId:      f.flightId ?? f.FlightId,
+      departureCode: f.departureCode ?? f.DepartureCode,
+      departureCity: f.departureCity ?? f.DepartureCity,
+      arrivalCode:   f.arrivalCode ?? f.ArrivalCode,
+      arrivalCity:   f.arrivalCity ?? f.ArrivalCity,
+      depart:        isNaN(dep.getTime()) ? null : fmtTime(dep),
+      arrive:        isNaN(arr.getTime()) ? null : fmtTime(arr),
+    };
+  });
+}
+
+// Aeropuertos intermedios (escalas): la llegada de cada vuelo menos el último.
+function buildStopAirports(flights) {
+  return flights.slice(0, -1).map((f) => ({
+    code: f.arrivalCode ?? f.ArrivalCode,
+    city: f.arrivalCity ?? f.ArrivalCity,
+  }));
+}
+
 function itineraryDetailToSearchResult(detail) {
   if (!detail) return null;
 
-  const flights = (detail.flights ?? detail.Flights ?? [])
-    .slice()
-    .sort((a, b) => (a.flightOrder ?? a.FlightOrder) - (b.flightOrder ?? b.FlightOrder));
+  const flights = sortedFlights(detail);
   const first = flights[0];
   const last = flights[flights.length - 1];
   if (!first || !last) return null;
@@ -60,6 +91,8 @@ function itineraryDetailToSearchResult(detail) {
     id: `IT${itineraryId}`,
     itineraryId,
     stops: Math.max(flights.length - 1, 0),
+    stopAirports: buildStopAirports(flights),
+    segments: buildSegments(flights),
     depart: fmtTime(departure),
     arrive: fmtTime(arrival),
     duration: calcDuration(departure, arrival),
@@ -132,11 +165,15 @@ export async function searchItineraries(originCode, destinationCode, options = {
     const departure = new Date(raw.departureDatetime ?? raw.DepartureDatetime);
     const arrival = new Date(raw.arrivalDatetime ?? raw.ArrivalDatetime);
 
+    const flights = sortedFlights(detail);
+
     return {
       departure,
       arrival,
       totalFlights: raw.totalFlights ?? raw.TotalFlights,
       itineraryId: raw.itineraryId ?? raw.ItineraryId,
+      stopAirports: buildStopAirports(flights),
+      segments: buildSegments(flights),
       basePrice,
       displayPrice,
       activePromotion: activePromo,
@@ -156,6 +193,8 @@ export async function searchItineraries(originCode, destinationCode, options = {
       id: `IT${e.itineraryId}`,
       itineraryId: e.itineraryId,
       stops: e.totalFlights - 1,
+      stopAirports: e.stopAirports,
+      segments: e.segments,
       depart: fmtTime(e.departure),
       arrive: fmtTime(e.arrival),
       duration: calcDuration(e.departure, e.arrival),
