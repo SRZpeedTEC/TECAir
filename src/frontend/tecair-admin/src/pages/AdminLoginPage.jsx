@@ -89,7 +89,7 @@ export default function AdminLoginPage({ onLogin }) {
               className="form-control"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@tecair.com"
+              placeholder=""
               autoComplete="off"
               autoFocus
               required
@@ -106,7 +106,7 @@ export default function AdminLoginPage({ onLogin }) {
               className="form-control"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder=""
               autoComplete="new-password"
               required
             />
