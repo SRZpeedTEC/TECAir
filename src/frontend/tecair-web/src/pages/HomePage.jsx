@@ -4,7 +4,6 @@ import AirportField    from '../components/AirportField.jsx';
 import DateField       from '../components/DateField.jsx';
 import PaxField        from '../components/PaxField.jsx';
 import PromotionModal  from '../components/PromotionModal.jsx';
-import PROMOS          from '../data/promos.js';
 import AIRPORTS        from '../data/airports.js';
 import { fmtCRC }      from '../utils/format.js';
 import { getPromotionsWithItinerary } from '../services/promotionService.js';
@@ -46,7 +45,7 @@ function fmtDateRange(start, end) {
 // Pantalla de inicio: hero, buscador de vuelos flotante, tarjetas de ofertas y características
 export default function HomePage({ state, setState, goToResults, goToMisViajes, currentUser, onOpenAuth, onLogout, onStudentProgram, onEditProfile }) {
   // Promociones traídas del backend. Si el endpoint falla o no hay registros
-  // mostramos el array estático original como fallback.
+  // no mostramos nada (sin fallback a datos estáticos).
   const [promotions,    setPromotions]    = useState(null);
   const [promosLoading, setPromosLoading] = useState(true);
   const [promosError,   setPromosError]   = useState(null);
@@ -244,36 +243,12 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
             </div>
           )}
 
-          {/* Fallback: si el backend falla o no hay promociones, mostramos el set estático. */}
-          {!promosLoading && (!promotions || promotions.length === 0) && (
-            <>
-              {promosError && (
-                <div className="text-muted small mb-3">
-                  <i className="bi bi-info-circle me-1"></i>
-                  No pudimos cargar promociones del servidor. Mostrando destinos sugeridos.
-                </div>
-              )}
-              <div className="row g-3">
-                {PROMOS.map((p) => (
-                  <div className="col-12 col-sm-6 col-lg-4" key={p.code}>
-                    <div className="promo-card">
-                      <div
-                        className="ph ph-img"
-                        style={{ '--c1': p.c1, '--c2': p.c2 }}
-                      ></div>
-                      <div className="overlay"></div>
-                      <div className="promo-text">
-                        <div className="city">{p.city}</div>
-                        <div className="meta">{p.country} · {p.dates}</div>
-                        <div className="price mt-1">
-                          Económica desde <strong>{fmtCRC(p.price)}</strong>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
+          {/* Si el backend falla o no hay promociones, no mostramos nada. */}
+          {!promosLoading && (!promotions || promotions.length === 0) && promosError && (
+            <div className="text-muted small">
+              <i className="bi bi-info-circle me-1"></i>
+              No pudimos cargar promociones del servidor.
+            </div>
           )}
         </section>
 
