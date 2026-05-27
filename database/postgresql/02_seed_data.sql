@@ -261,11 +261,11 @@ SELECT
     airport_connection.distance_miles
 FROM (
     VALUES
-        (1, 'TI-TEC01', 'SJO', 'PTY', 'OPEN',     'A1', '2026-06-10 08:00:00'::TIMESTAMP),
-        (2, 'TI-TEC02', 'PTY', 'BOG', 'OPEN',     'B4', '2026-06-10 11:00:00'::TIMESTAMP),
+        (1, 'TI-TEC01', 'SJO', 'PTY', 'UPCOMING',     'A1', '2026-06-10 08:00:00'::TIMESTAMP),
+        (2, 'TI-TEC02', 'PTY', 'BOG', 'UPCOMING',     'B4', '2026-06-10 11:00:00'::TIMESTAMP),
         (3, 'TI-TEC03', 'BOG', 'MEX', 'UPCOMING', 'C2', '2026-06-10 15:00:00'::TIMESTAMP),
-        (4, 'TI-TEC04', 'SJO', 'MIA', 'OPEN',     'A5', '2026-06-12 10:00:00'::TIMESTAMP),
-        (5, 'TI-TEC05', 'MIA', 'MEX', 'CLOSED',   'D7', '2026-06-12 15:00:00'::TIMESTAMP)
+        (4, 'TI-TEC04', 'SJO', 'MIA', 'UPCOMING',     'A5', '2026-06-12 10:00:00'::TIMESTAMP),
+        (5, 'TI-TEC05', 'MIA', 'MEX', 'UPCOMING',   'D7', '2026-06-12 15:00:00'::TIMESTAMP)
 ) AS seeded_flights (
     flight_id,
     plane_plate,
@@ -292,11 +292,11 @@ ORDER BY seeded_flights.flight_id;
 -- 5 cerrado MIA -> MEX para probar que no aparece en busquedas publicas.
 INSERT INTO itinerary (itinerary_id, price, state) OVERRIDING SYSTEM VALUE
 VALUES
-    (1, 180000.00, 'PUBLIC'),
-    (2, 420000.00, 'PUBLIC'),
-    (3, 350000.00, 'PUBLIC'),
+    (1, 180000.00, 'EDITION'),
+    (2, 420000.00, 'EDITION'),
+    (3, 350000.00, 'EDITION'),
     (4, 510000.00, 'EDITION'),
-    (5, 210000.00, 'CLOSED');
+    (5, 210000.00, 'EDITION');
 
 -- Relaciona cada itinerario con sus vuelos.
 INSERT INTO flight_in_itinerary (
@@ -330,7 +330,7 @@ INSERT INTO promotion (
     promo_price
 )
 VALUES
-    ('PROMO-BOGOTA-15', 2, 'https://example.com/promos/bogota.jpg', '2026-05-01', '2026-06-30', 15.00, 357000),
+    ('PROMO-BOGOTA-15', 2, 'https://example.com/promos/bogota.jpg', '2026-05-27', '2026-06-30', 15.00, 357000),
     ('PROMO-MIAMI-10', 3, 'https://example.com/promos/miami.jpg', '2026-06-01', '2026-07-31', 10.00, 315000);
 
 -- =========================
@@ -343,4 +343,3 @@ SELECT setval(pg_get_serial_sequence('flight', 'flight_id'), COALESCE(MAX(flight
 SELECT setval(pg_get_serial_sequence('itinerary', 'itinerary_id'), COALESCE(MAX(itinerary_id), 1)) FROM itinerary;
 SELECT setval(pg_get_serial_sequence('flight_in_itinerary', 'itinerary_flight_id'), COALESCE(MAX(itinerary_flight_id), 1)) FROM flight_in_itinerary;
 SELECT setval(pg_get_serial_sequence('reservation', 'reservation_id'), COALESCE(MAX(reservation_id), 1)) FROM reservation;
-
