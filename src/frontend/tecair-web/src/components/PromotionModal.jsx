@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { fmtCRC } from '../utils/format.js';
+import { resolveImageUrl } from '../services/api.js';
 
 const MESES_ABBR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -50,7 +51,7 @@ export default function PromotionModal({ promo, onClose, onReserve }) {
 
         <div className="promo-modal-hero">
           {promo.imageUrl
-            ? <img src={promo.imageUrl} alt={destCity} />
+            ? <img src={resolveImageUrl(promo.imageUrl)} alt={destCity} />
             : <div className="promo-modal-hero-ph"></div>}
           <div className="promo-modal-hero-overlay"></div>
           <div className="promo-modal-badge">{promo.discountPercent}% OFF</div>

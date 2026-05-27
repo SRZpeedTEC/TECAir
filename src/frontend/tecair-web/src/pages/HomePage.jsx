@@ -8,6 +8,7 @@ import PROMOS          from '../data/promos.js';
 import AIRPORTS        from '../data/airports.js';
 import { fmtCRC }      from '../utils/format.js';
 import { getPromotionsWithItinerary } from '../services/promotionService.js';
+import { resolveImageUrl } from '../services/api.js';
 
 // Resuelve un código IATA a un objeto airport completo. Si el código no está
 // en la lista local de aeropuertos, devuelve un objeto mínimo con los datos
@@ -210,7 +211,7 @@ export default function HomePage({ state, setState, goToResults, goToMisViajes, 
                 const meta = [p.originCode && p.destinationCode ? `${p.originCode} → ${p.destinationCode}` : null,
                               fmtDateRange(p.startDate, p.endDate)].filter(Boolean).join(' · ');
                 const bgStyle = p.imageUrl
-                  ? { backgroundImage: `url(${p.imageUrl})` }
+                  ? { backgroundImage: `url(${resolveImageUrl(p.imageUrl)})` }
                   : { '--c1': grad.c1, '--c2': grad.c2 };
                 return (
                   <div className="col-12 col-sm-6 col-lg-4" key={p.promotionCode}>
