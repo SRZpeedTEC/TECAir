@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { BASE_URL } from './services/api.js';
 import HomePage from './pages/HomePage.jsx';
 import ResultsPage from './pages/reservations/ResultsPage.jsx';
 import PaxPage from './pages/reservations/PaxPage.jsx';
@@ -18,10 +19,23 @@ const INITIAL_STATE = {
   passengers: [],
 };
 
+const SESSION_KEY = 'tecair_session';
+
 export default function App() {
   const [page, setPage] = useState('home');
   const [state, setState] = useState(INITIAL_STATE);
-  const [currentUser, setCurrentUser] = useState(null);
+
+  // Restaura la sesión desde localStorage al arrancar la app.
+  // Así el usuario sigue logueado aunque la app se cierre y reabra sin internet.
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SESSION_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [showAuth,    setShowAuth]    = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
@@ -39,6 +53,42 @@ export default function App() {
   }, []);
 
   useEffect(() => { window.scrollTo(0, 0); }, [page]);
+
+  // Expone la página actual para que el listener del botón Atrás de Android
+  // (index.js mobile) sepa si navegar o salir de la app.
+  useEffect(() => { window.__tecairCurrentPage = page; }, [page]);
+
+  // Expone el BASE_URL y notifica al bootstrap móvil que la SPA está lista.
+  // scheduleStartupSync() en index.js escucha este evento para poblar SQLite.
+  useEffect(() => {
+    window.__TECAIR_API_BASE = BASE_URL;
+    window.dispatchEvent(new CustomEvent('tecair:ready'));
+  }, []);
+
+  // Persiste la sesión en localStorage para sobrevivir reinicios de la app.
+  // Al hacer logout (currentUser = null) borra la sesión guardada.
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  }, [currentUser]);
+
+  // Cuando el usuario se loguea con internet, notifica al bootstrap móvil
+  // para que cachee sus reservas en SQLite (Mis Viajes offline).
+  // Se guarda también en window.__TECAIR_USER_EMAIL porque el evento puede
+  // dispararse antes de que initDB() termine y el listener exista.
+  useEffect(() => {
+    if (!currentUser?.email) {
+      window.__TECAIR_USER_EMAIL = null;
+      return;
+    }
+    window.__TECAIR_USER_EMAIL = currentUser.email;
+    window.dispatchEvent(new CustomEvent('tecair:user-login', {
+      detail: { email: currentUser.email },
+    }));
+  }, [currentUser?.email]);
 
   // Navega a una página registrándola en el historial del navegador.
   // replace=true reemplaza la entrada actual (sin crear punto de retorno).

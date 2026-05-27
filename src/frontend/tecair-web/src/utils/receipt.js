@@ -444,6 +444,31 @@ export function printReceipt(data) {
 </body>
 </html>`;
 
+  const isMobile = typeof window.Capacitor !== 'undefined' &&
+                   window.Capacitor.isNativePlatform?.();
+
+  // En Android usamos la Web Share API para compartir/guardar el HTML como
+  // archivo. El usuario elige desde la hoja nativa de Android (Descargas,
+  // Gmail, WhatsApp, etc.). Si el dispositivo no soporta share con archivos,
+  // abrimos el Blob URL como fallback.
+  if (isMobile) {
+    const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+    const file = new File([blob], `TECAir-${confirmId}.html`, { type: 'text/html' });
+    if (navigator.canShare?.({ files: [file] })) {
+      navigator.share({ title: `Factura TECAir ${confirmId}`, files: [file] })
+        .catch((err) => {
+          if (err.name !== 'AbortError') {
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+          }
+        });
+    } else {
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    }
+    return;
+  }
+
   const win = window.open('', '_blank', 'width=870,height=1150');
   if (!win) {
     alert('El navegador bloqueó la ventana emergente. Permite pop-ups para este sitio y vuelve a intentarlo.');
