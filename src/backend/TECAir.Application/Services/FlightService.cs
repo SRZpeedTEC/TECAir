@@ -279,6 +279,15 @@ public class FlightService(
             return UpdateFlightServiceResult.NotFound($"Flight '{flightId}' was not found.");
         }
 
+        if (await flightRepository.FlightIsUsedInItineraryAsync(flightId, cancellationToken))
+        {
+            // Un vuelo dentro de un itinerario define una ruta vendible; editarlo
+            // cambiaria el itinerario por la puerta de atras (avion, ruta, horario o puerta),
+            // por eso solo se pueden editar vuelos que no esten asociados a ninguno.
+            return UpdateFlightServiceResult.Conflict(
+                "The flight cannot be modified because it is already used in an itinerary.");
+        }
+
         if (!await flightRepository.PlaneExistsAsync(normalizedRequest.PlanePlate, cancellationToken))
         {
             return UpdateFlightServiceResult.NotFound($"Plane '{normalizedRequest.PlanePlate}' was not found.");

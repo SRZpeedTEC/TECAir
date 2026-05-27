@@ -1,4 +1,4 @@
-import { fmtCRC } from '../utils/format.js';
+import { fmtCRC, stopsLabel } from '../utils/format.js';
 
 // Panel lateral pegajoso con el resumen del viaje y desglose de costos
 export default function SummarySide({ state }) {
@@ -6,6 +6,7 @@ export default function SummarySide({ state }) {
   const total    = state.pax.adults;
   const subtotal = f ? f.price * total : 0;
   const tax      = Math.round(subtotal * 0.13); // IVA del 13% (Costa Rica)
+  const segments = f?.segments ?? [];
 
   return (
     <div
@@ -17,15 +18,32 @@ export default function SummarySide({ state }) {
       {f && (
         <>
           {/* Detalles del vuelo seleccionado */}
-          <div className="d-flex justify-content-between mb-2">
-            <div>
-              <div className="fw-semibold">{state.from?.code} → {state.to?.code}</div>
-              <div className="small text-muted">{f.depart} — {f.arrive} · {f.duration}</div>
-              <div className="small text-muted">
-                {f.stops === 0 ? 'Directo' : `${f.stops} escala${f.stops > 1 ? 's' : ''}`} · vuelo {f.id}
-              </div>
+          <div className="mb-2">
+            <div className="fw-semibold">{state.from?.code} → {state.to?.code}</div>
+            <div className="small text-muted">{f.depart} — {f.arrive} · {f.duration}</div>
+            <div className="small text-muted">
+              {stopsLabel(f.stopAirports)} · vuelo {f.id}
             </div>
           </div>
+
+          {/* Desglose tramo por tramo (incluye escalas) */}
+          {segments.length > 0 && (
+            <div className="border rounded-3 p-2 mb-2" style={{ borderColor: 'var(--line)' }}>
+              {segments.map((s, i) => (
+                <div key={s.flightId ?? i} className={i > 0 ? 'mt-2 pt-2 border-top' : ''} style={i > 0 ? { borderColor: 'var(--line)' } : undefined}>
+                  <div className="small fw-semibold">
+                    {s.departureCode} → {s.arrivalCode}
+                  </div>
+                  <div className="small text-muted">
+                    {s.departureCity} — {s.arrivalCity}
+                  </div>
+                  {s.depart && s.arrive && (
+                    <div className="small text-muted">{s.depart} — {s.arrive}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <hr />
 

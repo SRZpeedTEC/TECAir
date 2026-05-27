@@ -4,6 +4,7 @@ import DatePicker from '../components/DatePicker.jsx';
 import { getItineraryAvailability, searchPublicItinerariesWithPromotions } from '../services/itineraryService.js';
 import { createPassenger, mapGenderToCode } from '../services/passengerService.js';
 import { createReservation, generatePaymentReference } from '../services/reservationService.js';
+import { buildReceiptDataFromAdminProps, printReceipt } from '../utils/receipt.js';
 
 // Página unificada de búsqueda + reservación de vuelos para la Vista Aeropuerto.
 // Reproduce el flujo del cliente (Inicio → Resultados → Pasajeros → Confirmación)
@@ -27,6 +28,41 @@ const calcDuration = (dep, arr) => {
   const m = Math.floor((ms % 3600_000) / 60_000);
   return `${h}h ${m}m`;
 };
+
+// Texto de escalas: "Directo", "Escala en JFK", "Escalas en JFK, DXB".
+const stopsLabel = (stops) => {
+  if (!Array.isArray(stops) || stops.length === 0) return 'Directo';
+  const codes = stops.map((s) => s.code).filter(Boolean).join(', ');
+  if (!codes) return `${stops.length} escala${stops.length > 1 ? 's' : ''}`;
+  return stops.length === 1 ? `Escala en ${codes}` : `Escalas en ${codes}`;
+};
+
+// Lista de tramos de un itinerario con horarios y ruta de cada vuelo.
+function SegmentList({ segments }) {
+  if (!Array.isArray(segments) || segments.length === 0) return null;
+  return (
+    <div className="border rounded-3 p-2 mt-2" style={{ borderColor: 'var(--line)' }}>
+      {segments.map((s, i) => {
+        const dep = new Date(s.departureDatetime);
+        const arr = new Date(s.arrivalDatetime);
+        const hasTime = !isNaN(dep.getTime()) && !isNaN(arr.getTime());
+        return (
+          <div
+            key={s.flightId ?? i}
+            className={i > 0 ? 'mt-2 pt-2 border-top' : ''}
+            style={i > 0 ? { borderColor: 'var(--line)' } : undefined}
+          >
+            <div className="small fw-semibold">{s.departureCode} → {s.arrivalCode}</div>
+            <div className="small text-muted">{s.departureCity} — {s.arrivalCity}</div>
+            {hasTime && (
+              <div className="small text-muted">{fmtTime(dep)} — {fmtTime(arr)}</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const EMPTY_PASSENGER = { firstName: '', lastName: '', passport: '', dob: '', gender: '' };
 
@@ -263,6 +299,7 @@ export default function ReservacionVuelosPage() {
           reservations={reservations}
           selectedFlight={selectedFlight}
           from={from} to={to}
+          depart={depart}
           paxList={paxList}
           clientEmail={clientEmail}
           totalPrice={totalPrice}
@@ -415,7 +452,7 @@ function ResultsStep({ from, to, depart, adults, itineraries, onSelect, onBack }
                       </span>
                     )}
                     <span>
-                      {it.duration} · {it.stops === 0 ? 'Directo' : `${it.stops} escala${it.stops > 1 ? 's' : ''}`}
+                      {it.duration} · {stopsLabel(it.stopAirports)}
                     </span>
                   </div>
                   <div className="row align-items-center">
@@ -569,6 +606,8 @@ function PaxStep({ paxList, updatePax, clientEmail, setClientEmail, errs, submit
           <div className="small">
             {selectedFlight?.depart} — {selectedFlight?.arrive} · {selectedFlight?.duration}
           </div>
+          <div className="small text-muted">{stopsLabel(selectedFlight?.stopAirports)}</div>
+          <SegmentList segments={selectedFlight?.segments} />
           {selectedFlight?.activePromotion && (
             <div className="mt-2 small">
               <span className="badge bg-burgundy text-white">
@@ -600,9 +639,14 @@ function PaxStep({ paxList, updatePax, clientEmail, setClientEmail, errs, submit
 }
 
 // ── Paso 4: confirmación ───────────────────────────────────────────────────
-function ConfirmStep({ reservations, selectedFlight, from, to, paxList, clientEmail, totalPrice, onNew }) {
+function ConfirmStep({ reservations, selectedFlight, from, to, depart, paxList, clientEmail, totalPrice, onNew }) {
   const primaryId = reservations[0]?.reservationId;
   const confirmId = primaryId ? `AT-${String(primaryId).padStart(6, '0')}` : '—';
+
+  const handlePrint = () => {
+    const data = buildReceiptDataFromAdminProps({ reservations, selectedFlight, from, to, paxList, clientEmail, depart });
+    printReceipt(data);
+  };
 
   return (
     <div className="bg-white border rounded-3 p-4" style={{ borderColor: 'var(--line)' }}>
@@ -628,6 +672,8 @@ function ConfirmStep({ reservations, selectedFlight, from, to, paxList, clientEm
           <div className="small">
             {selectedFlight?.depart} — {selectedFlight?.arrive} · {selectedFlight?.duration}
           </div>
+          <div className="small text-muted">{stopsLabel(selectedFlight?.stopAirports)}</div>
+          <SegmentList segments={selectedFlight?.segments} />
         </div>
         <div className="col-md-6">
           <div className="small text-muted">Pasajeros</div>
@@ -647,7 +693,10 @@ function ConfirmStep({ reservations, selectedFlight, from, to, paxList, clientEm
         </div>
       </div>
 
-      <div className="d-flex justify-content-center mt-4">
+      <div className="d-flex justify-content-center gap-3 flex-wrap mt-4">
+        <button className="btn btn-burgundy-outline" onClick={handlePrint}>
+          <i className="bi bi-file-earmark-pdf me-2"></i>Descargar factura
+        </button>
         <button className="btn btn-burgundy" onClick={onNew}>
           <i className="bi bi-plus-lg me-2"></i>Nueva reservación
         </button>

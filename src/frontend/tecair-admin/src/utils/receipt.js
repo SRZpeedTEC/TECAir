@@ -13,16 +13,12 @@ function fmtCRC(n) {
   return '&#x20A1;' + Number(n).toLocaleString('es-CR');
 }
 
-// ─── API pública ───────────────────────────────────────────────────────────────
+// Convierte los props del ConfirmStep admin al shape normalizado de receipt.
+export function buildReceiptDataFromAdminProps({ reservations, selectedFlight, from, to, paxList, clientEmail, depart }) {
+  const paxCount    = paxList.length;
+  const pricePerPax = selectedFlight?.price ?? 0;
 
-// Convierte el shape de `state` (ConfirmPage) al shape normalizado de receipt.
-export function buildReceiptDataFromState(state) {
-  const f          = state.selectedFlight;
-  const paxCount   = state.pax?.adults ?? 1;
-  const pricePerPax = f?.price ?? 0;
-
-  const reservations = state.reservations ?? [];
-  const passengers   = (state.passengers  ?? []).map((p, i) => ({
+  const passengers = paxList.map((p, i) => ({
     name:             `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim(),
     passport:         p.passport ?? '—',
     reservationId:    reservations[i]?.reservationId ?? null,
@@ -31,55 +27,27 @@ export function buildReceiptDataFromState(state) {
 
   const primaryId = reservations[0]?.reservationId;
 
+  // depart viene como string YYYY-MM-DD desde el DatePicker.
+  // Se fuerza mediodía para evitar desfases de zona horaria.
+  const departDate = depart ? new Date(depart + 'T12:00:00') : null;
+
   return {
-    confirmId:        primaryId ? `AT-${String(primaryId).padStart(6, '0')}` : '—',
-    bookingEmail:     state.bookingEmail ?? '—',
-    fromCode:         state.from?.code ?? '—',
-    fromCity:         state.from?.city ?? '',
-    toCode:           state.to?.code   ?? '—',
-    toCity:           state.to?.city   ?? '',
-    flightDate:       state.depart ? fmtDateLong(state.depart) : '—',
-    depart:           f?.depart   ?? '—',
-    arrive:           f?.arrive   ?? '—',
-    duration:         f?.duration ?? '—',
-    flightId:         f?.id       ?? '—',
-    stops:            f?.stops    ?? 0,
+    confirmId:       primaryId ? `AT-${String(primaryId).padStart(6, '0')}` : '—',
+    bookingEmail:    clientEmail ?? '—',
+    fromCode:        from?.code ?? '—',
+    fromCity:        from?.city ?? '',
+    toCode:          to?.code   ?? '—',
+    toCity:          to?.city   ?? '',
+    flightDate:      fmtDateLong(departDate),
+    depart:          selectedFlight?.depart   ?? '—',
+    arrive:          selectedFlight?.arrive   ?? '—',
+    duration:        selectedFlight?.duration ?? '—',
+    flightId:        selectedFlight?.itineraryId ?? '—',
+    stops:           selectedFlight?.stops    ?? 0,
     paxCount,
     pricePerPax,
     passengers,
-    activePromotion:  f?.activePromotion ?? null,
-  };
-}
-
-// Convierte el shape de `trip` (MisViajesPage) al shape normalizado de receipt.
-export function buildReceiptDataFromTrip(trip, bookingEmail) {
-  const paxCount = trip.passengers?.length ?? 1;
-  const reservations = trip.reservations ?? [];
-
-  const passengers = (trip.passengers ?? []).map((p, i) => ({
-    name:             `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim(),
-    passport:         p.passengerId ?? '—',
-    reservationId:    reservations[i]?.reservationId ?? null,
-    paymentReference: reservations[i]?.paymentReference ?? '—',
-  }));
-
-  return {
-    confirmId:        trip.id ?? '—',
-    bookingEmail:     bookingEmail ?? '—',
-    fromCode:         trip.from?.code ?? '—',
-    fromCity:         trip.from?.city ?? '',
-    toCode:           trip.to?.code   ?? '—',
-    toCity:           trip.to?.city   ?? '',
-    flightDate:       trip.date ?? '—',
-    depart:           trip.depart   ?? '—',
-    arrive:           trip.arrive   ?? '—',
-    duration:         trip.duration ?? '—',
-    flightId:         trip.flight   ?? '—',
-    stops:            trip.stops    ?? 0,
-    paxCount,
-    pricePerPax:      trip.pricePerPax ?? 0,
-    passengers,
-    activePromotion:  null,
+    activePromotion: selectedFlight?.activePromotion ?? null,
   };
 }
 
@@ -443,31 +411,6 @@ export function printReceipt(data) {
 
 </body>
 </html>`;
-
-  const isMobile = typeof window.Capacitor !== 'undefined' &&
-                   window.Capacitor.isNativePlatform?.();
-
-  // En Android usamos la Web Share API para compartir/guardar el HTML como
-  // archivo. El usuario elige desde la hoja nativa de Android (Descargas,
-  // Gmail, WhatsApp, etc.). Si el dispositivo no soporta share con archivos,
-  // abrimos el Blob URL como fallback.
-  if (isMobile) {
-    const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
-    const file = new File([blob], `TECAir-${confirmId}.html`, { type: 'text/html' });
-    if (navigator.canShare?.({ files: [file] })) {
-      navigator.share({ title: `Factura TECAir ${confirmId}`, files: [file] })
-        .catch((err) => {
-          if (err.name !== 'AbortError') {
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
-          }
-        });
-    } else {
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    }
-    return;
-  }
 
   const win = window.open('', '_blank', 'width=870,height=1150');
   if (!win) {

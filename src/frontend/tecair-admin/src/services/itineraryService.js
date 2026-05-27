@@ -1,4 +1,4 @@
-import { apiFetch } from './api.js';
+import { apiFetch, BASE_URL } from './api.js';
 
 // Convierte "YYYY-MM-DD" a Date local sin desfase horario.
 function parseISODateLocal(iso) {
@@ -86,6 +86,22 @@ export async function searchPublicItinerariesWithPromotions(originCode, destinat
       const activePromo  = pickActivePromotion(it.promotion ?? it.Promotion);
       const displayPrice = activePromo ? activePromo.promoPrice : basePrice;
 
+      // Tramos del itinerario (cada vuelo con su ruta y horario) y los
+      // aeropuertos intermedios (escalas = llegada de cada vuelo menos el último).
+      const segments = flights.map((fl) => ({
+        flightId:      fl.flightId ?? fl.FlightId,
+        departureCode: fl.departureCode ?? fl.DepartureCode,
+        departureCity: fl.departureCity ?? fl.DepartureCity,
+        arrivalCode:   fl.arrivalCode ?? fl.ArrivalCode,
+        arrivalCity:   fl.arrivalCity ?? fl.ArrivalCity,
+        departureDatetime: fl.departureDatetime ?? fl.DepartureDatetime,
+        arrivalDatetime:   fl.arrivalDatetime ?? fl.ArrivalDatetime,
+      }));
+      const stopAirports = flights.slice(0, -1).map((fl) => ({
+        code: fl.arrivalCode ?? fl.ArrivalCode,
+        city: fl.arrivalCity ?? fl.ArrivalCity,
+      }));
+
       return {
         itineraryId:       it.itineraryId ?? it.ItineraryId,
         price:             basePrice,
@@ -94,6 +110,8 @@ export async function searchPublicItinerariesWithPromotions(originCode, destinat
         totalFlights:      flights.length,
         departureDatetime: first.departureDatetime ?? first.DepartureDatetime,
         arrivalDatetime:   last.arrivalDatetime    ?? last.ArrivalDatetime,
+        segments,
+        stopAirports,
         basePrice,
         displayPrice,
         activePromotion:   activePromo,
@@ -166,7 +184,7 @@ export async function createItinerary(payload) {
 // backend valide internamente y devuelva 409, interceptamos el error acá y
 // mostramos un mensaje claro al admin.
 export async function updateItinerary(id, payload) {
-  const url = `${import.meta.env.VITE_API_BASE_URL ?? '/api'}/itineraries/${id}`;
+  const url = `${BASE_URL}/itineraries/${id}`;
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -216,7 +234,7 @@ export async function updateItinerary(id, payload) {
 // Corresponde a: DELETE /api/itineraries/{id}
 // 409 si ya tiene reservaciones.
 export async function deleteItinerary(id) {
-  const url = `${import.meta.env.VITE_API_BASE_URL ?? '/api'}/itineraries/${id}`;
+  const url = `${BASE_URL}/itineraries/${id}`;
   const res = await fetch(url, { method: 'DELETE' });
   if (!res.ok) {
     let msg = `Error ${res.status}`;

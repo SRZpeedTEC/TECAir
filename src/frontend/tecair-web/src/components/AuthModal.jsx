@@ -165,7 +165,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
               <FieldLabel>Correo electrónico</FieldLabel>
               <input
                 type="email" className="form-control mb-3" style={{ borderRadius: '10px' }}
-                placeholder="correo@ejemplo.com"
+                placeholder=""
                 value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)}
                 autoComplete="off"
                 required
@@ -174,7 +174,7 @@ export default function AuthModal({ show, onClose, onSuccess }) {
               <FieldLabel>Contraseña</FieldLabel>
               <input
                 type="password" className="form-control mb-4" style={{ borderRadius: '10px' }}
-                placeholder="••••••••"
+                placeholder=""
                 value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
                 autoComplete="new-password"
                 required
