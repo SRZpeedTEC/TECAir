@@ -5,6 +5,7 @@ import { searchReservations } from '../services/reservationService.js';
 import { getItineraryById }   from '../services/itineraryService.js';
 import { getAvailableSeats }  from '../services/seatService.js';
 import { createCheckIn, getCheckInsByReservation } from '../services/checkInService.js';
+import { printBoardingPass } from '../utils/boardingPass.js';
 
 // Flujo de check-in con cuatro pasos:
 //   1. search    → buscar reservacion por pasaporte o nombre
@@ -644,12 +645,18 @@ function renderSeatBtn(row, letter, availableSet, seat, pickSeat) {
 
 // ──────────────────────────────────────────────────────────
 // Paso 4: resumen del check-in con datos clave para el pase de abordar.
-// El pase de abordar (impresion/correo/movil) se implementara en la
-// siguiente iteracion.
+// Desde aqui el funcionario genera el pase de abordar (forma de ticket):
+// el dialogo de impresion del navegador permite guardarlo como PDF o
+// enviarlo directo a una impresora.
 // ──────────────────────────────────────────────────────────
 function ConfirmStep({ reservation, flight, checkIn, onNew }) {
   const confirmationNumber = checkIn?.confirmationNumber;
   const seat               = checkIn?.seatNumber;
+
+  const handleBoardingPass = () => {
+    if (!reservation || !flight || !checkIn) return;
+    printBoardingPass({ reservation, flight, checkIn });
+  };
   return (
     <div className="admin-card text-center" style={{ maxWidth: 640, margin: '0 auto' }}>
       <div
@@ -695,9 +702,19 @@ function ConfirmStep({ reservation, flight, checkIn, onNew }) {
         </div>
       </div>
 
-      <button type="button" className="btn-burgundy" onClick={onNew}>
-        <i className="bi bi-arrow-clockwise me-2"></i>Nuevo check-in
-      </button>
+      <div className="d-flex gap-2 justify-content-center flex-wrap">
+        <button type="button" className="btn-burgundy" onClick={handleBoardingPass}>
+          <i className="bi bi-printer me-2"></i>Generar pase de abordar
+        </button>
+        <button type="button" className="btn-burgundy-outline" onClick={onNew}>
+          <i className="bi bi-arrow-clockwise me-2"></i>Nuevo check-in
+        </button>
+      </div>
+
+      <p className="text-muted-small mt-3 mb-0">
+        El pase se abre en una ventana lista para imprimir; desde ese diálogo puedes
+        guardarlo como PDF o enviarlo a una impresora.
+      </p>
     </div>
   );
 }
